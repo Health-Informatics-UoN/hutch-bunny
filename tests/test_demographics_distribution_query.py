@@ -9,6 +9,10 @@ import hutch_bunny.core.settings as settings
 
 load_dotenv()
 
+pytestmark = pytest.mark.skipif(
+    os.environ.get("CI") is not None, reason="Skip integration tests in CI"
+)
+
 
 @pytest.fixture
 def db_manager():
