@@ -1,0 +1,65 @@
+# This workflow is used for any merge to main and results in a built container image being pushed and tagged as a dev release
+# with commit hash and timestamp tags
+#
+# These are not stable or pre-release semver releases!
+name: Publish a Dev Release
+
+on:
+  push:
+    branches: [main]
+
+env:
+  image-name: hutch/bunny
+  repo-owner: ${{ github.repository_owner }}
+  registry: ghcr.io
+
+jobs:
+  publish-bunny:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 # v3.0.0
+
+      - name: Docker Login
+        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v3.0.0
+        with:
+          registry: ${{ env.registry }}
+          username: ${{github.actor}}
+          password: ${{secrets.GITHUB_TOKEN}}
+
+      - name: Set timestamp env var
+        run: echo "RUN_TIMESTAMP=$(TZ="Etc/UTC" date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
+
+      - name: Docker Metadata action
+        id: meta
+        uses: docker/metadata-action@v5.5.1
+        with:
+          images: ${{ env.registry }}/${{ env.repo-owner}}/${{ env.image-name}}
+          tags: |
+            ${{ github.sha }}
+            ${{ env.RUN_TIMESTAMP }}
+            dev-latest
+          labels: |
+            org.opencontainers.image.title=Hutch Bunny
+            org.opencontainers.image.vendor=University of Nottingham
+            org.opencontainers.image.version=0.0.1
+          # TODO: version label should reflect current source version?
+          # Could add more custom labels in the future here
+
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v5.3.0
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
