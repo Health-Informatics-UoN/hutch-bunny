@@ -36,7 +36,7 @@ ROUNDING_TARGET = environ.get("ROUNDING_TARGET")
 
 POLLING_INTERVAL_DEFAULT = 5
 ### currently no guards to ensure that POLLING_INTERVAL and POLLING_TIMEOUT are >=0
-POLLING_INTERVAL = int(environ.get("POLLING_INTERVAL")) or POLLING_INTERVAL_DEFAULT
+POLLING_INTERVAL = int(environ.get("POLLING_INTERVAL", POLLING_INTERVAL_DEFAULT))
 
 if POLLING_INTERVAL < 0:
     print("POLLING_INTERVAL must be a positive integer. Setting to default 5s...")
