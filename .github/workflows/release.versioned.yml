@@ -16,7 +16,8 @@ jobs:
   version-tag:
     runs-on: ubuntu-latest
     permissions:
-      packages: write
+      packages: write # container images
+      contents: write # releases
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
