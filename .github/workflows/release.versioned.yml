@@ -88,6 +88,6 @@ jobs:
       - name: Push updated image tags
         uses: akhilerm/tag-push-action@v2.1.0
         with:
-          src: ${{ env.registry }}/${{ env.repo-owner }}/${{ env.image-name }}:${{ github.sha }}
+          src: ${{ env.registry }}/${{ env.REPO_OWNER_LOWER }}/${{ env.image-name }}:${{ github.sha }}
           dst: |
             ${{ steps.meta.outputs.tags }}
