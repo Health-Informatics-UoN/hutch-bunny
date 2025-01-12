@@ -27,17 +27,17 @@ jobs:
         with:
           file: pyproject.toml
           field: project.version
-      
+
       - name: Parse version from tag
         id: version
         uses: release-kit/semver@v2
-      
+
       - name: Compare Tag with Source Version
         if: ${{ steps.read_version.outputs.value }} != ${{ steps.version.outputs.full }}
         run: |
-          echo "::error::Tag version doesn't match source version"
+          echo "::error::Tag version '${{ steps.version.outputs.full }}' doesn't match source version '${{ steps.read_version.outputs.value }}'"
           exit 1
-      
+
       # check image exists for commit
       - uses: tyriis/docker-image-tag-exists@v2.1.0
         with:
