@@ -21,6 +21,11 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v4
 
+      # some docker actions need all lowercase, but our org name is mixed case 😠
+      - name: downcase repo-owner
+        run: |
+          echo "REPO_OWNER_LOWER=${GITHUB_REPOSITORY_OWNER,,}" >>${GITHUB_ENV}
+
       # read source version
       - uses: SebRollen/toml-action@v1.2.0
         id: read_version
@@ -42,7 +47,7 @@ jobs:
       - uses: tyriis/docker-image-tag-exists@v2.1.0
         with:
           registry: ${{ env.registry }}
-          repository: ${{ env.repo-owner }}/${{ env.image-name }}
+          repository: ${{ env.REPO_OWNER_LOWER }}/${{ env.image-name }}
           tag: ${{ github.sha }}
 
       # standard login to the container registry
