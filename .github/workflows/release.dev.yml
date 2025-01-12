@@ -45,6 +45,8 @@ jobs:
       - name: Docker Metadata action
         id: meta
         uses: docker/metadata-action@v5.5.1
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
           images: ${{ env.registry }}/${{ env.repo-owner }}/${{ env.image-name }}
           # Tag notes:
