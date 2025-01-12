@@ -64,7 +64,10 @@ jobs:
             org.opencontainers.image.revision={{sha}}
             org.opencontainers.image.version=${{ steps.read_version.outputs.value }}
             org.opencontainers.image.created={{date 'YYYY-MM-DD HH:mm:ss[Z]'}}
-          # TODO: Annotations may be desirable instead of labels for some metadata, since we produce multiarch images
+          # TODO: More Annotations may be desirable instead of labels for some metadata,
+          # since we produce multiarch images
+          annotations: |
+            org.opencontainers.image.description=Hutch Bunny
 
       - name: Build and push Docker images
         uses: docker/build-push-action@v5.3.0
@@ -75,3 +78,4 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
