@@ -7,6 +7,7 @@ name: Publish a Dev Release
 on:
   push:
     branches: [main]
+  pull_request: # TODO: TESTING ONLY
 
 env:
   image-name: hutch/bunny
