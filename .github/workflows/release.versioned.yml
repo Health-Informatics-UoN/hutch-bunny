@@ -6,7 +6,6 @@ on:
   push:
     tags:
       - v*
-  # pull_request: # TODO: TESTING ONLY
 
 env:
   image-name: hutch/bunny
@@ -29,13 +28,16 @@ jobs:
           file: pyproject.toml
           field: project.version
       
-      # check tag version against source version
-      - name: A/B Check
-        if: v${{ steps.read_version.outputs.value }} != ${{ github.ref_name }}
+      - name: Parse version from tag
+        id: version
+        uses: release-kit/semver@v2
+      
+      - name: Compare Tag with Source Version
+        if: ${{ steps.read_version.outputs.value }} != ${{ steps.version.outputs.full }}
         run: |
           echo "::error::Tag version doesn't match source version"
           exit 1
-
+      
       # check image exists for commit
       - uses: tyriis/docker-image-tag-exists@v2.1.0
         with:
@@ -62,7 +64,19 @@ jobs:
             type=semver,pattern={{major}}
             type=semver,pattern={{major}}.{{minor}}
 
-      # TODO: Create Github Release?
+      # Create Github Release
+      - uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: |
+            # Hutch Bunny ${{ github.ref_name }}
+
+            [Tagged Container images](https://github.com/Health-Informatics-UoN/hutch-bunny/pkgs/container/hutch%2Fbunny)
+          generateReleaseNotes: true
+          prerelease: ${{ steps.version.outputs.prerelease != '' }}
+          makeLatest: false # TODO: can we reliably detect and automate this in future?
 
       # apply the new tags to the existing images
       - uses: shrink/actions-docker-registry-tag@v4
