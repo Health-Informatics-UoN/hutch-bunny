@@ -31,6 +31,9 @@ def setting_database(logger: Logger):
         # expand postgres to a full default driver, so we can override sqlalchemy
         if datasource_db_drivername == "postgresql":
             datasource_db_drivername = settings.DEFAULT_POSTGRES_DRIVER
+        
+        if datasource_db_drivername == "mssql":
+            datasource_db_drivername = settings.DEFAULT_MSSQL_DRIVER
 
         try:
             db_manager = SyncDBManager(

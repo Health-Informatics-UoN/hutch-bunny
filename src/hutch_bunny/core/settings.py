@@ -14,6 +14,9 @@ DATASOURCE_USE_TRINO = bool(environ.get("DATASOURCE_USE_TRINO", False))
 # what unqualified `postgresql` will turn into. if left blank, will use SQLalchemy's default of `postgresql+psycopg2`
 DEFAULT_POSTGRES_DRIVER = "postgresql+psycopg"
 
+# what unqualified `mssql` will turn into. if left blank, will use SQLalchemy's default of `mssql+pymssql`
+DEFAULT_MSSQL_DRIVER = "mssql+pymssql"
+
 # what SQLAlchemy will use if DATASOURCE_DB_DRIVERNAME is not specified in the environment
 DEFAULT_DB_DRIVER = DEFAULT_POSTGRES_DRIVER
 
