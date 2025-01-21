@@ -7,13 +7,11 @@ from hutch_bunny.core.results_modifiers import results_modifiers
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.setting_database import setting_database
 
-
 def main() -> None:
     # Setting database connection
     db_manager = setting_database(logger=logger)
     # Task Api Client class init.
     client = TaskApiClient()
-
     # Building results modifiers
     modifiers_list = results_modifiers(
         low_number_suppression_threshold=int(
@@ -66,5 +64,9 @@ def main() -> None:
 
         elif response.status_code == 204:
             logger.info("Looking for job...")
+        elif response.status_code == 401:
+            logger.info("Failed to authenticate with task server.")
+        else:
+            logger.info("Got http status code: %s", response.status_code)
 
         time.sleep(settings.POLLING_INTERVAL)

@@ -10,5 +10,5 @@ LOG_FORMAT = logging.Formatter(
 console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setFormatter(LOG_FORMAT)
 logger = logging.getLogger(settings.LOGGER_NAME)
-logger.setLevel(logging.INFO)
+logger.setLevel(settings.LOGGER_LEVEL)
 logger.addHandler(console_handler)
