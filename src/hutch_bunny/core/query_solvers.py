@@ -78,9 +78,10 @@ class AvailibilityQuerySolver:
             .where(Concept.concept_id.in_(concept_ids))
             .distinct()
         )
-        concepts_df = pd.read_sql_query(
-            concept_query, con=self.db_manager.engine.connect()
-        )
+        with self.db_manager.engine.connect() as con:
+            concepts_df = pd.read_sql_query(
+                concept_query, con=con
+            )
         concept_dict = {
             str(concept_id): domain_id for concept_id, domain_id in concepts_df.values
         }
@@ -90,109 +91,110 @@ class AvailibilityQuerySolver:
         """Find all rows that match the rules' criteria."""
         concepts = self._find_concepts()
         merge_method = lambda x: "inner" if x == "AND" else "outer"
-        for group in self.query.cohort.groups:
-            concept = concepts.get(group.rules[0].value)
-            concept_table = self.concept_table_map.get(concept)
-            boolean_rule_col = self.boolean_rule_map.get(concept)
-            numeric_rule_col = self.numeric_rule_map.get(concept)
-            if (
-                group.rules[0].min_value is not None
-                and group.rules[0].max_value is not None
-            ):
-                stmnt = (
-                    select(concept_table.person_id)
-                    .where(
-                        and_(
-                            boolean_rule_col == int(group.rules[0].value),
-                            numeric_rule_col.between(
-                                group.rules[0].min_value, group.rules[0].max_value
-                            ),
-                        )
-                    )
-                    .distinct()
-                )
-                main_df = pd.read_sql_query(
-                    sql=stmnt, con=self.db_manager.engine.connect()
-                )
-            elif group.rules[0].operator == "=":
-                stmnt = (
-                    select(concept_table.person_id)
-                    .where(boolean_rule_col == int(group.rules[0].value))
-                    .distinct()
-                )
-                main_df = pd.read_sql_query(
-                    sql=stmnt, con=self.db_manager.engine.connect()
-                )
-            elif group.rules[0].operator == "!=":
-                stmnt = (
-                    select(concept_table.person_id)
-                    .where(boolean_rule_col != int(group.rules[0].value))
-                    .distinct()
-                )
-                main_df = pd.read_sql_query(
-                    sql=stmnt, con=self.db_manager.engine.connect()
-                )
-            for i, rule in enumerate(group.rules[1:], start=1):
-                concept = concepts.get(rule.value)
+        with self.db_manager.engine.connect() as con:
+            for group in self.query.cohort.groups:
+                concept = concepts.get(group.rules[0].value)
                 concept_table = self.concept_table_map.get(concept)
                 boolean_rule_col = self.boolean_rule_map.get(concept)
                 numeric_rule_col = self.numeric_rule_map.get(concept)
-                if rule.min_value is not None and rule.max_value is not None:
-                    # numeric rule
+                if (
+                    group.rules[0].min_value is not None
+                    and group.rules[0].max_value is not None
+                ):
                     stmnt = (
-                        select(concept_table.person_id.label(f"person_id_{i}"))
+                        select(concept_table.person_id)
                         .where(
                             and_(
-                                boolean_rule_col == int(rule.value),
+                                boolean_rule_col == int(group.rules[0].value),
                                 numeric_rule_col.between(
-                                    rule.min_value, rule.max_value
+                                    group.rules[0].min_value, group.rules[0].max_value
                                 ),
                             )
                         )
                         .distinct()
                     )
-                    rule_df = pd.read_sql_query(
-                        sql=stmnt, con=self.db_manager.engine.connect()
+                    main_df = pd.read_sql_query(
+                        sql=stmnt, con=con
                     )
-                    main_df = main_df.merge(
-                        right=rule_df,
-                        how=merge_method(group.rules_operator),
-                        left_on="person_id",
-                        right_on=f"person_id_{i}",
-                    )
-                # Text rules testing for inclusion
-                elif rule.operator == "=":
+                elif group.rules[0].operator == "=":
                     stmnt = (
-                        select(concept_table.person_id.label(f"person_id_{i}"))
-                        .where(boolean_rule_col == int(rule.value))
+                        select(concept_table.person_id)
+                        .where(boolean_rule_col == int(group.rules[0].value))
                         .distinct()
                     )
-                    rule_df = pd.read_sql_query(
-                        sql=stmnt, con=self.db_manager.engine.connect()
+                    main_df = pd.read_sql_query(
+                        sql=stmnt, con=con
                     )
-                    main_df = main_df.merge(
-                        right=rule_df,
-                        how=merge_method(group.rules_operator),
-                        left_on="person_id",
-                        right_on=f"person_id_{i}",
-                    )
-                # Text rules testing for exclusion
-                elif rule.operator == "!=":
+                elif group.rules[0].operator == "!=":
                     stmnt = (
-                        select(concept_table.person_id.label(f"person_id_{i}"))
-                        .where(boolean_rule_col != int(rule.value))
+                        select(concept_table.person_id)
+                        .where(boolean_rule_col != int(group.rules[0].value))
                         .distinct()
                     )
-                    rule_df = pd.read_sql_query(
-                        sql=stmnt, con=self.db_manager.engine.connect()
+                    main_df = pd.read_sql_query(
+                        sql=stmnt, con=con
                     )
-                    main_df = main_df.merge(
-                        right=rule_df,
-                        how=merge_method(group.rules_operator),
-                        left_on="person_id",
-                        right_on=f"person_id_{i}",
-                    )
-            self.subqueries.append(main_df)
+                for i, rule in enumerate(group.rules[1:], start=1):
+                    concept = concepts.get(rule.value)
+                    concept_table = self.concept_table_map.get(concept)
+                    boolean_rule_col = self.boolean_rule_map.get(concept)
+                    numeric_rule_col = self.numeric_rule_map.get(concept)
+                    if rule.min_value is not None and rule.max_value is not None:
+                        # numeric rule
+                        stmnt = (
+                            select(concept_table.person_id.label(f"person_id_{i}"))
+                            .where(
+                                and_(
+                                    boolean_rule_col == int(rule.value),
+                                    numeric_rule_col.between(
+                                        rule.min_value, rule.max_value
+                                    ),
+                                )
+                            )
+                            .distinct()
+                        )
+                        rule_df = pd.read_sql_query(
+                            sql=stmnt, con=con
+                        )
+                        main_df = main_df.merge(
+                            right=rule_df,
+                            how=merge_method(group.rules_operator),
+                            left_on="person_id",
+                            right_on=f"person_id_{i}",
+                        )
+                    # Text rules testing for inclusion
+                    elif rule.operator == "=":
+                        stmnt = (
+                            select(concept_table.person_id.label(f"person_id_{i}"))
+                            .where(boolean_rule_col == int(rule.value))
+                            .distinct()
+                        )
+                        rule_df = pd.read_sql_query(
+                            sql=stmnt, con=con
+                        )
+                        main_df = main_df.merge(
+                            right=rule_df,
+                            how=merge_method(group.rules_operator),
+                            left_on="person_id",
+                            right_on=f"person_id_{i}",
+                        )
+                    # Text rules testing for exclusion
+                    elif rule.operator == "!=":
+                        stmnt = (
+                            select(concept_table.person_id.label(f"person_id_{i}"))
+                            .where(boolean_rule_col != int(rule.value))
+                            .distinct()
+                        )
+                        rule_df = pd.read_sql_query(
+                            sql=stmnt, con=con
+                        )
+                        main_df = main_df.merge(
+                            right=rule_df,
+                            how=merge_method(group.rules_operator),
+                            left_on="person_id",
+                            right_on=f"person_id_{i}",
+                        )
+                self.subqueries.append(main_df)
 
     def solve_query(self) -> int:
         """Merge the groups and return the number of rows that matched all criteria."""
@@ -275,38 +277,39 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         concepts = list()
         categories = list()
         biobanks = list()
-        for k in self.allowed_domains_map:
-            table = self.allowed_domains_map[k]
-            concept_col = self.domain_concept_id_map[k]
-            stmnt = select(func.count(table.person_id), concept_col).group_by(
-                concept_col
+        with self.db_manager.engine.connect() as con:
+            for k in self.allowed_domains_map:
+                table = self.allowed_domains_map[k]
+                concept_col = self.domain_concept_id_map[k]
+                stmnt = select(func.count(table.person_id), concept_col).group_by(
+                    concept_col
+                )
+                res = pd.read_sql(stmnt, con=con)
+                counts.extend(res.iloc[:, 0])
+                concepts.extend(res.iloc[:, 1])
+                categories.extend([k] * len(res))
+                biobanks.extend([self.query.collection] * len(res))
+
+            df["COUNT"] = counts
+            df["OMOP"] = concepts
+            df["CATEGORY"] = categories
+            df["CODE"] = df["OMOP"].apply(lambda x: f"OMOP:{x}")
+            df["BIOBANK"] = biobanks
+
+            # Get descriptions
+            concept_query = select(Concept.concept_id, Concept.concept_name).where(
+                Concept.concept_id.in_(concepts)
             )
-            res = pd.read_sql(stmnt, self.db_manager.engine.connect())
-            counts.extend(res.iloc[:, 0])
-            concepts.extend(res.iloc[:, 1])
-            categories.extend([k] * len(res))
-            biobanks.extend([self.query.collection] * len(res))
+            concepts_df = pd.read_sql_query(
+                concept_query, con=con
+            )
+            for _, row in concepts_df.iterrows():
+                df.loc[df["OMOP"] == row["concept_id"], "OMOP_DESCR"] = row["concept_name"]
 
-        df["COUNT"] = counts
-        df["OMOP"] = concepts
-        df["CATEGORY"] = categories
-        df["CODE"] = df["OMOP"].apply(lambda x: f"OMOP:{x}")
-        df["BIOBANK"] = biobanks
-
-        # Get descriptions
-        concept_query = select(Concept.concept_id, Concept.concept_name).where(
-            Concept.concept_id.in_(concepts)
-        )
-        concepts_df = pd.read_sql_query(
-            concept_query, con=self.db_manager.engine.connect()
-        )
-        for _, row in concepts_df.iterrows():
-            df.loc[df["OMOP"] == row["concept_id"], "OMOP_DESCR"] = row["concept_name"]
-
-        # Convert df to tab separated string
-        results = list(["\t".join(df.columns)])
-        for _, row in df.iterrows():
-            results.append("\t".join([str(r) for r in row.values]))
+            # Convert df to tab separated string
+            results = list(["\t".join(df.columns)])
+            for _, row in df.iterrows():
+                results.append("\t".join([str(r) for r in row.values]))
 
         return os.linesep.join(results), len(df)
 
@@ -374,10 +377,11 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
             )
 
             # Get the data
-            res = pd.read_sql(stmnt, self.db_manager.engine.connect())
-            concepts_df = pd.read_sql_query(
-                concept_query, con=self.db_manager.engine.connect()
-            )
+            with self.db_manager.engine.connect() as con:
+                res = pd.read_sql(stmnt, con)
+                concepts_df = pd.read_sql_query(
+                    concept_query, con=con
+                )
             combined = res.merge(
                 concepts_df,
                 left_on=concept_col.name,
