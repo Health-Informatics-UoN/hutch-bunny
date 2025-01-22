@@ -1,6 +1,8 @@
 import pytest
 import os
 
+import dotenv
+
 from hutch_bunny.core.db_manager import SyncDBManager
 import hutch_bunny.core.settings as settings
 from hutch_bunny.core.query_solvers import (
@@ -12,6 +14,12 @@ from hutch_bunny.core.query_solvers import (
 from hutch_bunny.core.rquest_dto.cohort import Cohort
 from hutch_bunny.core.rquest_dto.group import Group
 from hutch_bunny.core.rquest_dto.rule import Rule
+
+dotenv.load_dotenv()
+
+pytestmark = pytest.mark.skipif(
+    os.environ.get("CI") is not None, reason="Skip integration tests in CI"
+)
 
 @pytest.fixture
 def db_manager():
