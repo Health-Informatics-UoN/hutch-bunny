@@ -67,11 +67,23 @@ class AvailibilityQuerySolver:
         self.db_manager = db_manager
         self.query = query
 
+    """ Function that takes all the concept IDs in the cohort defintion, looks them up in the OMOP database 
+    to extract the concept_id and domain and place this within a dictionary for lookup during other query building 
+    
+    Although the query payload will tell you where the OMOP concept is from (based on the RQUEST OMOP version, this is
+    a safer method as we know concepts can move between tables based on a vocab. 
+    
+    Therefore this helps to account for a difference between the Bunny vocab version and the RQUEST OMOP version.
+     """
+
+    #TODO: this does not cover the scenario that is possible to occyr where the local vocab model may say the concept should be based in one table but it is actually present in another
+
     def _find_concepts(self) -> dict:
         concept_ids = set()
         for group in self.query.cohort.groups:
             for rule in group.rules:
                 concept_ids.add(int(rule.value))
+
         concept_query = (
             # order must be .concept_id, .domain_id
             select(Concept.concept_id, Concept.domain_id)
@@ -193,6 +205,7 @@ class AvailibilityQuerySolver:
                         right_on=f"person_id_{i}",
                     )
             self.subqueries.append(main_df)
+
 
     def solve_query(self) -> int:
         """Merge the groups and return the number of rows that matched all criteria."""
