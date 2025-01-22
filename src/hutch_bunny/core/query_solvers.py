@@ -25,7 +25,7 @@ from hutch_bunny.core.enums import DistributionQueryType
 import hutch_bunny.core.settings as settings
 from hutch_bunny.core.constants import DISTRIBUTION_TYPE_FILE_NAMES_MAP
 
-
+# Class for availability queries
 class AvailibilityQuerySolver:
     subqueries = list()
     concept_table_map = {
@@ -283,8 +283,9 @@ class BaseDistributionQuerySolver:
     def solve_query(self) -> Tuple[str, int]:
         raise NotImplementedError
 
-
+# class for distriubtion queries
 class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
+    #todo - can the following be placed somewhere once as its repeated for all classes handling queries
     allowed_domains_map = {
         "Condition": ConditionOccurrence,
         "Ethnicity": Person,
@@ -305,6 +306,8 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         "Observation": Observation.observation_concept_id,
         "Procedure": ProcedureOccurrence.procedure_concept_id,
     }
+
+    # this one is unique for this resolver
     output_cols = [
         "BIOBANK",
         "CODE",
@@ -342,15 +345,23 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         concepts = list()
         categories = list()
         biobanks = list()
+
+        #todo - rename k, as this is a domain id that is being used
         for k in self.allowed_domains_map:
+
+            # get the right table and column based on the domain
             table = self.allowed_domains_map[k]
             concept_col = self.domain_concept_id_map[k]
+
+            # gets a list of all concepts within this given table and their respective counts
             stmnt = select(func.count(table.person_id), concept_col).group_by(
                 concept_col
             )
             res = pd.read_sql(stmnt, self.db_manager.engine.connect())
             counts.extend(res.iloc[:, 0])
             concepts.extend(res.iloc[:, 1])
+
+            # add the same category and collection if, for the number of results received
             categories.extend([k] * len(res))
             biobanks.extend([self.query.collection] * len(res))
 
@@ -361,6 +372,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         df["BIOBANK"] = biobanks
 
         # Get descriptions
+        #todo - not sure why this can be included in the SQL output above, it would need a join to the concept table
         concept_query = select(Concept.concept_id, Concept.concept_name).where(
             Concept.concept_id.in_(concepts)
         )
@@ -377,7 +389,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
 
         return os.linesep.join(results), len(df)
 
-
+#todo - i *think* the only diference between this one and generic is that the allowed_domain list is different. Could we not just have the one class and functions that have this passed in?
 class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
     allowed_domains_map = {
         "Gender": Person,
