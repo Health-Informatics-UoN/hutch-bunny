@@ -1,7 +1,6 @@
 import base64
 import os
 import logging
-from distutils.command.build_scripts import first_line_re
 from typing import Tuple
 import pandas as pd
 from sqlalchemy import (
