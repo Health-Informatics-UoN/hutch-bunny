@@ -1,13 +1,8 @@
-from typing import Union
-
-
-def low_number_suppression(
-    value: Union[int, float], threshold: int = 10
-) -> Union[int, float]:
+def low_number_suppression(value: int | float, threshold: int = 10) -> int | float:
     """Suppress values that fall below a given threshold.
 
     Args:
-        value (Union[int, float]): The value to evaluate.
+        value (int | float): The value to evaluate.
         threshold (int): The threshold to beat.
 
     Returns:
@@ -22,11 +17,11 @@ def low_number_suppression(
     return value if value > threshold else 0
 
 
-def rounding(value: Union[int, float], nearest: int = 10) -> int:
+def rounding(value: int | float, nearest: int = 10) -> int:
     """Round the value to the nearest base number, e.g. 10.
 
     Args:
-        value (Union[int, float]): The value to be rounded
+        value (int | float): The value to be rounded
         nearest (int, optional): Round value to this base. Defaults to 10.
 
     Returns:
@@ -41,15 +36,15 @@ def rounding(value: Union[int, float], nearest: int = 10) -> int:
     return nearest * round(value / nearest)
 
 
-def apply_filters(value: Union[int, float], filters: list) -> Union[int, float]:
+def apply_filters(value: int | float, filters: list) -> int | float:
     """Iterate over a list of filters and apply them to the supplied value.
 
     Args:
-        value (Union[int, float]): The value to be filtered.
+        value (int | float): The value to be filtered.
         filters (list): The filters applied to the value.
 
     Returns:
-        Union[int, float]: The filtered value.
+        int | float: The filtered value.
     """
     actions = {"Low Number Suppression": low_number_suppression, "Rounding": rounding}
     result = value
