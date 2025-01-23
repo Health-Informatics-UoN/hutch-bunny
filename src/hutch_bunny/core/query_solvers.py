@@ -91,21 +91,24 @@ class AvailibilityQuerySolver:
         concepts = self._find_concepts()
         merge_method = lambda x: "inner" if x == "AND" else "outer"
         for group in self.query.cohort.groups:
+
             concept = concepts.get(group.rules[0].value)
             concept_table = self.concept_table_map.get(concept)
             boolean_rule_col = self.boolean_rule_map.get(concept)
             numeric_rule_col = self.numeric_rule_map.get(concept)
+            firstRule = group.rules[0]
+
             if (
-                group.rules[0].min_value is not None
-                and group.rules[0].max_value is not None
+                firstRule.min_value is not None
+                and firstRule.max_value is not None
             ):
                 stmnt = (
                     select(concept_table.person_id)
                     .where(
                         and_(
-                            boolean_rule_col == int(group.rules[0].value),
+                            boolean_rule_col == int(firstRule.value),
                             numeric_rule_col.between(
-                                group.rules[0].min_value, group.rules[0].max_value
+                                firstRule.min_value, firstRule.max_value
                             ),
                         )
                     )
@@ -114,33 +117,23 @@ class AvailibilityQuerySolver:
                 main_df = pd.read_sql_query(
                     sql=stmnt, con=self.db_manager.engine.connect()
                 )
-            elif group.rules[0].operator == "=":
-                stmnt = (
-                    select(concept_table.person_id)
-                    .where(boolean_rule_col == int(group.rules[0].value))
-                    .distinct()
-                )
+            else:
+                stmnt = self.buildStatement(concept_table, boolean_rule_col, firstRule, "person_id")
+
                 main_df = pd.read_sql_query(
                     sql=stmnt, con=self.db_manager.engine.connect()
                 )
-            elif group.rules[0].operator == "!=":
-                stmnt = (
-                    select(concept_table.person_id)
-                    .where(boolean_rule_col != int(group.rules[0].value))
-                    .distinct()
-                )
-                main_df = pd.read_sql_query(
-                    sql=stmnt, con=self.db_manager.engine.connect()
-                )
-            for i, rule in enumerate(group.rules[1:], start=1):
+
+            for ruleIndex, rule in enumerate(group.rules[1:], start=1):
                 concept = concepts.get(rule.value)
                 concept_table = self.concept_table_map.get(concept)
                 boolean_rule_col = self.boolean_rule_map.get(concept)
                 numeric_rule_col = self.numeric_rule_map.get(concept)
+
                 if rule.min_value is not None and rule.max_value is not None:
                     # numeric rule
                     stmnt = (
-                        select(concept_table.person_id.label(f"person_id_{i}"))
+                        select(concept_table.person_id.label(f"person_id_{ruleIndex}"))
                         .where(
                             and_(
                                 boolean_rule_col == int(rule.value),
@@ -158,15 +151,12 @@ class AvailibilityQuerySolver:
                         right=rule_df,
                         how=merge_method(group.rules_operator),
                         left_on="person_id",
-                        right_on=f"person_id_{i}",
+                        right_on=f"person_id_{ruleIndex}",
                     )
                 # Text rules testing for inclusion
-                elif rule.operator == "=":
-                    stmnt = (
-                        select(concept_table.person_id.label(f"person_id_{i}"))
-                        .where(boolean_rule_col == int(rule.value))
-                        .distinct()
-                    )
+                else:
+                    stmnt  = self.buildStatement(concept_table, boolean_rule_col, rule,  f"person_id_{ruleIndex}")
+
                     rule_df = pd.read_sql_query(
                         sql=stmnt, con=self.db_manager.engine.connect()
                     )
@@ -174,26 +164,20 @@ class AvailibilityQuerySolver:
                         right=rule_df,
                         how=merge_method(group.rules_operator),
                         left_on="person_id",
-                        right_on=f"person_id_{i}",
-                    )
-                # Text rules testing for exclusion
-                elif rule.operator == "!=":
-                    stmnt = (
-                        select(concept_table.person_id.label(f"person_id_{i}"))
-                        .where(boolean_rule_col != int(rule.value))
-                        .distinct()
-                    )
-                    rule_df = pd.read_sql_query(
-                        sql=stmnt, con=self.db_manager.engine.connect()
-                    )
-                    main_df = main_df.merge(
-                        right=rule_df,
-                        how=merge_method(group.rules_operator),
-                        left_on="person_id",
-                        right_on=f"person_id_{i}",
+                        right_on=f"person_id_{ruleIndex}",
                     )
             self.subqueries.append(main_df)
 
+    def buildStatement(self, concept_table, boolean_rule_col, rule,  label):
+        return (
+            select(concept_table.person_id.label(label))
+            .where(boolean_rule_col == int(rule.value))
+            .distinct()
+        ) if rule.operator == "=" else (
+            select(concept_table.person_id.label(label))
+            .where(boolean_rule_col != int(rule.value))
+            .distinct()
+        )
     def solve_query(self) -> int:
         """Merge the groups and return the number of rows that matched all criteria."""
         self._solve_rules()
@@ -275,6 +259,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         concepts = list()
         categories = list()
         biobanks = list()
+
         for k in self.allowed_domains_map:
             table = self.allowed_domains_map[k]
             concept_col = self.domain_concept_id_map[k]
