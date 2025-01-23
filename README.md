@@ -6,9 +6,9 @@
 |-|-|-|
 | ![Python][python-badge] | [![Bunny Docker Images][docker-badge]][bunny-containers] | [![Bunny Docs][docs-badge]][bunny-docs] |
 
-An HDR UK Cohort Discovery Task Resolver.
+A Cohort Discovery Task Resolver.
 
-Fetches and resolves Availability and Distribution Queries against an OMOP-CDM database.
+Fetches and resolves Availability and Distribution Queries against an OMOP CDM database.
 
 [hutch-logo]: https://raw.githubusercontent.com/HDRUK/hutch/main/assets/Hutch%20splash%20bg.svg
 [hutch-repo]: https://github.com/health-informatics-uon/hutch
