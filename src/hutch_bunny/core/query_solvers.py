@@ -151,12 +151,11 @@ class AvailibilityQuerySolver:
                 else:
                     stmnt=self.build_statement(concept_table, boolean_rule_col, rule, label_to_use)
 
-
-                rule_df = pd.read_sql_query(
-                    sql=stmnt, con=self.db_manager.engine.connect()
-                )
-
                 if rule_index>0: #then we merge
+
+                    rule_df = pd.read_sql_query(
+                        sql=stmnt, con=self.db_manager.engine.connect()
+                    )
                     main_df = main_df.merge(
                         right=rule_df,
                         how=merge_method(group.rules_operator),
@@ -320,7 +319,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
 
         return os.linesep.join(results), len(df)
 
-#todo - i *think* the only diference between this one and generic is that the allowed_domain list is different. Could we not just have the one class and functions that have this passed in?
+#todo - i *think* the only difference between this one and generic is that the allowed_domain list is different. Could we not just have the one class and functions that have this passed in?
 class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
     allowed_domains_map = {
         "Gender": Person,
