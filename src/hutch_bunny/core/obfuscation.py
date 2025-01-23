@@ -87,27 +87,6 @@ def rounding(value: Union[int, float], nearest: int = 10) -> int:
 
 
 def apply_filters(value: Union[int, float], filters: list) -> Union[int, float]:
-    """Iterate over a list of filters from the Manager and apply them to the
-    supplied value.
-
-    Args:
-        value (Union[int, float]): The value to be filtered.
-        filters (list): The filters applied to the value.
-
-    Returns:
-        Union[int, float]: The filtered value.
-    """
-    actions = {"Low Number Suppression": low_number_suppression, "Rounding": rounding}
-    result = value
-    for f in filters:
-        if action := actions.get(f["type"]["id"]):
-            result = action(result, **f["parameters"])
-            if result == 0:
-                break  # don't apply any more filters
-    return result
-
-
-def apply_filters_v2(value: Union[int, float], filters: list) -> Union[int, float]:
     """Iterate over a list of filters and apply them to the supplied value.
 
     Args:
