@@ -1,6 +1,7 @@
 import base64
 import os
 import logging
+from distutils.command.build_scripts import first_line_re
 from typing import Tuple
 import pandas as pd
 from sqlalchemy import (
@@ -123,80 +124,21 @@ class AvailibilityQuerySolver:
 
         # iterate through all the groups specified in the query
         for group in self.query.cohort.groups:
+            for rule_index, rule in enumerate(group.rules, start=0):
 
-            # todo - refactor variable name concept as this is misleading. It is not the concept but actually the domain of the concept
-            # this passes in the conceptID of but gets back the domain related to that concept.
-            concept = concepts.get(group.rules[0].value)
-
-            concept_table = self.concept_table_map.get(concept)
-            boolean_rule_col = self.boolean_rule_map.get(concept)
-            numeric_rule_col = self.numeric_rule_map.get(concept)
-
-            #within the query, if a range was specified, which is currently
-            if (
-                group.rules[0].min_value is not None
-                and group.rules[0].max_value is not None
-            ):
-                stmnt = (
-                    select(concept_table.person_id)
-                    .where(
-                        and_(
-                            boolean_rule_col == int(group.rules[0].value),
-                            numeric_rule_col.between(
-                                group.rules[0].min_value, group.rules[0].max_value
-                            ),
-                        )
-                    )
-                    .distinct()
-                )
-                main_df = pd.read_sql_query(
-                    sql=stmnt, con=self.db_manager.engine.connect()
-                )
-
-            # the next two ifs are basically switching between equals and not equals. These could be merged with a simple
-            # switch for the operator.
-
-            elif group.rules[0].operator == "=":
-                stmnt = (
-                    select(concept_table.person_id)
-                    .where(boolean_rule_col == int(group.rules[0].value))
-                    .distinct()
-                )
-                main_df = pd.read_sql_query(
-                    sql=stmnt, con=self.db_manager.engine.connect()
-                )
-            elif group.rules[0].operator == "!=":
-                stmnt = (
-                    select(concept_table.person_id)
-                    .where(boolean_rule_col != int(group.rules[0].value))
-                    .distinct()
-                )
-                main_df = pd.read_sql_query(
-                    sql=stmnt, con=self.db_manager.engine.connect()
-                )
-
-            """
-            Now that the main_df dataframe has been populated, the subsequent queries are created and merged into 
-            main_df dataframe. That is why above the first concept is hard coded as accessing index 0 and why the for 
-            loop below if start at index 1. The queries are almost identical to the above, exact same logic but 
-            in order to facilitate the merging, a label is created on person id, so that the newly created data frame 
-            can be merged with main_df via unique keys. 
-            """
-
-            for i, rule in enumerate(group.rules[1:], start=1):
-
-                # todo - refactor variable name concept as this is misleading. It is not the concept but actually the domain of the concept
                 # this passes in the conceptID of but gets back the domain related to that concept.
-                concept = concepts.get(rule.value)
+                concept_domain = concepts.get(rule.value)
 
-                concept_table = self.concept_table_map.get(concept)
-                boolean_rule_col = self.boolean_rule_map.get(concept)
-                numeric_rule_col = self.numeric_rule_map.get(concept)
+                concept_table = self.concept_table_map.get(concept_domain)
+                boolean_rule_col = self.boolean_rule_map.get(concept_domain)
+                numeric_rule_col = self.numeric_rule_map.get(concept_domain)
+
+                label_to_use = "person_id" if rule_index == 0 else f"person_id_{rule_index}"
 
                 if rule.min_value is not None and rule.max_value is not None:
                     # numeric rule
                     stmnt = (
-                        select(concept_table.person_id.label(f"person_id_{i}"))
+                        select(concept_table.person_id.label(label_to_use))
                         .where(
                             and_(
                                 boolean_rule_col == int(rule.value),
@@ -207,49 +149,39 @@ class AvailibilityQuerySolver:
                         )
                         .distinct()
                     )
-                    rule_df = pd.read_sql_query(
-                        sql=stmnt, con=self.db_manager.engine.connect()
-                    )
+                else:
+                    stmnt=self.build_statement(concept_table, boolean_rule_col, rule, label_to_use)
+
+
+                rule_df = pd.read_sql_query(
+                    sql=stmnt, con=self.db_manager.engine.connect()
+                )
+
+                if rule_index>0: #then we merge
                     main_df = main_df.merge(
                         right=rule_df,
                         how=merge_method(group.rules_operator),
                         left_on="person_id",
-                        right_on=f"person_id_{i}",
+                        right_on=f"person_id_{rule_index}",
                     )
-                # Text rules testing for inclusion
-                elif rule.operator == "=":
-                    stmnt = (
-                        select(concept_table.person_id.label(f"person_id_{i}"))
-                        .where(boolean_rule_col == int(rule.value))
-                        .distinct()
-                    )
-                    rule_df = pd.read_sql_query(
+                else: #then we load the first one
+                    main_df = pd.read_sql_query(
                         sql=stmnt, con=self.db_manager.engine.connect()
                     )
-                    main_df = main_df.merge(
-                        right=rule_df,
-                        how=merge_method(group.rules_operator),
-                        left_on="person_id",
-                        right_on=f"person_id_{i}",
-                    )
-                # Text rules testing for exclusion
-                elif rule.operator == "!=":
-                    stmnt = (
-                        select(concept_table.person_id.label(f"person_id_{i}"))
-                        .where(boolean_rule_col != int(rule.value))
-                        .distinct()
-                    )
-                    rule_df = pd.read_sql_query(
-                        sql=stmnt, con=self.db_manager.engine.connect()
-                    )
-                    main_df = main_df.merge(
-                        right=rule_df,
-                        how=merge_method(group.rules_operator),
-                        left_on="person_id",
-                        right_on=f"person_id_{i}",
-                    )
+
             # subqueries therefore contain the results for each group within the cohort definition.
             self.subqueries.append(main_df)
+
+    def build_statement(self, concept_table, boolean_rule_col, rule, label):
+        return (
+            select(concept_table.person_id.label(label))
+            .where(boolean_rule_col == int(rule.value))
+            .distinct()
+        ) if rule.operator == "=" else (
+            select(concept_table.person_id.label(label))
+            .where(boolean_rule_col != int(rule.value))
+            .distinct()
+        )
 
     """ 
     This is the start of the process that begins to run the queries. 
