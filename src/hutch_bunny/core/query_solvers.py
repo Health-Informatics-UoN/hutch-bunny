@@ -20,7 +20,7 @@ from hutch_bunny.core.entities import (
 )
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
 from hutch_bunny.core.rquest_dto.file import File
-from hutch_bunny.core.rquest_dto.file import Rule
+from hutch_bunny.core.rquest_dto.rule import Rule
 from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.enums import DistributionQueryType
 import hutch_bunny.core.settings as settings
