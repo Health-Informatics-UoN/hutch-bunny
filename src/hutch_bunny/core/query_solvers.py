@@ -20,6 +20,7 @@ from hutch_bunny.core.entities import (
 )
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
 from hutch_bunny.core.rquest_dto.file import File
+from hutch_bunny.core.rquest_dto.file import Rule
 from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.enums import DistributionQueryType
 import hutch_bunny.core.settings as settings
@@ -67,7 +68,7 @@ class AvailibilityQuerySolver:
         self.db_manager = db_manager
         self.query = query
 
-    """ Function that takes all the concept IDs in the cohort defintion, looks them up in the OMOP database 
+    """ Function that takes all the concept IDs in the cohort definition, looks them up in the OMOP database 
     to extract the concept_id and domain and place this within a dictionary for lookup during other query building 
     
     Although the query payload will tell you where the OMOP concept is from (based on the RQUEST OMOP version, this is
@@ -170,7 +171,7 @@ class AvailibilityQuerySolver:
             # subqueries therefore contain the results for each group within the cohort definition.
             self.subqueries.append(main_df)
 
-    def build_statement(self, concept_table, boolean_rule_col, rule, label):
+    def build_statement(self, concept_table: str, boolean_rule_col: str, rule: Rule, label: str) -> select:
         return (
             select(concept_table.person_id.label(label))
             .where(boolean_rule_col == int(rule.value))
