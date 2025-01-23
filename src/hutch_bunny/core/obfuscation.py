@@ -1,28 +1,5 @@
 import json
-import os
-import requests
 from typing import Union
-
-
-def get_results_modifiers(activity_source_id: int) -> list:
-    """Get the results modifiers for a given activity source.
-
-    Args:
-        activity_source_id (int): The acivity source ID.
-
-    Returns:
-        list: The modifiers for the given activity source.
-
-    Raises:
-        HTTPError: raised when this function can't get the results modifiers.
-    """
-    res = requests.get(
-        f"{os.getenv('MANAGER_URL')}/api/activitysources/{activity_source_id}/resultsmodifiers",
-        verify=int(os.getenv("MANAGER_VERIFY_SSL", 1)),
-    )
-    res.raise_for_status()
-    modifiers = res.json()
-    return modifiers
 
 
 def get_results_modifiers_from_str(params: str) -> list:
