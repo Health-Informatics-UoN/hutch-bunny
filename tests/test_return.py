@@ -11,6 +11,7 @@ from hutch_bunny.core.rquest_dto.rule import Rule
 from dotenv import load_dotenv
 import os
 import hutch_bunny.core.settings as settings
+import hutch_bunny.core.setting_database as db_settings
 
 load_dotenv()
 
