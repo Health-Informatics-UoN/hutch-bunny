@@ -163,6 +163,7 @@ class AvailibilityQuerySolver:
                         left_on="person_id",
                         right_on=f"person_id_{rule_index}",
                     )
+
                 else: #then we load the first one
                     main_df = pd.read_sql_query(
                         sql=stmnt, con=self.db_manager.engine.connect()
