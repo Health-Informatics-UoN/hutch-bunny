@@ -11,6 +11,7 @@ from hutch_bunny.core.rquest_dto.rule import Rule
 from dotenv import load_dotenv
 import os
 import hutch_bunny.core.settings as settings
+import hutch_bunny.core.setting_database as db_settings
 
 load_dotenv()
 
@@ -28,7 +29,9 @@ def db_manager():
         host=os.getenv("DATASOURCE_DB_HOST"),
         port=(int(datasource_db_port) if datasource_db_port is not None else None),
         database=os.getenv("DATASOURCE_DB_DATABASE"),
-        drivername=os.getenv("DATASOURCE_DB_DRIVERNAME", settings.DEFAULT_DB_DRIVER),
+        drivername=db_settings.expand_short_drivers(
+            os.getenv("DATASOURCE_DB_DRIVERNAME", settings.DEFAULT_DB_DRIVER)
+        ),
         schema=os.getenv("DATASOURCE_DB_SCHEMA"),
     )
 
