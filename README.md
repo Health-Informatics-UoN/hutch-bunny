@@ -14,9 +14,9 @@ Fetches and resolves Availability and Distribution Queries against an OMOP CDM d
 [hutch-repo]: https://github.com/health-informatics-uon/hutch
 
 [bunny-docs]: https://health-informatics-uon.github.io/hutch/bunny
-[bunny-containers]: https://github.com/Health-Informatics-UoN/hutch-cohort-discovery/pkgs/container/hutch%2Fbunny
+[bunny-containers]: https://github.com/Health-Informatics-UoN/hutch-bunny/pkgs/container/hutch%2Fbunny
 
-[license-badge]: https://img.shields.io/github/license/health-informatics-uon/hutch-cohort-discovery.svg
+[license-badge]: https://img.shields.io/github/license/health-informatics-uon/hutch-bunny.svg
 [python-badge]: https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white
 [docker-badge]: https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white
 [docs-badge]: https://img.shields.io/badge/docs-black?style=for-the-badge&labelColor=%23222
