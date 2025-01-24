@@ -29,7 +29,7 @@ from hutch_bunny.core.constants import DISTRIBUTION_TYPE_FILE_NAMES_MAP
 # Class for availability queries
 class AvailibilityQuerySolver:
     subqueries = list()
-    concept_table_map = {
+    omop_domain_to_omop_table_map = {
         "Condition": ConditionOccurrence,
         "Ethnicity": Person,
         "Drug": DrugExposure,
@@ -53,7 +53,7 @@ class AvailibilityQuerySolver:
         "Measurement": Measurement.value_as_number,
         "Observation": Observation.value_as_number,
     }
-    boolean_rule_map = {
+    table_to_concept_col_map = {
         "Condition": ConditionOccurrence.condition_concept_id,
         "Ethnicity": Person.ethnicity_concept_id,
         "Drug": DrugExposure.drug_concept_id,
@@ -129,8 +129,8 @@ class AvailibilityQuerySolver:
                 # this passes in the conceptID of but gets back the domain related to that concept.
                 concept_domain = concepts.get(rule.value)
 
-                concept_table = self.concept_table_map.get(concept_domain)
-                boolean_rule_col = self.boolean_rule_map.get(concept_domain)
+                concept_table = self.omop_domain_to_omop_table_map.get(concept_domain)
+                omop_concept_column = self.table_to_concept_col_map.get(concept_domain)
                 numeric_rule_col = self.numeric_rule_map.get(concept_domain)
 
                 label_to_use = "person_id" if rule_index == 0 else f"person_id_{rule_index}"
@@ -141,7 +141,7 @@ class AvailibilityQuerySolver:
                         select(concept_table.person_id.label(label_to_use))
                         .where(
                             and_(
-                                boolean_rule_col == int(rule.value),
+                                omop_concept_column == int(rule.value),
                                 numeric_rule_col.between(
                                     rule.min_value, rule.max_value
                                 ),
@@ -150,7 +150,7 @@ class AvailibilityQuerySolver:
                         .distinct()
                     )
                 else:
-                    stmnt=self.build_statement(concept_table, boolean_rule_col, rule, label_to_use)
+                    stmnt=self.build_statement(concept_table, omop_concept_column, rule, label_to_use)
 
                 if rule_index>0: #then we merge
 
