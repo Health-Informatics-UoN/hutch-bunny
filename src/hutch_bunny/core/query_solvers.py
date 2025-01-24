@@ -312,7 +312,8 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         )
         for _, row in concepts_df.iterrows():
             df.loc[df["OMOP"] == row["concept_id"], "OMOP_DESCR"] = row["concept_name"]
-
+        # replace NaN values with empty string
+        df = df.fillna('')
         # Convert df to tab separated string
         results = list(["\t".join(df.columns)])
         for _, row in df.iterrows():
@@ -495,6 +496,7 @@ def solve_distribution(
         res_b64_bytes = base64.b64encode(res.encode("utf-8"))  # bytes
         size = len(res_b64_bytes) / 1000  # length of file data in KB
         res_b64 = res_b64_bytes.decode("utf-8")  # convert back to string, now base64
+
         result_file = File(
             data=res_b64,
             description="Result of code.distribution anaylsis",
