@@ -39,6 +39,8 @@ def rounding(value: int | float, nearest: int = 10) -> int:
 def apply_filters(value: int | float, filters: list) -> int | float:
     """Iterate over a list of filters and apply them to the supplied value.
 
+    Makes a deep copy of the filters list to avoid mutating the original list.
+
     Args:
         value (int | float): The value to be filtered.
         filters (list): The filters applied to the value.
@@ -49,8 +51,9 @@ def apply_filters(value: int | float, filters: list) -> int | float:
 
     actions = {"Low Number Suppression": low_number_suppression, "Rounding": rounding}
     result = value
-    for f in filters:
-        if action := actions.pop(f.get("id", None)):
+    filters_copy = deepcopy(filters)
+    for f in filters_copy:
+        if action := actions.get(f.pop("id", None)):
             result = action(result, **f)
             if result == 0:
                 break  # don't apply any more filters
