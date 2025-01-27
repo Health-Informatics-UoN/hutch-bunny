@@ -3,7 +3,7 @@ from logging import Logger
 from hutch_bunny.core import query_solvers
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
 from hutch_bunny.core.obfuscation import (
-    apply_filters_v2,
+    apply_filters,
 )
 from hutch_bunny.core.rquest_dto.result import RquestResult
 
@@ -50,7 +50,7 @@ def execute_query(
             result = query_solvers.solve_availability(
                 db_manager=db_manager, query=query
             )
-            result.count = apply_filters_v2(result.count, results_modifiers)
+            result.count = apply_filters(result.count, results_modifiers)
             return result
         except TypeError as te:  # raised if the distribution query json format is wrong
             logger.error(str(te), exc_info=True)
