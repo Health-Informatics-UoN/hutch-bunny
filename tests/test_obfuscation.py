@@ -64,3 +64,22 @@ def test_apply_filters_combined_leak():
 def test_apply_filters_combined_empty_filter():
     # Test that an empty filter list returns the original value
     assert apply_filters(9, []) == 9
+
+
+def test_apply_filters_preserves_original_filters():
+    # Test that the original filters list is not modified
+    original_filters = [
+        {"id": "Low Number Suppression", "threshold": 100},
+        {"id": "Rounding", "nearest": 100},
+    ]
+    
+    # Make a copy to compare later
+    filters_before = original_filters.copy()
+    
+    # Apply filters multiple times
+    apply_filters(123, filters=original_filters)
+    apply_filters(456, filters=original_filters)
+    apply_filters(789, filters=original_filters)
+    
+    # Verify the original filters list remains unchanged
+    assert original_filters == filters_before
