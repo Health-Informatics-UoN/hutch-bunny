@@ -3,6 +3,7 @@ from hutch_bunny.core.obfuscation import (
     low_number_suppression,
     rounding,
 )
+from copy import deepcopy
 
 
 def test_low_number_suppression():
@@ -73,13 +74,16 @@ def test_apply_filters_preserves_original_filters():
         {"id": "Rounding", "nearest": 100},
     ]
     
-    # Make a copy to compare later
-    filters_before = original_filters.copy()
+    # Make a deep copy to compare
+    filters_before = deepcopy(original_filters)
     
-    # Apply filters multiple times
-    apply_filters(123, filters=original_filters)
-    apply_filters(456, filters=original_filters)
-    apply_filters(789, filters=original_filters)
+    # Apply filters in a loop to simulate daemon behavior
+    for _ in range(3): 
+        result = apply_filters(123, filters=original_filters)
+        # Verify each iteration still produces the expected result
+        assert result == 100
+        # Verify filters still contain their 'id' keys after each iteration
+        assert all('id' in f for f in original_filters)
     
-    # Verify the original filters list remains unchanged
+    # Verify the original filters list remains completely unchanged
     assert original_filters == filters_before
