@@ -46,10 +46,11 @@ def apply_filters(value: int | float, filters: list) -> int | float:
     Returns:
         int | float: The filtered value.
     """
+
     actions = {"Low Number Suppression": low_number_suppression, "Rounding": rounding}
     result = value
     for f in filters:
-        if action := actions.get(f.pop("id", None)):
+        if action := actions.pop(f.get("id", None)):
             result = action(result, **f)
             if result == 0:
                 break  # don't apply any more filters

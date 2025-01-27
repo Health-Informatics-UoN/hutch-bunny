@@ -169,8 +169,8 @@ class AvailibilityQuerySolver:
                             sql=stmnt, con=con
                         )
 
-            # subqueries therefore contain the results for each group within the cohort definition.
-            self.subqueries.append(main_df)
+                # subqueries therefore contain the results for each group within the cohort definition.
+                self.subqueries.append(main_df)
 
     def build_statement(self, concept_table: str, boolean_rule_col: str, rule: Rule, label: str) -> select:
         return (
