@@ -92,9 +92,10 @@ class AvailibilityQuerySolver:
             .where(Concept.concept_id.in_(concept_ids))
             .distinct()
         )
-        concepts_df = pd.read_sql_query(
-            concept_query, con=self.db_manager.engine.connect()
-        )
+        with self.db_manager.engine.connect() as con:
+            concepts_df = pd.read_sql_query(
+                concept_query, con=con
+            )
         concept_dict = {
             str(concept_id): domain_id for concept_id, domain_id in concepts_df.values
         }
@@ -120,134 +121,134 @@ class AvailibilityQuerySolver:
         # This is related to the logic within a group. This is used in the subsequent for loop to determine how
         # the merge should be applied.
         merge_method = lambda x: "inner" if x == "AND" else "outer"
-
-        # iterate through all the groups specified in the query
-        for group in self.query.cohort.groups:
-
-            # todo - refactor variable name concept as this is misleading. It is not the concept but actually the domain of the concept
-            # this passes in the conceptID of but gets back the domain related to that concept.
-            concept = concepts.get(group.rules[0].value)
-
-            concept_table = self.concept_table_map.get(concept)
-            boolean_rule_col = self.boolean_rule_map.get(concept)
-            numeric_rule_col = self.numeric_rule_map.get(concept)
-
-            #within the query, if a range was specified, which is currently
-            if (
-                group.rules[0].min_value is not None
-                and group.rules[0].max_value is not None
-            ):
-                stmnt = (
-                    select(concept_table.person_id)
-                    .where(
-                        and_(
-                            boolean_rule_col == int(group.rules[0].value),
-                            numeric_rule_col.between(
-                                group.rules[0].min_value, group.rules[0].max_value
-                            ),
-                        )
-                    )
-                    .distinct()
-                )
-                main_df = pd.read_sql_query(
-                    sql=stmnt, con=self.db_manager.engine.connect()
-                )
-
-            # the next two ifs are basically switching between equals and not equals. These could be merged with a simple
-            # switch for the operator.
-
-            elif group.rules[0].operator == "=":
-                stmnt = (
-                    select(concept_table.person_id)
-                    .where(boolean_rule_col == int(group.rules[0].value))
-                    .distinct()
-                )
-                main_df = pd.read_sql_query(
-                    sql=stmnt, con=self.db_manager.engine.connect()
-                )
-            elif group.rules[0].operator == "!=":
-                stmnt = (
-                    select(concept_table.person_id)
-                    .where(boolean_rule_col != int(group.rules[0].value))
-                    .distinct()
-                )
-                main_df = pd.read_sql_query(
-                    sql=stmnt, con=self.db_manager.engine.connect()
-                )
-
-            """
-            Now that the main_df dataframe has been populated, the subsequent queries are created and merged into 
-            main_df dataframe. That is why above the first concept is hard coded as accessing index 0 and why the for 
-            loop below if start at index 1. The queries are almost identical to the above, exact same logic but 
-            in order to facilitate the merging, a label is created on person id, so that the newly created data frame 
-            can be merged with main_df via unique keys. 
-            """
-
-            for i, rule in enumerate(group.rules[1:], start=1):
+        with self.db_manager.engine.connect() as con:
+            # iterate through all the groups specified in the query
+            for group in self.query.cohort.groups:
 
                 # todo - refactor variable name concept as this is misleading. It is not the concept but actually the domain of the concept
                 # this passes in the conceptID of but gets back the domain related to that concept.
-                concept = concepts.get(rule.value)
+                concept = concepts.get(group.rules[0].value)
 
                 concept_table = self.concept_table_map.get(concept)
                 boolean_rule_col = self.boolean_rule_map.get(concept)
                 numeric_rule_col = self.numeric_rule_map.get(concept)
 
-                if rule.min_value is not None and rule.max_value is not None:
-                    # numeric rule
+                #within the query, if a range was specified, which is currently
+                if (
+                    group.rules[0].min_value is not None
+                    and group.rules[0].max_value is not None
+                ):
                     stmnt = (
-                        select(concept_table.person_id.label(f"person_id_{i}"))
+                        select(concept_table.person_id)
                         .where(
                             and_(
-                                boolean_rule_col == int(rule.value),
+                                boolean_rule_col == int(group.rules[0].value),
                                 numeric_rule_col.between(
-                                    rule.min_value, rule.max_value
+                                    group.rules[0].min_value, group.rules[0].max_value
                                 ),
                             )
                         )
                         .distinct()
                     )
-                    rule_df = pd.read_sql_query(
-                        sql=stmnt, con=self.db_manager.engine.connect()
+                    main_df = pd.read_sql_query(
+                        sql=stmnt, con=con
                     )
-                    main_df = main_df.merge(
-                        right=rule_df,
-                        how=merge_method(group.rules_operator),
-                        left_on="person_id",
-                        right_on=f"person_id_{i}",
-                    )
-                # Text rules testing for inclusion
-                elif rule.operator == "=":
+
+                # the next two ifs are basically switching between equals and not equals. These could be merged with a simple
+                # switch for the operator.
+
+                elif group.rules[0].operator == "=":
                     stmnt = (
-                        select(concept_table.person_id.label(f"person_id_{i}"))
-                        .where(boolean_rule_col == int(rule.value))
+                        select(concept_table.person_id)
+                        .where(boolean_rule_col == int(group.rules[0].value))
                         .distinct()
                     )
-                    rule_df = pd.read_sql_query(
-                        sql=stmnt, con=self.db_manager.engine.connect()
+                    main_df = pd.read_sql_query(
+                        sql=stmnt, con=con
                     )
-                    main_df = main_df.merge(
-                        right=rule_df,
-                        how=merge_method(group.rules_operator),
-                        left_on="person_id",
-                        right_on=f"person_id_{i}",
-                    )
-                # Text rules testing for exclusion
-                elif rule.operator == "!=":
+                elif group.rules[0].operator == "!=":
                     stmnt = (
-                        select(concept_table.person_id.label(f"person_id_{i}"))
-                        .where(boolean_rule_col != int(rule.value))
+                        select(concept_table.person_id)
+                        .where(boolean_rule_col != int(group.rules[0].value))
                         .distinct()
                     )
-                    rule_df = pd.read_sql_query(
-                        sql=stmnt, con=self.db_manager.engine.connect()
+                    main_df = pd.read_sql_query(
+                        sql=stmnt, con=con
                     )
-                    main_df = main_df.merge(
-                        right=rule_df,
-                        how=merge_method(group.rules_operator),
-                        left_on="person_id",
-                        right_on=f"person_id_{i}",
-                    )
+
+                """
+                Now that the main_df dataframe has been populated, the subsequent queries are created and merged into 
+                main_df dataframe. That is why above the first concept is hard coded as accessing index 0 and why the for 
+                loop below if start at index 1. The queries are almost identical to the above, exact same logic but 
+                in order to facilitate the merging, a label is created on person id, so that the newly created data frame 
+                can be merged with main_df via unique keys. 
+                """
+
+                for i, rule in enumerate(group.rules[1:], start=1):
+
+                    # todo - refactor variable name concept as this is misleading. It is not the concept but actually the domain of the concept
+                    # this passes in the conceptID of but gets back the domain related to that concept.
+                    concept = concepts.get(rule.value)
+
+                    concept_table = self.concept_table_map.get(concept)
+                    boolean_rule_col = self.boolean_rule_map.get(concept)
+                    numeric_rule_col = self.numeric_rule_map.get(concept)
+
+                    if rule.min_value is not None and rule.max_value is not None:
+                        # numeric rule
+                        stmnt = (
+                            select(concept_table.person_id.label(f"person_id_{i}"))
+                            .where(
+                                and_(
+                                    boolean_rule_col == int(rule.value),
+                                    numeric_rule_col.between(
+                                        rule.min_value, rule.max_value
+                                    ),
+                                )
+                            )
+                            .distinct()
+                        )
+                        rule_df = pd.read_sql_query(
+                            sql=stmnt, con=con
+                        )
+                        main_df = main_df.merge(
+                            right=rule_df,
+                            how=merge_method(group.rules_operator),
+                            left_on="person_id",
+                            right_on=f"person_id_{i}",
+                        )
+                    # Text rules testing for inclusion
+                    elif rule.operator == "=":
+                        stmnt = (
+                            select(concept_table.person_id.label(f"person_id_{i}"))
+                            .where(boolean_rule_col == int(rule.value))
+                            .distinct()
+                        )
+                        rule_df = pd.read_sql_query(
+                            sql=stmnt, con=con
+                        )
+                        main_df = main_df.merge(
+                            right=rule_df,
+                            how=merge_method(group.rules_operator),
+                            left_on="person_id",
+                            right_on=f"person_id_{i}",
+                        )
+                    # Text rules testing for exclusion
+                    elif rule.operator == "!=":
+                        stmnt = (
+                            select(concept_table.person_id.label(f"person_id_{i}"))
+                            .where(boolean_rule_col != int(rule.value))
+                            .distinct()
+                        )
+                        rule_df = pd.read_sql_query(
+                            sql=stmnt, con=con
+                        )
+                        main_df = main_df.merge(
+                            right=rule_df,
+                            how=merge_method(group.rules_operator),
+                            left_on="person_id",
+                            right_on=f"person_id_{i}",
+                        )
             # subqueries therefore contain the results for each group within the cohort definition.
             self.subqueries.append(main_df)
 
@@ -346,47 +347,48 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         categories = list()
         biobanks = list()
 
-        #todo - rename k, as this is a domain id that is being used
-        for k in self.allowed_domains_map:
+        with self.db_manager.engine.connect() as con:
+            #todo - rename k, as this is a domain id that is being used
+            for k in self.allowed_domains_map:
 
-            # get the right table and column based on the domain
-            table = self.allowed_domains_map[k]
-            concept_col = self.domain_concept_id_map[k]
+                # get the right table and column based on the domain
+                table = self.allowed_domains_map[k]
+                concept_col = self.domain_concept_id_map[k]
 
-            # gets a list of all concepts within this given table and their respective counts
-            stmnt = select(func.count(table.person_id), concept_col).group_by(
-                concept_col
+                # gets a list of all concepts within this given table and their respective counts
+                stmnt = select(func.count(table.person_id), concept_col).group_by(
+                    concept_col
+                )
+                res = pd.read_sql(stmnt, con)
+                counts.extend(res.iloc[:, 0])
+                concepts.extend(res.iloc[:, 1])
+
+                # add the same category and collection if, for the number of results received
+                categories.extend([k] * len(res))
+                biobanks.extend([self.query.collection] * len(res))
+
+            df["COUNT"] = counts
+            df["OMOP"] = concepts
+            df["CATEGORY"] = categories
+            df["CODE"] = df["OMOP"].apply(lambda x: f"OMOP:{x}")
+            df["BIOBANK"] = biobanks
+
+            # Get descriptions
+            #todo - not sure why this can be included in the SQL output above, it would need a join to the concept table
+            concept_query = select(Concept.concept_id, Concept.concept_name).where(
+                Concept.concept_id.in_(concepts)
             )
-            res = pd.read_sql(stmnt, self.db_manager.engine.connect())
-            counts.extend(res.iloc[:, 0])
-            concepts.extend(res.iloc[:, 1])
-
-            # add the same category and collection if, for the number of results received
-            categories.extend([k] * len(res))
-            biobanks.extend([self.query.collection] * len(res))
-
-        df["COUNT"] = counts
-        df["OMOP"] = concepts
-        df["CATEGORY"] = categories
-        df["CODE"] = df["OMOP"].apply(lambda x: f"OMOP:{x}")
-        df["BIOBANK"] = biobanks
-
-        # Get descriptions
-        #todo - not sure why this can be included in the SQL output above, it would need a join to the concept table
-        concept_query = select(Concept.concept_id, Concept.concept_name).where(
-            Concept.concept_id.in_(concepts)
-        )
-        concepts_df = pd.read_sql_query(
-            concept_query, con=self.db_manager.engine.connect()
-        )
-        for _, row in concepts_df.iterrows():
-            df.loc[df["OMOP"] == row["concept_id"], "OMOP_DESCR"] = row["concept_name"]
-        # replace NaN values with empty string
-        df = df.fillna('')
-        # Convert df to tab separated string
-        results = list(["\t".join(df.columns)])
-        for _, row in df.iterrows():
-            results.append("\t".join([str(r) for r in row.values]))
+            concepts_df = pd.read_sql_query(
+                concept_query, con=con
+            )
+            for _, row in concepts_df.iterrows():
+                df.loc[df["OMOP"] == row["concept_id"], "OMOP_DESCR"] = row["concept_name"]
+            # replace NaN values with empty string
+            df = df.fillna('')
+            # Convert df to tab separated string
+            results = list(["\t".join(df.columns)])
+            for _, row in df.iterrows():
+                results.append("\t".join([str(r) for r in row.values]))
 
         return os.linesep.join(results), len(df)
 
@@ -454,10 +456,11 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
             )
 
             # Get the data
-            res = pd.read_sql(stmnt, self.db_manager.engine.connect())
-            concepts_df = pd.read_sql_query(
-                concept_query, con=self.db_manager.engine.connect()
-            )
+            with self.db_manager.engine.connect() as con:
+                res = pd.read_sql(stmnt, con)
+                concepts_df = pd.read_sql_query(
+                    concept_query, con=con
+                )
             combined = res.merge(
                 concepts_df,
                 left_on=concept_col.name,

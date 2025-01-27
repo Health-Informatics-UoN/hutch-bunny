@@ -19,51 +19,6 @@ pytestmark = pytest.mark.skipif(
     os.environ.get("CI") is not None, reason="Skip integration tests in CI"
 )
 
-
-@pytest.fixture
-def db_manager():
-    datasource_db_port = os.getenv("DATASOURCE_DB_PORT")
-    return SyncDBManager(
-        username=os.getenv("DATASOURCE_DB_USERNAME"),
-        password=os.getenv("DATASOURCE_DB_PASSWORD"),
-        host=os.getenv("DATASOURCE_DB_HOST"),
-        port=(int(datasource_db_port) if datasource_db_port is not None else None),
-        database=os.getenv("DATASOURCE_DB_DATABASE"),
-        drivername=db_settings.expand_short_drivers(
-            os.getenv("DATASOURCE_DB_DRIVERNAME", settings.DEFAULT_DB_DRIVER)
-        ),
-        schema=os.getenv("DATASOURCE_DB_SCHEMA"),
-    )
-
-
-@pytest.fixture
-def availability_query():
-    return AvailabilityQuery(
-        cohort=Cohort(
-            [
-                Group(
-                    rules=[
-                        Rule(
-                            varname="OMOP",
-                            varcat="Person",
-                            type_="TEXT",
-                            operator="=",
-                            value="8507",
-                        )
-                    ],
-                    rules_operator="AND",
-                ),
-            ],
-            groups_operator="OR",
-        ),
-        uuid="unique_id",
-        protocol_version="v2",
-        char_salt="salt",
-        collection="collection_id",
-        owner="user1",
-    )
-
-
 @pytest.fixture
 def availability_example():
     return RquestResult(
@@ -79,8 +34,8 @@ def availability_example():
 
 
 @pytest.fixture
-def availability_result(db_manager, availability_query):
-    return solve_availability(db_manager=db_manager, query=availability_query)
+def availability_result(db_manager, availability_query_onerule_equals):
+    return solve_availability(db_manager=db_manager, query=availability_query_onerule_equals)
 
 
 def test_solve_availability_returns_result(availability_result):
