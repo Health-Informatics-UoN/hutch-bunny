@@ -14,6 +14,34 @@ pytestmark = pytest.mark.skipif(
     os.environ.get("CI") is not None, reason="Skip integration tests in CI"
 )
 
+
+@pytest.fixture
+def db_manager():
+    datasource_db_port = os.getenv("DATASOURCE_DB_PORT")
+    return SyncDBManager(
+        username=os.getenv("DATASOURCE_DB_USERNAME"),
+        password=os.getenv("DATASOURCE_DB_PASSWORD"),
+        host=os.getenv("DATASOURCE_DB_HOST"),
+        port=(int(datasource_db_port) if datasource_db_port is not None else None),
+        database=os.getenv("DATASOURCE_DB_DATABASE"),
+        drivername=db_settings.expand_short_drivers(
+            os.getenv("DATASOURCE_DB_DRIVERNAME", settings.DEFAULT_DB_DRIVER)
+        ),
+        schema=os.getenv("DATASOURCE_DB_SCHEMA"),
+    )
+
+
+@pytest.fixture
+def distribution_query():
+    return DistributionQuery(
+        owner="user1",
+        code="GENERAL",
+        analysis="DISTRIBUTION",
+        uuid="unique_id",
+        collection="collection_id",
+    )
+
+
 @pytest.fixture
 def distribution_example():
     return RquestResult(
@@ -24,9 +52,9 @@ def distribution_example():
         datasets_count=1,
         files=[
             File(
-                name="demographics.distribution",
+                name="code.distribution",
                 data="",
-                description="Result of demographics.distribution analysis",
+                description="Result of code.distribution analysis",
                 size=0.308,
                 type_="BCOS",
                 sensitive=True,
