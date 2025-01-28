@@ -565,7 +565,6 @@ def solve_distribution(
     solver = _get_distribution_solver(db_manager, query)
     try:
         res, count = solver.solve_query()
-        print(res)
         # Convert file data to base64
         res_b64_bytes = base64.b64encode(res.encode("utf-8"))  # bytes
         size = len(res_b64_bytes) / 1000  # length of file data in KB
