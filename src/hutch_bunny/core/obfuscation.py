@@ -1,6 +1,5 @@
 from copy import deepcopy
 
-
 def low_number_suppression(value: int | float, threshold: int = 10) -> int | float:
     """Suppress values that fall below a given threshold.
 
@@ -51,6 +50,7 @@ def apply_filters(value: int | float, filters: list) -> int | float:
     Returns:
         int | float: The filtered value.
     """
+
     actions = {"Low Number Suppression": low_number_suppression, "Rounding": rounding}
     result = value
     filters_copy = deepcopy(filters)
