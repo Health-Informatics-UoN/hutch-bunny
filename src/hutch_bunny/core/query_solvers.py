@@ -122,6 +122,7 @@ class AvailibilityQuerySolver:
         # This is related to the logic within a group. This is used in the subsequent for loop to determine how
         # the merge should be applied.
         merge_method = lambda x: "inner" if x == "AND" else "outer"
+
         with self.db_manager.engine.connect() as con:
             # iterate through all the groups specified in the query
             for group in self.query.cohort.groups:
@@ -130,7 +131,7 @@ class AvailibilityQuerySolver:
                     # this passes in the conceptID of but gets back the domain related to that concept.
                     concept_domain = concepts.get(rule.value)
 
-                    concept_table = self.omop_domain_to_omop_table_map.get(concept_domain)
+                    query_table = self.omop_domain_to_omop_table_map.get(concept_domain)
                     omop_concept_column = self.table_to_concept_col_map.get(concept_domain)
                     numeric_rule_col = self.numeric_rule_map.get(concept_domain)
 
@@ -139,7 +140,7 @@ class AvailibilityQuerySolver:
                     if rule.min_value is not None and rule.max_value is not None:
                         # numeric rule
                         stmnt = (
-                            select(concept_table.person_id.label(label_to_use))
+                            select(query_table.person_id.label(label_to_use))
                             .where(
                                 and_(
                                     omop_concept_column == int(rule.value),
@@ -151,7 +152,7 @@ class AvailibilityQuerySolver:
                             .distinct()
                         )
                     else:
-                        stmnt=self.build_statement(concept_table, omop_concept_column, rule, label_to_use)
+                        stmnt=self.build_statement(query_table, omop_concept_column, rule, label_to_use)
 
                     if rule_index>0: #then we merge
 
@@ -172,16 +173,17 @@ class AvailibilityQuerySolver:
                 # subqueries therefore contain the results for each group within the cohort definition.
                 self.subqueries.append(main_df)
 
-    def build_statement(self, concept_table: str, boolean_rule_col: str, rule: Rule, label: str) -> select:
+    def build_statement(self, query_table, query_column, rule: Rule, label: str) -> select:
         return (
-            select(concept_table.person_id.label(label))
-            .where(boolean_rule_col == int(rule.value))
+            select(query_table.person_id.label(label))
+            .where(query_column == int(rule.value))
             .distinct()
         ) if rule.operator == "=" else (
-            select(concept_table.person_id.label(label))
-            .where(boolean_rule_col != int(rule.value))
+            select(query_table.person_id.label(label))
+            .where(query_column != int(rule.value))
             .distinct()
         )
+
 
     """ 
     This is the start of the process that begins to run the queries. 
