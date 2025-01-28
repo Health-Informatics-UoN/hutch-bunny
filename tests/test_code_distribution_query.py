@@ -35,7 +35,7 @@ def db_manager():
 def distribution_query():
     return DistributionQuery(
         owner="user1",
-        code="DEMOGRAPHICS",
+        code="GENERAL",
         analysis="DISTRIBUTION",
         uuid="unique_id",
         collection="collection_id",
@@ -52,9 +52,9 @@ def distribution_example():
         datasets_count=1,
         files=[
             File(
-                name="demographics.distribution",
+                name="code.distribution",
                 data="",
-                description="Result of demographics.distribution analysis",
+                description="Result of code.distribution analysis",
                 size=0.308,
                 type_="BCOS",
                 sensitive=True,
