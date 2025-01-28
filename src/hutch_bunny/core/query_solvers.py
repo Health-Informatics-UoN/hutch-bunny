@@ -359,11 +359,14 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
 
             # gets a list of all concepts within this given table and their respective counts
             stmnt = (
-                select(func.count(table.person_id), Concept.concept_id, Concept.concept_name)
+                select(
+                    func.count(table.person_id),
+                    Concept.concept_id,
+                    Concept.concept_name,
+                )
                 .join(Concept, concept_col == Concept.concept_id)
-                .group_by(
-                    Concept.concept_id, Concept.concept_name
-                ))
+                .group_by(Concept.concept_id, Concept.concept_name)
+            )
 
             res = pd.read_sql(stmnt, self.db_manager.engine.connect())
 
@@ -382,7 +385,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         df["OMOP_DESCR"] = omop_desc
 
         # replace NaN values with empty string
-        df = df.fillna('')
+        df = df.fillna("")
         # Convert df to tab separated string
         results = list(["\t".join(df.columns)])
         for _, row in df.iterrows():
