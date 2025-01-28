@@ -1,6 +1,6 @@
 [project]
 name = "hutch-bunny"
-version = "1.0.0-alpha.1"
+version = "1.0.0-alpha.2"
 description = "A Cohort Discovery Task API worker"
 license = { text = "MIT License" }
 readme = "README.md"
@@ -23,10 +23,10 @@ dependencies = [
   "requests>=2.32.3", # daemon-only
   "sqlalchemy>=2.0.36",
   "trino>=0.331.0", # should become optional
+  "pymssql>=2.3.2", # for SQL Server
   # possible extras?
   # "pyodbc>=5.2.0",      # not sure exactly when this is or isn't needed?
   # mysqlclient="^2.1.1" # should be only when targeting mysql - seems to have system dependencies
-  # TODO: sqlserver driver for sqlalchemy
 ]
 
 [project.scripts]
@@ -38,4 +38,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
-dev = ["ruff>=0.8.6", "pytest>=8.3.4"]
+dev = [
+    "ruff>=0.8.6",
+    "pytest>=8.3.4",
+    "pandas-stubs>=2.2.3.241126",
+    "mypy>=1.14.1",
+    "types-requests>=2.32.0.20241016",
+]

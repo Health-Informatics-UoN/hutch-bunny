@@ -81,6 +81,7 @@ class SyncDBManager(BaseDBManager):
         database: str,
         drivername: str,
         schema: Optional[str] = None,
+        connect_args: Optional[dict] = None,
     ) -> None:
         if not isinstance(username, str):
             raise TypeError("`username` must be a string")
@@ -102,15 +103,15 @@ class SyncDBManager(BaseDBManager):
             database=database,
         )
 
-        if schema is not None:
-            self.engine = create_engine(
-                url=url,
-                connect_args={"options": "-csearch_path={}".format(schema)},
-            )
-        else:
-            self.engine = create_engine(
-                url=url,
-            )
+        self.schema = schema if schema is not None and len(schema) > 0 else None
+
+        if connect_args is not None:
+            self.engine = create_engine(url=url, connect_args=connect_args)
+        else: 
+            self.engine = create_engine(url=url)
+
+        if self.schema is not None:
+            self.engine.update_execution_options(schema_translate_map={None: self.schema}) 
 
         self.inspector = inspect(self.engine)
 
@@ -129,7 +130,7 @@ class SyncDBManager(BaseDBManager):
         self.engine.dispose()
 
     def list_tables(self) -> list:
-        return self.inspector.get_table_names()
+        return self.inspector.get_table_names(schema=self.schema)
 
 
 class TrinoDBManager(BaseDBManager):
