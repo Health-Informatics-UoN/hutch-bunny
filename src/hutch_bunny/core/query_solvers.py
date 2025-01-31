@@ -3,8 +3,10 @@ import os
 import logging
 from typing import Tuple
 import pandas as pd
+import sqlalchemy
 from sqlalchemy import (
     and_,
+    or_,
     select,
     func,
 )
@@ -18,6 +20,7 @@ from hutch_bunny.core.entities import (
     DrugExposure,
     ProcedureOccurrence,
 )
+from sqlalchemy.dialects import postgresql
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
 from hutch_bunny.core.rquest_dto.file import File
 from hutch_bunny.core.rquest_dto.rule import Rule
@@ -71,12 +74,12 @@ class AvailibilityQuerySolver:
 
     """ Function that takes all the concept IDs in the cohort defintion, looks them up in the OMOP database 
     to extract the concept_id and domain and place this within a dictionary for lookup during other query building 
-    
+
     Although the query payload will tell you where the OMOP concept is from (based on the RQUEST OMOP version, this is
     a safer method as we know concepts can move between tables based on a vocab. 
-    
+
     Therefore this helps to account for a difference between the Bunny vocab version and the RQUEST OMOP version.
-    
+
 
     #TODO: this does not cover the scenario that is possible to occur where the local vocab model may say the concept 
     should be based in one table but it is actually present in another
@@ -105,19 +108,22 @@ class AvailibilityQuerySolver:
         return concept_dict
 
     """ Function for taking the JSON query from RQUEST and creating the required query to run against the OMOP database.
-    
+
         RQUEST API spec can have multiple groups in each query, and then a condition between the groups. 
-        
+
         Each group can have conditional logic AND/OR within the group
-        
+
         Each concept can either be an inclusion or exclusion criteria. 
-        
+
         Each concept can have an age set, so it is that this event with concept X occurred when 
         the person was between a certain age. - #TODO - not sure this is implemented here
 
         """
 
     def _solve_rules(self) -> None:
+
+        # for group in self.query.cohort.groups:
+        # for rule_index, rule in enumerate(group.rules, start=0):
 
         # get the list of concepts to build the query constraints
         concepts = self._find_concepts()
@@ -126,67 +132,65 @@ class AvailibilityQuerySolver:
         # the merge should be applied.
         merge_method = lambda x: "inner" if x == "AND" else "outer"
 
-        with self.db_manager.engine.connect() as con:
+        logger = logging.getLogger(settings.LOGGER_NAME)
+
+        with (self.db_manager.engine.connect() as con):
             # iterate through all the groups specified in the query
             for group in self.query.cohort.groups:
+
+                list_for_rules = list()
+                personConstraints = list()
+                listAllParameters = list();
+
                 for rule_index, rule in enumerate(group.rules, start=0):
+                    ruleConstraints = list()
 
-                    # this passes in the conceptID of but gets back the domain related to that concept.
-                    concept_domain = concepts.get(rule.value)
+                    concept_domain: str = concepts.get(rule.value)
 
-                    query_table = self.omop_domain_to_omop_table_map.get(concept_domain)
-                    omop_concept_column = self.table_to_concept_col_map.get(concept_domain)
-                    numeric_rule_col = self.numeric_rule_map.get(concept_domain)
+                    if (rule.varcat != "Person"):
+                        ruleConstraints.append(Person.person_id.in_(select(ConditionOccurrence.person_id).where(ConditionOccurrence.condition_concept_id == int(rule.value))))
+                        ruleConstraints.append(Person.person_id.in_(select(Measurement.person_id).where(Measurement.measurement_concept_id == int(rule.value))))
+                        ruleConstraints.append(Person.person_id.in_(select(Observation.person_id).where(Observation.observation_concept_id == int(rule.value))))
+                        ruleConstraints.append(Person.person_id.in_( select(DrugExposure.person_id).where(DrugExposure.drug_concept_id == int(rule.value))))
 
-                    label_to_use = "person_id" if rule_index == 0 else f"person_id_{rule_index}"
+                        list_for_rules.append(ruleConstraints)
 
-                    if rule.min_value is not None and rule.max_value is not None:
-                        # numeric rule
-                        stmnt = (
-                            select(query_table.person_id.label(label_to_use))
-                            .where(
-                                and_(
-                                    omop_concept_column == int(rule.value),
-                                    numeric_rule_col.between(
-                                        rule.min_value, rule.max_value
-                                    ),
-                                )
-                            )
-                            .distinct()
-                        )
                     else:
-                        stmnt=self.build_statement(query_table, omop_concept_column, rule, label_to_use)
+                        if (rule.varcat == "Person"):
+                            if (concept_domain == "Gender"):
+                                personConstraints.append(Person.gender_concept_id == int(rule.value))
+                            elif (concept_domain == "Race"):
+                                personConstraints.append(Person.race_concept_id == int(rule.value))
+                            elif (concept_domain == "Ethnicity"):
+                                personConstraints.append(Person.ethnicity_concept_id == int(rule.value))
 
-                    if rule_index>0: #then we merge
+                if (group.rules_operator=="AND"):
+                    root_statement = select(Person.person_id)
+                    root_statement = root_statement.where(*personConstraints)
+                    for rule_index, rule in enumerate(list_for_rules, start=0):
+                        root_statement = root_statement.where(or_(*rule))
+                else:
+                    for rule_index, rule in enumerate(personConstraints, start=0):
+                        listAllParameters.append(rule)
 
-                        rule_df = pd.read_sql_query(
-                            sql=stmnt, con=con
-                        )
-                        main_df = main_df.merge(
-                            right=rule_df,
-                            how=merge_method(group.rules_operator),
-                            left_on="person_id",
-                            right_on=f"person_id_{rule_index}",
-                        )
-                    else: #then we load the first one
-                        main_df = pd.read_sql_query(
-                            sql=stmnt, con=con
-                        )
+                    for rule_index, rule in enumerate(list_for_rules, start=0):
+                        for srule_index, srule in enumerate(rule, start=0):
+                            listAllParameters.append(srule)
 
+                    root_statement = select(Person.person_id).where(or_(*listAllParameters))
+
+                print(str(root_statement.compile(
+                    dialect=postgresql.dialect(),
+                    compile_kwargs={"literal_binds": True})))
+
+                logger.info("Done here")
+
+                logger.info("finished for rule")
+                logger.info(root_statement)
+                main_df = pd.read_sql_query(sql=root_statement, con=con)
+                logger.info(len(main_df.index))
                 # subqueries therefore contain the results for each group within the cohort definition.
                 self.subqueries.append(main_df)
-
-    def build_statement(self, query_table, query_column, rule: Rule, label: str) -> select:
-        return (
-            select(query_table.person_id.label(label))
-            .where(query_column == int(rule.value))
-            .distinct()
-        ) if rule.operator == "=" else (
-            select(query_table.person_id.label(label))
-            .where(query_column != int(rule.value))
-            .distinct()
-        )
-
 
     """ 
     This is the start of the process that begins to run the queries. 

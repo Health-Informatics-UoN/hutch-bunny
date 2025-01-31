@@ -10,6 +10,7 @@ class Rule:
         time: Union[str, None] = None,
         varname: str = "",
         operator: str = "",
+        varcat: str = None,
         **kwargs,
     ) -> None:
         self.value = value
@@ -17,6 +18,7 @@ class Rule:
         self.time = time
         self.varname = varname
         self.operator = operator
+        self.varcat = varcat
 
         if self.type_ == "NUM":
             self.min_value, self.max_value = self._parse_numeric(self.value)
@@ -59,8 +61,10 @@ class Rule:
         time = dict_.get("time")
         varname = dict_.get("varname", "")
         operator = dict_.get("oper", "")
+        varcat = dict_.get("varcat", "")
+
         return cls(
-            type_=type_, value=value, time=time, varname=varname, operator=operator
+            type_=type_, value=value, time=time, varname=varname, operator=operator, varcat=varcat
         )
 
     def _parse_numeric(
