@@ -15,6 +15,7 @@ from sqlalchemy import (
     func,
     text,
     column,
+    extract,
 )
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
@@ -150,45 +151,59 @@ class AvailibilityQuerySolver:
                     # if the rule was not linked to a person variable
                     if rule.varcat != "Person":
 
+                        condition = select(ConditionOccurrence.person_id)
+                        drug = select(DrugExposure.person_id)
+                        meas = select(Measurement.person_id)
+                        obs = select(Observation.person_id)
+
+                        if left_value_time is not None and (left_value_time != "" or right_value_time != "") and time_category == "AGE":
+                            condition = condition.join(Person, Person.person_id == ConditionOccurrence.person_id)
+                            drug = drug.join(Person, Person.person_id == DrugExposure.person_id)
+                            meas = meas.join(Person, Person.person_id == Measurement.person_id)
+                            obs = obs.join(Person, Person.person_id == Observation.person_id)
+
+                            if left_value_time == "":
+                                condition = condition.where(extract('year', ConditionOccurrence.condition_start_date) - extract('year',Person.birth_datetime) < int(right_value_time))
+                                drug = drug.where(extract('year', DrugExposure.drug_exposure_start_date) - extract('year',Person.birth_datetime) < int(right_value_time))
+                                meas = meas.where(extract('year', Measurement.measurement_date) - extract('year',Person.birth_datetime) < int(right_value_time))
+                                obs = obs.where(extract('year', Observation.observation_date) - extract('year',Person.birth_datetime) < int(right_value_time))
+                            else:
+                                condition = condition.where(extract('year', ConditionOccurrence.condition_start_date) - extract('year',Person.birth_datetime) > int(left_value_time))
+                                drug = drug.where(extract('year', DrugExposure.drug_exposure_start_date) - extract('year',Person.birth_datetime) > int(left_value_time))
+                                meas = meas.where(extract('year', Measurement.measurement_date) - extract('year',Person.birth_datetime) > int(left_value_time))
+                                obs = obs.where(extract('year', Observation.observation_date) - extract('year',Person.birth_datetime) > int(left_value_time))
+
+
                         # feels really nasty that this is replicated solely for the operator
                         if rule.operator == "=":
+                            condition = condition.where(ConditionOccurrence.condition_concept_id == int(rule.value))
+                            drug = drug.where(DrugExposure.drug_concept_id == int(rule.value))
+                            meas = meas.where(Measurement.measurement_concept_id == int(rule.value))
+                            obs = obs.where(Observation.observation_concept_id == int(rule.value))
+                        else:
+                            condition = condition.where(ConditionOccurrence.condition_concept_id != int(rule.value))
+                            drug = drug.where(DrugExposure.drug_concept_id != int(rule.value))
+                            meas = meas.where(Measurement.measurement_concept_id != int(rule.value))
+                            obs = obs.where(Observation.observation_concept_id != int(rule.value))
 
-                            condition = select(ConditionOccurrence.person_id).where(ConditionOccurrence.condition_concept_id == int(rule.value))
+                        # secondary modifier hits another field and only on the conditiion_occurrence
+                        # on the RQuest GUI this is a list that can be created. Assuming this is also an
+                        # AND condition for at least one of the selected values to be present
 
-                            # secondary modifier hits another field and only on the conditiion_occurrence
-                            # on the RQuest GUI this is a list that can be created. Assuming this is also an
-                            # AND condition for at least one of the selected values to be present
-                            if rule.secondary_modifier is not None:
+                        logger.info(rule.secondary_modifier)
 
-                                secondary_modifier_list = list()
-                                for type_index, typeAdd in enumerate(rule.secondary_modifier, start=0):
-                                    secondary_modifier_list.append(ConditionOccurrence.condition_type_concept_id == int(typeAdd))
+                        secondary_modifier_list = list()
+                        logger.info("1")
 
-                                # the list is then added as one operation, as it appears the only way to do this with
-                                # an OR logic being applied
-                                condition = condition.where(or_(*secondary_modifier_list))
+                        for type_index, typeAdd in enumerate(rule.secondary_modifier, start=0):
+                            if (typeAdd!=""):
+                                secondary_modifier_list.append(ConditionOccurrence.condition_type_concept_id == int(typeAdd))
 
-                            # creating the queries for the other tables
-                            drug = select(DrugExposure.person_id).where(DrugExposure.drug_concept_id == int(rule.value))
-                            meas = select(Measurement.person_id).where(Measurement.measurement_concept_id == int(rule.value))
-                            obs = select(Observation.person_id).where(Observation.observation_concept_id == int(rule.value))
 
-                        else: # exactly the same as above, but solely to change == to !=
-                            condition = select(ConditionOccurrence.person_id).where(ConditionOccurrence.condition_concept_id != int(rule.value))
-
-                            if rule.secondary_modifier is not None:
-                                condition = select(ConditionOccurrence.person_id).where(ConditionOccurrence.condition_concept_id == int(rule.value))
-
-                                secondary_modifier_list = list()
-                                for type_index, typeAdd in enumerate(rule.secondary_modifier, start=0):
-                                    secondary_modifier_list.append(ConditionOccurrence.condition_type_concept_id == int(typeAdd))
-
-                                condition = condition.where(or_(*secondary_modifier_list))
-
-                            drug = select(DrugExposure.person_id).where(DrugExposure.drug_concept_id != int(rule.value))
-                            meas = select(Measurement.person_id).where(Measurement.measurement_concept_id != int(rule.value))
-                            obs = select(Observation.person_id).where(Observation.observation_concept_id != int(rule.value))
-
+                        # the list is then added as one operation, as it appears the only way to do this with
+                        # an OR logic being applied
+                        if (len(secondary_modifier_list)>0):
+                            condition = condition.where(or_(*secondary_modifier_list))
 
                         if rule.min_value is not None and rule.max_value is not None:
                             meas = meas.where(
@@ -247,33 +262,32 @@ class AvailibilityQuerySolver:
                         list_for_rules.append(ruleConstraints)
 
                     else:
-                        if rule.varcat == "Person":
-                            concept_domain: str = concepts.get(rule.value)
+                        concept_domain: str = concepts.get(rule.value)
 
-                            if concept_domain == "Gender":
-                                if rule.operator == "=":
-                                    person_constraints.append(Person.gender_concept_id == int(rule.value))
-                                else:
-                                    person_constraints.append(Person.gender_concept_id != int(rule.value))
+                        if concept_domain == "Gender":
+                            if rule.operator == "=":
+                                person_constraints.append(Person.gender_concept_id == int(rule.value))
+                            else:
+                                person_constraints.append(Person.gender_concept_id != int(rule.value))
 
-                            elif concept_domain == "Race":
-                                if rule.operator == "=":
-                                    person_constraints.append(Person.race_concept_id == int(rule.value))
-                                else:
-                                    person_constraints.append(Person.race_concept_id != int(rule.value))
+                        elif concept_domain == "Race":
+                            if rule.operator == "=":
+                                person_constraints.append(Person.race_concept_id == int(rule.value))
+                            else:
+                                person_constraints.append(Person.race_concept_id != int(rule.value))
 
-                            elif concept_domain == "Ethnicity":
-                                if rule.operator == "=":
-                                    person_constraints.append(Person.ethnicity_concept_id == int(rule.value))
-                                else:
-                                    person_constraints.append(Person.ethnicity_concept_id != int(rule.value))
+                        elif concept_domain == "Ethnicity":
+                            if rule.operator == "=":
+                                person_constraints.append(Person.ethnicity_concept_id == int(rule.value))
+                            else:
+                                person_constraints.append(Person.ethnicity_concept_id != int(rule.value))
 
 
                 ## NOTE: all rules done for a group. These are all the individual constraints
                 ## created with no logic applied between them.
 
                 ## if the logic between the rules for each group is AND
-                if (group.rules_operator == "AND"):
+                if group.rules_operator == "AND":
 
                     # all person rules are added first
                     root_statement = select(Person.person_id).where(*person_constraints)
