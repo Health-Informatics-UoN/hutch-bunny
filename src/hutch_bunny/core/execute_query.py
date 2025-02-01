@@ -31,6 +31,7 @@ def execute_query(
     logger.info("Processing query...")
 
     if "analysis" in query_dict.keys():
+        logger.debug("Processing distribution query...")
         try:
             query = DistributionQuery.from_dict(query_dict)
             result = query_solvers.solve_distribution(
@@ -45,6 +46,7 @@ def execute_query(
             logger.error(str(ve), exc_info=True)
 
     else:
+        logger.debug("Processing availability query...")
         try:
             query = AvailabilityQuery.from_dict(query_dict)
             result = query_solvers.solve_availability(

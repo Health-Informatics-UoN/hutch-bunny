@@ -48,3 +48,25 @@ if POLLING_INTERVAL < 0:
     POLLING_INTERVAL = POLLING_INTERVAL_DEFAULT
 
 COLLECTION_ID = environ.get("COLLECTION_ID")
+
+def log_settings():
+    from hutch_bunny.core.logger import logger #This is here to prevent a circular import
+ 
+    logger.debug("Running with settings:")
+    logger.debug(f"  DATASOURCE_USE_TRINO: {DATASOURCE_USE_TRINO}")
+    logger.debug(f"  DEFAULT_POSTGRES_DRIVER: {DEFAULT_POSTGRES_DRIVER}")
+    logger.debug(f"  DEFAULT_DB_DRIVER: {DEFAULT_DB_DRIVER}")
+    logger.debug(f"  LOGGER_NAME: {LOGGER_NAME}")
+    logger.debug(f"  LOGGER_LEVEL: {LOGGER_LEVEL}")
+    logger.debug(f"  BACKUP_LOGGER_NAME: {BACKUP_LOGGER_NAME}")
+    logger.debug(f"  MSG_FORMAT: {MSG_FORMAT}")
+    logger.debug(f"  DATE_FORMAT: {DATE_FORMAT}")
+    logger.debug(f"  TASK_API_BASE_URL: {TASK_API_BASE_URL}")
+    logger.debug(f"  TASK_API_USERNAME: {TASK_API_USERNAME}")
+    logger.debug(f"  TASK_API_PASSWORD: {TASK_API_PASSWORD}")
+    logger.debug(f"  TASK_API_TYPE: {TASK_API_TYPE}")
+    logger.debug(f"  LOW_NUMBER_SUPPRESSION_THRESHOLD: {LOW_NUMBER_SUPPRESSION_THRESHOLD}")
+    logger.debug(f"  ROUNDING_TARGET: {ROUNDING_TARGET}")
+    logger.debug(f"  POLLING_INTERVAL_DEFAULT: {POLLING_INTERVAL_DEFAULT}")
+    logger.debug(f"  POLLING_INTERVAL: {POLLING_INTERVAL}")
+    logger.debug(f"  COLLECTION_ID: {COLLECTION_ID}")

@@ -8,6 +8,7 @@ from hutch_bunny.core.logger import logger
 from hutch_bunny.core.setting_database import setting_database
 
 def main() -> None:
+    settings.log_settings()
     # Setting database connection
     db_manager = setting_database(logger=logger)
     # Task Api Client class init.
@@ -29,6 +30,7 @@ def main() -> None:
         response = client.get(endpoint=polling_endpoint)
         if response.status_code == 200:
             logger.info("Job received. Resolving...")
+            logger.debug("JSON Response: %s", response.json())
             # Convert Response to Dict
             query_dict: dict = response.json()
             # Start querying
@@ -44,7 +46,7 @@ def main() -> None:
 
             # Build return endpoint after having result
             return_endpoint = f"task/result/{result.uuid}/{result.collection_id}"
-
+            logger.debug("Return endpoint: %s", return_endpoint)
             # Try to send the results back to Relay
             for _ in range(4):
                 response = client.post(endpoint=return_endpoint, data=result.to_dict())
@@ -55,6 +57,8 @@ def main() -> None:
                     or 400 <= response.status_code < 500
                 ):
                     logger.info("Job resolved.")
+                    logger.debug("Response status: %s", response.status_code)
+                    logger.debug("Response: %s", response.text)
                     break
                 else:
                     logger.warning(

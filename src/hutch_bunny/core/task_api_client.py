@@ -4,6 +4,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 import hutch_bunny.core.settings as settings
 from typing import Optional
+from hutch_bunny.core.logger import logger
 
 
 class SupportedMethod(Enum):
@@ -40,10 +41,13 @@ class TaskApiClient:
         Returns:
             Response: The response object returned by the requests library.
         """
+        logger.debug("Sending %s request to %s with data %s and kwargs %s" % (method.value, url,data, kwargs))
         basicAuth = HTTPBasicAuth(self.username, self.password)
         response = requests.request(
             method=method.value, url=url, json=data, auth=basicAuth, **kwargs
         )
+        logger.debug("Response Status: %s", response.status_code)
+        logger.debug("Response Text: %s", response.text)
         return response
 
     def post(
