@@ -1,0 +1,26 @@
+{
+  "task_id": "job-2023-01-13-14: 20: 38-project",
+  "project": "project_id",
+  "owner": "user1",
+  "cohort": {
+    "groups": [
+      {
+        "rules": [
+          {
+            "varname": "OMOP",
+            "varcat": "Person",
+            "type": "TEXT",
+            "oper": "=",
+            "value": "8507"
+          }
+        ],
+        "rules_oper": "AND"
+      }
+    ],
+    "groups_oper": "OR"
+  },
+  "collection": "collection_id",
+  "protocol_version": "v2",
+  "char_salt": "salt",
+  "uuid": "unique_id"
+}
