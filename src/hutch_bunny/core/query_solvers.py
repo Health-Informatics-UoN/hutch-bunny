@@ -65,7 +65,6 @@ class AvailibilityQuerySolver:
     should be based in one table but it is actually present in another
 
     """
-
     def _find_concepts(self) -> dict:
         concept_ids = set()
         for group in self.query.cohort.groups:
@@ -119,22 +118,13 @@ class AvailibilityQuerySolver:
                 for rule_index, rule in enumerate(group.rules, start=0):
                     ruleConstraints = list()
                     concept_domain: str = concepts.get(rule.value)
-                    logger.info(rule.time)
-                    logger.info(rule.raw_range.split("|"))
 
                     left_value_time = None
                     right_value_time = None
 
                     if (rule.time!="" and rule.time is not None):
-                        logger.info("in here")
-                        logger.info(rule.time)
-
                         time_value, time_category, time_unit = rule.time.split(":")
                         left_value_time, right_value_time = time_value.split("|")
-
-                        logger.info("and therefore")
-                        logger.info(left_value_time)
-                        logger.info(right_value_time)
 
                     if (rule.raw_range!=""):
                         rule.min_value, rule.max_value = rule.raw_range.split("|")
@@ -143,12 +133,32 @@ class AvailibilityQuerySolver:
                         #multiple conditions created to cover the concept might be in different tables
 
                         if (rule.operator=="="):
-                            condition = select(ConditionOccurrence.person_id).where(ConditionOccurrence.condition_concept_id == int(rule.value))
+                            if (rule.secondary_modifier is not None):
+                                condition = select(ConditionOccurrence.person_id).where(ConditionOccurrence.condition_concept_id == int(rule.value))
+
+                                types = list()
+                                for type_index, typeAdd in enumerate(rule.secondary_modifier, start=0):
+                                    types.append(ConditionOccurrence.condition_type_concept_id==int(typeAdd))
+
+                                condition = condition.where(or_(*types))
+                            else:
+                                condition = select(ConditionOccurrence.person_id).where(ConditionOccurrence.condition_concept_id != int(rule.value))
+
                             drug = select(DrugExposure.person_id).where(DrugExposure.drug_concept_id == int(rule.value))
                             meas = select(Measurement.person_id).where(Measurement.measurement_concept_id == int(rule.value))
                             obs = select(Observation.person_id).where(Observation.observation_concept_id == int(rule.value))
                         else:
-                            condition = select(ConditionOccurrence.person_id).where(ConditionOccurrence.condition_concept_id != int(rule.value))
+                            if (rule.secondary_modifier is not None):
+                                condition = select(ConditionOccurrence.person_id).where(ConditionOccurrence.condition_concept_id == int(rule.value))
+
+                                types = list()
+                                for type_index, typeAdd in enumerate(rule.secondary_modifier, start=0):
+                                    types.append(ConditionOccurrence.condition_type_concept_id==int(typeAdd))
+
+                                condition = condition.where(or_(*types))
+                            else:
+                                condition = select(ConditionOccurrence.person_id).where(ConditionOccurrence.condition_concept_id != int(rule.value))
+
                             drug = select(DrugExposure.person_id).where(DrugExposure.drug_concept_id != int(rule.value))
                             meas = select(Measurement.person_id).where(Measurement.measurement_concept_id != int(rule.value))
                             obs = select(Observation.person_id).where(Observation.observation_concept_id != int(rule.value))
@@ -164,6 +174,7 @@ class AvailibilityQuerySolver:
                             obs = obs.where(Observation.value_as_number.between(float(rule.min_value), float(rule.max_value)))
 
                         logger.info(left_value_time)
+
                         if left_value_time is not None and (left_value_time!="" or right_value_time!="") and time_category=="TIME":
 
                             time_value_to_use = None
@@ -172,7 +183,6 @@ class AvailibilityQuerySolver:
                                 time_value_to_use = right_value_time
                             else:
                                 time_value_to_use = left_value_time
-
 
                             myDate = datetime.now()
                             timetouse = int(time_value_to_use)

@@ -12,8 +12,10 @@ class Rule:
         operator: str = "",
         raw_range: str = "",
         varcat: str = None,
+        secondary_modifier: [] = None,
         **kwargs,
     ) -> None:
+
         self.raw_range = raw_range
         self.value = value
         self.type_ = type_
@@ -21,6 +23,7 @@ class Rule:
         self.varname = varname
         self.operator = operator
         self.varcat = varcat
+        self.secondary_modifier = secondary_modifier
 
         if self.type_ == "NUM":
             self.min_value, self.max_value = self._parse_numeric(self.value)
@@ -65,9 +68,10 @@ class Rule:
         varname = dict_.get("varname", "")
         operator = dict_.get("oper", "")
         varcat = dict_.get("varcat", "")
+        secondary_modifier = dict_.get("secondary_modifier", [])
 
         return cls(
-            type_=type_, value=value, time=time, varname=varname, operator=operator, varcat=varcat
+            type_=type_, value=value, time=time, varname=varname, operator=operator, varcat=varcat, secondary_modifier=secondary_modifier
         )
 
     def _parse_numeric(
