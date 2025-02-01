@@ -311,18 +311,18 @@ class AvailibilityQuerySolver:
 
             # construct the query based on the OR or AND logic specified between groups
             if self.query.cohort.groups_operator == "OR":
-                new_statement = select(Person.person_id).where(or_(*group_statement))
+                new_statement = select(func.count()).where(or_(*group_statement))
             else:
-                new_statement = select(Person.person_id).where(*group_statement)
+                new_statement = select(func.count()).where(*group_statement)
 
-            # there for debug, prints the SQL statement created
+            # here for debug, prints the SQL statement created
             print(str(new_statement.compile(
                 dialect=postgresql.dialect(),
                 compile_kwargs={"literal_binds": True})))
 
-            main_df = pd.read_sql_query(sql=new_statement, con=con)
+            output = con.execute(new_statement).fetchone()
 
-        return len(main_df)
+        return int(output[0])
 
     """ 
     This is the start of the process that begins to run the queries. 
