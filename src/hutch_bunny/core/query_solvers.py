@@ -43,30 +43,6 @@ class AvailibilityQuerySolver:
         "Observation": Observation,
         "Procedure": ProcedureOccurrence,
     }
-    concept_time_column_map = {
-        "Condition": ConditionOccurrence.condition_start_date,
-        "Ethnicity": Person.birth_datetime,
-        "Drug": DrugExposure.drug_exposure_start_date,
-        "Gender": Person.birth_datetime,
-        "Race": Person.birth_datetime,
-        "Measurement": Measurement.measurement_date,
-        "Observation": Observation.observation_date,
-        "Procedure": ProcedureOccurrence.procedure_date,
-    }
-    numeric_rule_map = {
-        "Measurement": Measurement.value_as_number,
-        "Observation": Observation.value_as_number,
-    }
-    table_to_concept_col_map = {
-        "Condition": ConditionOccurrence.condition_concept_id,
-        "Ethnicity": Person.ethnicity_concept_id,
-        "Drug": DrugExposure.drug_concept_id,
-        "Gender": Person.gender_concept_id,
-        "Race": Person.race_concept_id,
-        "Measurement": Measurement.measurement_concept_id,
-        "Observation": Observation.observation_concept_id,
-        "Procedure": ProcedureOccurrence.procedure_concept_id,
-    }
 
     def __init__(self, db_manager: SyncDBManager, query: AvailabilityQuery) -> None:
         self.db_manager = db_manager
@@ -79,7 +55,6 @@ class AvailibilityQuerySolver:
     a safer method as we know concepts can move between tables based on a vocab. 
 
     Therefore this helps to account for a difference between the Bunny vocab version and the RQUEST OMOP version.
-
 
     #TODO: this does not cover the scenario that is possible to occur where the local vocab model may say the concept 
     should be based in one table but it is actually present in another
@@ -120,77 +95,103 @@ class AvailibilityQuerySolver:
 
         """
 
-    def _solve_rules(self) -> None:
-
-        # for group in self.query.cohort.groups:
-        # for rule_index, rule in enumerate(group.rules, start=0):
+    def _solve_rules(self) -> int:
 
         # get the list of concepts to build the query constraints
         concepts = self._find_concepts()
 
-        # This is related to the logic within a group. This is used in the subsequent for loop to determine how
-        # the merge should be applied.
-        merge_method = lambda x: "inner" if x == "AND" else "outer"
-
         logger = logging.getLogger(settings.LOGGER_NAME)
 
         with (self.db_manager.engine.connect() as con):
+            group_statement = list()
+
             # iterate through all the groups specified in the query
             for group in self.query.cohort.groups:
 
                 list_for_rules = list()
-                personConstraints = list()
-                listAllParameters = list();
+                person_constraints = list()
 
                 for rule_index, rule in enumerate(group.rules, start=0):
                     ruleConstraints = list()
-
                     concept_domain: str = concepts.get(rule.value)
 
-                    if (rule.varcat != "Person"):
-                        ruleConstraints.append(Person.person_id.in_(select(ConditionOccurrence.person_id).where(ConditionOccurrence.condition_concept_id == int(rule.value))))
-                        ruleConstraints.append(Person.person_id.in_(select(Measurement.person_id).where(Measurement.measurement_concept_id == int(rule.value))))
-                        ruleConstraints.append(Person.person_id.in_(select(Observation.person_id).where(Observation.observation_concept_id == int(rule.value))))
-                        ruleConstraints.append(Person.person_id.in_( select(DrugExposure.person_id).where(DrugExposure.drug_concept_id == int(rule.value))))
+                    if ("Person" != rule.varcat):
+                        #multiple conditions created to cover the concept might be in different tables
 
+                        if (rule.operator=="="):
+                            ruleConstraints.append(Person.person_id.in_(select(ConditionOccurrence.person_id).where(ConditionOccurrence.condition_concept_id == int(rule.value))))
+                            ruleConstraints.append(Person.person_id.in_(select(DrugExposure.person_id).where(DrugExposure.drug_concept_id == int(rule.value))))
+                            ruleConstraints.append(Person.person_id.in_(select(Measurement.person_id).where(Measurement.measurement_concept_id == int(rule.value))))
+                            ruleConstraints.append(Person.person_id.in_(select(Observation.person_id).where(Observation.observation_concept_id == int(rule.value))))
+                        else:
+                            ruleConstraints.append(Person.person_id.in_(select(ConditionOccurrence.person_id).where(ConditionOccurrence.condition_concept_id != int(rule.value))))
+                            ruleConstraints.append(Person.person_id.in_(select(DrugExposure.person_id).where(DrugExposure.drug_concept_id != int(rule.value))))
+                            ruleConstraints.append(Person.person_id.in_(select(Measurement.person_id).where(Measurement.measurement_concept_id != int(rule.value))))
+                            ruleConstraints.append(Person.person_id.in_(select(Observation.person_id).where(Observation.observation_concept_id != int(rule.value))))
+
+                        # adds as a group of rules. Needed if the rules should be joined as AND but
+                        # these should always be a group of rules joined by OR
                         list_for_rules.append(ruleConstraints)
 
                     else:
                         if (rule.varcat == "Person"):
-                            if (concept_domain == "Gender"):
-                                personConstraints.append(Person.gender_concept_id == int(rule.value))
-                            elif (concept_domain == "Race"):
-                                personConstraints.append(Person.race_concept_id == int(rule.value))
-                            elif (concept_domain == "Ethnicity"):
-                                personConstraints.append(Person.ethnicity_concept_id == int(rule.value))
+                            if (rule.operator == "="):
+
+                                if (concept_domain == "Gender"):
+                                    person_constraints.append(Person.gender_concept_id == int(rule.value))
+                                elif (concept_domain == "Race"):
+                                    person_constraints.append(Person.race_concept_id == int(rule.value))
+                                elif (concept_domain == "Ethnicity"):
+                                    person_constraints.append(Person.ethnicity_concept_id == int(rule.value))
+                            else:
+                                if (concept_domain == "Gender"):
+                                    person_constraints.append(Person.gender_concept_id != int(rule.value))
+                                elif (concept_domain == "Race"):
+                                    person_constraints.append(Person.race_concept_id != int(rule.value))
+                                elif (concept_domain == "Ethnicity"):
+                                    person_constraints.append(Person.ethnicity_concept_id != int(rule.value))
 
                 if (group.rules_operator=="AND"):
-                    root_statement = select(Person.person_id)
-                    root_statement = root_statement.where(*personConstraints)
+                    root_statement = select(Person.person_id).where(*person_constraints)
+
+                    # although this is an AND, we include the rules below as OR, as it is looking
+                    # into multiple tables for the concept if
                     for rule_index, rule in enumerate(list_for_rules, start=0):
                         root_statement = root_statement.where(or_(*rule))
+
+
                 else:
-                    for rule_index, rule in enumerate(personConstraints, start=0):
+                    listAllParameters = list();
+
+                    for rule_index, rule in enumerate(person_constraints, start=0):
                         listAllParameters.append(rule)
 
                     for rule_index, rule in enumerate(list_for_rules, start=0):
                         for srule_index, srule in enumerate(rule, start=0):
                             listAllParameters.append(srule)
 
+                    # if it is an OR then all rules should be added as an OR within the group
                     root_statement = select(Person.person_id).where(or_(*listAllParameters))
 
-                print(str(root_statement.compile(
-                    dialect=postgresql.dialect(),
-                    compile_kwargs={"literal_binds": True})))
+                group_statement.append(Person.person_id.in_(root_statement))
 
-                logger.info("Done here")
+            # end of groups
 
-                logger.info("finished for rule")
-                logger.info(root_statement)
-                main_df = pd.read_sql_query(sql=root_statement, con=con)
-                logger.info(len(main_df.index))
-                # subqueries therefore contain the results for each group within the cohort definition.
-                self.subqueries.append(main_df)
+
+            if (self.query.cohort.groups_operator=="OR"):
+                new_statement = select(Person.person_id).where(or_(*group_statement))
+            else:
+                new_statement = select(Person.person_id).where(*group_statement)
+
+
+            print(str(new_statement.compile(
+                dialect=postgresql.dialect(),
+                compile_kwargs={"literal_binds": True})))
+
+            main_df = pd.read_sql_query(sql=new_statement, con=con)
+
+            logger.info(len(main_df))
+        return len(main_df)
 
     """ 
     This is the start of the process that begins to run the queries. 
@@ -200,25 +201,7 @@ class AvailibilityQuerySolver:
 
     def solve_query(self) -> int:
         # resolve within the group
-        self._solve_rules()
-
-        merge_method = lambda x: "inner" if x == "AND" else "outer"
-
-        # seed the dataframe with the first
-        group0_df = self.subqueries[0]
-        group0_df.rename({"person_id": "person_id_0"}, inplace=True, axis=1)
-
-        # for the next, rename columns to give a unique key, then merge based on the merge_method value
-        for i, df in enumerate(self.subqueries[1:], start=1):
-            df.rename({"person_id": f"person_id_{i}"}, inplace=True, axis=1)
-            group0_df = group0_df.merge(
-                right=df,
-                how=merge_method(self.query.cohort.groups_operator),
-                left_on="person_id_0",
-                right_on=f"person_id_{i}",
-            )
-        self.subqueries.clear()
-        return group0_df.shape[0]  # the number of rows
+        return self._solve_rules()
 
 
 class BaseDistributionQuerySolver:
