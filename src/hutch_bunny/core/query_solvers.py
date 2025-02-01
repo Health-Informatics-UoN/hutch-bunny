@@ -3,12 +3,17 @@ import os
 import logging
 from typing import Tuple
 import pandas as pd
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
 import sqlalchemy
+from mypy.checker import conditional_types
 from sqlalchemy import (
     and_,
     or_,
     select,
     func,
+    text,
 )
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
@@ -114,23 +119,84 @@ class AvailibilityQuerySolver:
                 for rule_index, rule in enumerate(group.rules, start=0):
                     ruleConstraints = list()
                     concept_domain: str = concepts.get(rule.value)
+                    logger.info(rule.time)
+                    logger.info(rule.raw_range.split("|"))
+
+                    left_value_time = None
+                    right_value_time = None
+
+                    if (rule.time!="" and rule.time is not None):
+                        logger.info("in here")
+                        logger.info(rule.time)
+
+                        time_value, time_category, time_unit = rule.time.split(":")
+                        left_value_time, right_value_time = time_value.split("|")
+
+                        logger.info("and therefore")
+                        logger.info(left_value_time)
+                        logger.info(right_value_time)
+
+                    if (rule.raw_range!=""):
+                        rule.min_value, rule.max_value = rule.raw_range.split("|")
 
                     if ("Person" != rule.varcat):
                         #multiple conditions created to cover the concept might be in different tables
 
                         if (rule.operator=="="):
-                            ruleConstraints.append(Person.person_id.in_(select(ConditionOccurrence.person_id).where(ConditionOccurrence.condition_concept_id == int(rule.value))))
-                            ruleConstraints.append(Person.person_id.in_(select(DrugExposure.person_id).where(DrugExposure.drug_concept_id == int(rule.value))))
-                            ruleConstraints.append(Person.person_id.in_(select(Measurement.person_id).where(Measurement.measurement_concept_id == int(rule.value))))
-                            ruleConstraints.append(Person.person_id.in_(select(Observation.person_id).where(Observation.observation_concept_id == int(rule.value))))
+                            condition = select(ConditionOccurrence.person_id).where(ConditionOccurrence.condition_concept_id == int(rule.value))
+                            drug = select(DrugExposure.person_id).where(DrugExposure.drug_concept_id == int(rule.value))
+                            meas = select(Measurement.person_id).where(Measurement.measurement_concept_id == int(rule.value))
+                            obs = select(Observation.person_id).where(Observation.observation_concept_id == int(rule.value))
                         else:
-                            ruleConstraints.append(Person.person_id.in_(select(ConditionOccurrence.person_id).where(ConditionOccurrence.condition_concept_id != int(rule.value))))
-                            ruleConstraints.append(Person.person_id.in_(select(DrugExposure.person_id).where(DrugExposure.drug_concept_id != int(rule.value))))
-                            ruleConstraints.append(Person.person_id.in_(select(Measurement.person_id).where(Measurement.measurement_concept_id != int(rule.value))))
-                            ruleConstraints.append(Person.person_id.in_(select(Observation.person_id).where(Observation.observation_concept_id != int(rule.value))))
+                            condition = select(ConditionOccurrence.person_id).where(ConditionOccurrence.condition_concept_id != int(rule.value))
+                            drug = select(DrugExposure.person_id).where(DrugExposure.drug_concept_id != int(rule.value))
+                            meas = select(Measurement.person_id).where(Measurement.measurement_concept_id != int(rule.value))
+                            obs = select(Observation.person_id).where(Observation.observation_concept_id != int(rule.value))
 
                         # adds as a group of rules. Needed if the rules should be joined as AND but
                         # these should always be a group of rules joined by OR
+
+
+                        logger.info(rule.min_value)
+
+                        if rule.min_value is not None and rule.max_value is not None:
+                            meas = meas.where(Measurement.value_as_number.between(float(rule.min_value), float(rule.max_value)))
+                            obs = obs.where(Observation.value_as_number.between(float(rule.min_value), float(rule.max_value)))
+
+                        logger.info(left_value_time)
+                        if left_value_time is not None and (left_value_time!="" or right_value_time!="") and time_category=="TIME":
+
+                            time_value_to_use = None
+
+                            if (left_value_time == ""):
+                                time_value_to_use = right_value_time
+                            else:
+                                time_value_to_use = left_value_time
+
+
+                            myDate = datetime.now()
+                            timetouse = int(time_value_to_use)
+                            timetouse = timetouse*-1
+
+                            newDate = myDate + relativedelta(months=timetouse)
+
+                            #adding an age at to the query
+                            if (left_value_time == ""):
+                                meas = meas.where(Measurement.measurement_date >= newDate)
+                                obs = obs.where(Observation.observation_date >= newDate)
+                                condition = condition.where(ConditionOccurrence.condition_start_date >= newDate)
+                                drug = drug.where(DrugExposure.drug_exposure_start_date>= newDate)
+                            else:
+                                meas = meas.where(Measurement.measurement_date <= newDate)
+                                obs = obs.where(Observation.observation_date <= newDate)
+                                condition = condition.where(ConditionOccurrence.condition_start_date <= newDate)
+                                drug = drug.where(DrugExposure.drug_exposure_start_date <= newDate)
+
+                        ruleConstraints.append(Person.person_id.in_(meas))
+                        ruleConstraints.append(Person.person_id.in_(obs))
+                        ruleConstraints.append(Person.person_id.in_(condition))
+                        ruleConstraints.append(Person.person_id.in_(drug))
+
                         list_for_rules.append(ruleConstraints)
 
                     else:
@@ -158,8 +224,6 @@ class AvailibilityQuerySolver:
                     # into multiple tables for the concept if
                     for rule_index, rule in enumerate(list_for_rules, start=0):
                         root_statement = root_statement.where(or_(*rule))
-
-
                 else:
                     listAllParameters = list();
 
@@ -176,8 +240,6 @@ class AvailibilityQuerySolver:
                 group_statement.append(Person.person_id.in_(root_statement))
 
             # end of groups
-
-
             if (self.query.cohort.groups_operator=="OR"):
                 new_statement = select(Person.person_id).where(or_(*group_statement))
             else:

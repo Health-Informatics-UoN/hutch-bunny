@@ -10,9 +10,11 @@ class Rule:
         time: Union[str, None] = None,
         varname: str = "",
         operator: str = "",
+        raw_range: str = "",
         varcat: str = None,
         **kwargs,
     ) -> None:
+        self.raw_range = raw_range
         self.value = value
         self.type_ = type_
         self.time = time
@@ -23,6 +25,7 @@ class Rule:
         if self.type_ == "NUM":
             self.min_value, self.max_value = self._parse_numeric(self.value)
             _, v = self.varname.split("=")
+            self.raw_range = self.value
             self.value = v
         else:
             self.min_value, self.max_value = None, None
