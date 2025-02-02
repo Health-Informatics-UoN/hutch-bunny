@@ -43,3 +43,7 @@ def main() -> None:
     )
     save_to_output(result, args.output)
     logger.info(f"Saved results to {args.output}")
+
+
+if __name__ == "__main__":
+    main()
