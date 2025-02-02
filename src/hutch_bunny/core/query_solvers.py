@@ -123,12 +123,11 @@ class AvailibilityQuerySolver:
                 #captures all the person constraints for the group
                 person_constraints = list()
 
-                # for each rule in a gorup
+                # for each rule in a group
                 for rule_index, rule in enumerate(group.rules, start=0):
 
-                    # a list for all the conditions for the rule, this is to change so we look
-                    # in every table, so each rule generates searches in four tables, this field
-                    # captures that
+                    # a list for all the conditions for the rule, each rule generates searches
+                    # in four tables, this field captures that
                     ruleConstraints = list()
 
                     # variables used to capture the relevat detail.
@@ -149,19 +148,26 @@ class AvailibilityQuerySolver:
                         rule.min_value, rule.max_value = rule.raw_range.split("|")
 
                     # if the rule was not linked to a person variable
-                    if rule.varcat != "Person":
+                    if rule.varcat != "Person": #i.e condition, observation, measurement or drug
 
+                        # initial setting for the four tables
                         condition = select(ConditionOccurrence.person_id)
                         drug = select(DrugExposure.person_id)
                         meas = select(Measurement.person_id)
                         obs = select(Observation.person_id)
 
+                        """"
+                        RELATIVE AGE SEARCH
+                        """
+                        # if there is an "Age" query added, this will require a join to the person table
                         if left_value_time is not None and (left_value_time != "" or right_value_time != "") and time_category == "AGE":
                             condition = condition.join(Person, Person.person_id == ConditionOccurrence.person_id)
                             drug = drug.join(Person, Person.person_id == DrugExposure.person_id)
                             meas = meas.join(Person, Person.person_id == Measurement.person_id)
                             obs = obs.join(Person, Person.person_id == Observation.person_id)
 
+                            # due to the way the query is expressed and how split above, if the left value is empty
+                            # it indicates a less than search
                             if left_value_time == "":
                                 condition = condition.where(extract('year', ConditionOccurrence.condition_start_date) - extract('year',Person.birth_datetime) < int(right_value_time))
                                 drug = drug.where(extract('year', DrugExposure.drug_exposure_start_date) - extract('year',Person.birth_datetime) < int(right_value_time))
@@ -173,8 +179,9 @@ class AvailibilityQuerySolver:
                                 meas = meas.where(extract('year', Measurement.measurement_date) - extract('year',Person.birth_datetime) > int(left_value_time))
                                 obs = obs.where(extract('year', Observation.observation_date) - extract('year',Person.birth_datetime) > int(left_value_time))
 
-
-                        # feels really nasty that this is replicated solely for the operator
+                        """"
+                        STANDARD CONCEPT ID SEARCH
+                        """
                         if rule.operator == "=":
                             condition = condition.where(ConditionOccurrence.condition_concept_id == int(rule.value))
                             drug = drug.where(DrugExposure.drug_concept_id == int(rule.value))
@@ -186,33 +193,31 @@ class AvailibilityQuerySolver:
                             meas = meas.where(Measurement.measurement_concept_id != int(rule.value))
                             obs = obs.where(Observation.observation_concept_id != int(rule.value))
 
+                        """"
+                        SECONDARY MODIFIER
+                        """
                         # secondary modifier hits another field and only on the conditiion_occurrence
                         # on the RQuest GUI this is a list that can be created. Assuming this is also an
                         # AND condition for at least one of the selected values to be present
-
-                        logger.info(rule.secondary_modifier)
-
                         secondary_modifier_list = list()
-                        logger.info("1")
 
                         for type_index, typeAdd in enumerate(rule.secondary_modifier, start=0):
                             if (typeAdd!=""):
                                 secondary_modifier_list.append(ConditionOccurrence.condition_type_concept_id == int(typeAdd))
-
-
-                        # the list is then added as one operation, as it appears the only way to do this with
-                        # an OR logic being applied
                         if (len(secondary_modifier_list)>0):
                             condition = condition.where(or_(*secondary_modifier_list))
 
+                        """"
+                        VALUES AS NUMBER
+                        """
                         if rule.min_value is not None and rule.max_value is not None:
                             meas = meas.where(
                                 Measurement.value_as_number.between(float(rule.min_value), float(rule.max_value)))
                             obs = obs.where(
                                 Observation.value_as_number.between(float(rule.min_value), float(rule.max_value)))
-
-                        logger.info(left_value_time)
-
+                        """"
+                        RELATIVE TIME SEARCH SECTION
+                        """
                         # this section deals with a relative time constraint, such as "time" : "|1:TIME:M"
                         if left_value_time is not None and (
                             left_value_time != "" or right_value_time != "") and time_category == "TIME":
@@ -251,8 +256,10 @@ class AvailibilityQuerySolver:
                                 condition = condition.where(ConditionOccurrence.condition_start_date <= newDate)
                                 drug = drug.where(DrugExposure.drug_exposure_start_date <= newDate)
 
-                        # adds as a group of rules. Needed if the rules should be joined as AND but
-                        # these should always be a group of rules joined by OR
+                        """"
+                        PREPARING THE LISTS FOR LATER USE
+                        """
+                        # improve
                         ruleConstraints.append(Person.person_id.in_(meas))
                         ruleConstraints.append(Person.person_id.in_(obs))
                         ruleConstraints.append(Person.person_id.in_(condition))
@@ -262,29 +269,37 @@ class AvailibilityQuerySolver:
                         list_for_rules.append(ruleConstraints)
 
                     else:
-                        concept_domain: str = concepts.get(rule.value)
+                        """
+                        PERSON TABLE RELATED RULES
+                        """
+                        if rule.varname=="AGE":
+                           logger.info("An unsupported rule for AGE was detected an ignored")
+                           #nothing is done yet, but stops this causing problems
+                        else:
+                            concept_domain: str = concepts.get(rule.value)
 
-                        if concept_domain == "Gender":
-                            if rule.operator == "=":
-                                person_constraints.append(Person.gender_concept_id == int(rule.value))
-                            else:
-                                person_constraints.append(Person.gender_concept_id != int(rule.value))
+                            if concept_domain == "Gender":
+                                if rule.operator == "=":
+                                    person_constraints.append(Person.gender_concept_id == int(rule.value))
+                                else:
+                                    person_constraints.append(Person.gender_concept_id != int(rule.value))
 
-                        elif concept_domain == "Race":
-                            if rule.operator == "=":
-                                person_constraints.append(Person.race_concept_id == int(rule.value))
-                            else:
-                                person_constraints.append(Person.race_concept_id != int(rule.value))
+                            elif concept_domain == "Race":
+                                if rule.operator == "=":
+                                    person_constraints.append(Person.race_concept_id == int(rule.value))
+                                else:
+                                    person_constraints.append(Person.race_concept_id != int(rule.value))
 
-                        elif concept_domain == "Ethnicity":
-                            if rule.operator == "=":
-                                person_constraints.append(Person.ethnicity_concept_id == int(rule.value))
-                            else:
-                                person_constraints.append(Person.ethnicity_concept_id != int(rule.value))
+                            elif concept_domain == "Ethnicity":
+                                if rule.operator == "=":
+                                    person_constraints.append(Person.ethnicity_concept_id == int(rule.value))
+                                else:
+                                    person_constraints.append(Person.ethnicity_concept_id != int(rule.value))
 
 
-                ## NOTE: all rules done for a group. These are all the individual constraints
-                ## created with no logic applied between them.
+                """
+                NOTE: all rules done for a group. Now to apply logic between the rules
+                """
 
                 ## if the logic between the rules for each group is AND
                 if group.rules_operator == "AND":
@@ -293,15 +308,14 @@ class AvailibilityQuerySolver:
                     root_statement = select(Person.person_id).where(*person_constraints)
 
                     # although this is an AND, we include the top level as AND, but the
-                    # sub-query is OR. This ensures between each one it is AND but within
-                    # the query that looks at the four main tables, the OR logic is maintained.
+                    # sub-query is OR to account for seraching in the four tables
 
                     for rule_index, rule in enumerate(list_for_rules, start=0):
                         root_statement = root_statement.where(or_(*rule))
                 else:
                     # this might seem odd, but to add the rules as OR, we have to add them
                     # all at once, therefore listAllParameters is to create one list with
-                    # everything added.
+                    # everything added. So we can then add as one operation as OR
                     listAllParameters = list()
 
                     #firstly add the person constrains
@@ -315,13 +329,15 @@ class AvailibilityQuerySolver:
                         for srule_index, srule in enumerate(rule, start=0):
                             listAllParameters.append(srule)
 
-                    # if it is an OR then all rules should be added as an OR within the group
+                    # al added as an OR
                     root_statement = select(Person.person_id).where(or_(*listAllParameters))
 
                 #store the query for the given group in the list for assembly later across all groups
                 group_statement.append(Person.person_id.in_(root_statement))
 
-            # end of all groups
+            """
+            ALL GROUPS COMPLETED, NOW APPLY LOGIC BETWEEN GROUPS
+            """
 
             # construct the query based on the OR or AND logic specified between groups
             if self.query.cohort.groups_operator == "OR":
