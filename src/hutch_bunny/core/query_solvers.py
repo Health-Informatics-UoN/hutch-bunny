@@ -13,6 +13,7 @@ from sqlalchemy import (
     select,
     func,
     extract,
+    where,
 )
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
@@ -156,10 +157,10 @@ class AvailibilityQuerySolver:
                         # reliable longer term.
 
                         # initial setting for the four tables
-                        condition = select(ConditionOccurrence.person_id)
-                        drug = select(DrugExposure.person_id)
-                        meas = select(Measurement.person_id)
-                        obs = select(Observation.person_id)
+                        condition: select = select(ConditionOccurrence.person_id)
+                        drug: select = select(DrugExposure.person_id)
+                        meas: select = select(Measurement.person_id)
+                        obs: select = select(Observation.person_id)
 
                         """"
                         RELATIVE AGE SEARCH
@@ -245,27 +246,27 @@ class AvailibilityQuerySolver:
                             today_date = datetime.now()
 
                             # converting supplied time (stored as string) to int, and negating.
-                            time_to_use = int(time_value_supplied)
+                            time_to_use: int = int(time_value_supplied)
                             time_to_use = time_to_use * -1
 
                             # the relative date to search on, is the current date minus
                             # the number of months supplied
-                            newDate = today_date + relativedelta(months=time_to_use)
+                            relative_date = today_date + relativedelta(months=time_to_use)
 
                             # if the left value is blank, it means the original was |1 meaning
                             # "i want to find this event that occurred less than a month ago"
                             # therefore the logic is to search for a date that is after the date
                             # that was a month ago.
                             if left_value_time == "":
-                                meas = meas.where(Measurement.measurement_date >= newDate)
-                                obs = obs.where(Observation.observation_date >= newDate)
-                                condition = condition.where(ConditionOccurrence.condition_start_date >= newDate)
-                                drug = drug.where(DrugExposure.drug_exposure_start_date >= newDate)
+                                meas = meas.where(Measurement.measurement_date >= relative_date)
+                                obs = obs.where(Observation.observation_date >= relative_date)
+                                condition = condition.where(ConditionOccurrence.condition_start_date >= relative_date)
+                                drug = drug.where(DrugExposure.drug_exposure_start_date >= relative_date)
                             else:
-                                meas = meas.where(Measurement.measurement_date <= newDate)
-                                obs = obs.where(Observation.observation_date <= newDate)
-                                condition = condition.where(ConditionOccurrence.condition_start_date <= newDate)
-                                drug = drug.where(DrugExposure.drug_exposure_start_date <= newDate)
+                                meas = meas.where(Measurement.measurement_date <= relative_date)
+                                obs = obs.where(Observation.observation_date <= relative_date)
+                                condition = condition.where(ConditionOccurrence.condition_start_date <= relative_date)
+                                drug = drug.where(DrugExposure.drug_exposure_start_date <= relative_date)
 
                         """"
                         PREPARING THE LISTS FOR LATER USE
