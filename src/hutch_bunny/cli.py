@@ -46,3 +46,7 @@ def main() -> None:
     logger.debug(f"Results: {result.to_dict()}")
     save_to_output(result, args.output)
     logger.info(f"Saved results to {args.output}")
+
+
+if __name__ == "__main__":
+    main()
