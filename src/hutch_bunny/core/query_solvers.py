@@ -6,14 +6,11 @@ import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
-import sqlalchemy
-from mypy.checker import conditional_types
 from sqlalchemy import (
     or_,
     select,
     func,
     extract,
-    where,
 )
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
@@ -28,7 +25,8 @@ from hutch_bunny.core.entities import (
 from sqlalchemy.dialects import postgresql
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
 from hutch_bunny.core.rquest_dto.file import File
-from hutch_bunny.core.rquest_dto.rule import Rule
+
+
 from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.enums import DistributionQueryType
 import hutch_bunny.core.settings as settings
@@ -36,7 +34,7 @@ from hutch_bunny.core.constants import DISTRIBUTION_TYPE_FILE_NAMES_MAP
 
 
 # Class for availability queries
-class AvailibilityQuerySolver:
+class AvailabilityQuerySolver:
     subqueries = list()
     omop_domain_to_omop_table_map = {
         "Condition": ConditionOccurrence,
@@ -53,7 +51,7 @@ class AvailibilityQuerySolver:
         self.db_manager = db_manager
         self.query = query
 
-    """ Function that takes all the concept IDs in the cohort defintion, looks them up in the OMOP database 
+    """ Function that takes all the concept IDs in the cohort definition, looks them up in the OMOP database 
     to extract the concept_id and domain and place this within a dictionary for lookup during other query building 
 
     Although the query payload will tell you where the OMOP concept is from (based on the RQUEST OMOP version, this is
@@ -125,13 +123,13 @@ class AvailibilityQuerySolver:
                 person_constraints = list()
 
                 # for each rule in a group
-                for rule_index, all_constraints_for_rule in enumerate(current_group.rules, start=0):
+                for rule_index, current_rule in enumerate(current_group.rules, start=0):
 
                     # a list for all the conditions for the rule, each rule generates searches
                     # in four tables, this field captures that
-                    ruleConstraints = list()
+                    rule_constraints = list()
 
-                    # variables used to capture the relevent detail.
+                    # variables used to capture the relevant detail.
                     # "time" : "|1:TIME:M" in the payload means that
                     # if the | is on the left of the value it was less than 1 month
                     # if it was "1|:TIME:M" it would mean greater than one month
@@ -139,17 +137,17 @@ class AvailibilityQuerySolver:
                     right_value_time = None
 
                     # if a time is supplied split the string out to component parts
-                    if all_constraints_for_rule.time != "" and all_constraints_for_rule.time is not None:
-                        time_value, time_category, time_unit = all_constraints_for_rule.time.split(":")
+                    if current_rule.time != "" and current_rule.time is not None:
+                        time_value, time_category, time_unit = current_rule.time.split(":")
                         left_value_time, right_value_time = time_value.split("|")
 
                     # if a number was supplied, it is in the format "value" : "0.0|200.0"
                     # therefore split to capture min as 0 and max as 200
-                    if all_constraints_for_rule.raw_range != "":
-                        all_constraints_for_rule.min_value, all_constraints_for_rule.max_value = all_constraints_for_rule.raw_range.split("|")
+                    if current_rule.raw_range != "":
+                        current_rule.min_value, current_rule.max_value = current_rule.raw_range.split("|")
 
                     # if the rule was not linked to a person variable
-                    if all_constraints_for_rule.varcat != "Person": #i.e condition, observation, measurement or drug
+                    if current_rule.varcat != "Person": #i.e condition, observation, measurement or drug
 
                         # NOTE: Although the table is specified in the query, to cover for changes in vocabulary
                         # and for differencs in RQuest OMOP and local OMOP, we now search all four main tables
@@ -190,21 +188,21 @@ class AvailibilityQuerySolver:
                         """"
                         STANDARD CONCEPT ID SEARCH
                         """
-                        if all_constraints_for_rule.operator == "=":
-                            condition = condition.where(ConditionOccurrence.condition_concept_id == int(all_constraints_for_rule.value))
-                            drug = drug.where(DrugExposure.drug_concept_id == int(all_constraints_for_rule.value))
-                            meas = meas.where(Measurement.measurement_concept_id == int(all_constraints_for_rule.value))
-                            obs = obs.where(Observation.observation_concept_id == int(all_constraints_for_rule.value))
+                        if current_rule.operator == "=":
+                            condition = condition.where(ConditionOccurrence.condition_concept_id == int(current_rule.value))
+                            drug = drug.where(DrugExposure.drug_concept_id == int(current_rule.value))
+                            meas = meas.where(Measurement.measurement_concept_id == int(current_rule.value))
+                            obs = obs.where(Observation.observation_concept_id == int(current_rule.value))
                         else:
-                            condition = condition.where(ConditionOccurrence.condition_concept_id != int(all_constraints_for_rule.value))
-                            drug = drug.where(DrugExposure.drug_concept_id != int(all_constraints_for_rule.value))
-                            meas = meas.where(Measurement.measurement_concept_id != int(all_constraints_for_rule.value))
-                            obs = obs.where(Observation.observation_concept_id != int(all_constraints_for_rule.value))
+                            condition = condition.where(ConditionOccurrence.condition_concept_id != int(current_rule.value))
+                            drug = drug.where(DrugExposure.drug_concept_id != int(current_rule.value))
+                            meas = meas.where(Measurement.measurement_concept_id != int(current_rule.value))
+                            obs = obs.where(Observation.observation_concept_id != int(current_rule.value))
 
                         """"
                         SECONDARY MODIFIER
                         """
-                        # secondary modifier hits another field and only on the conditiion_occurrence
+                        # secondary modifier hits another field and only on the condition_occurrence
                         # on the RQuest GUI this is a list that can be created. Assuming this is also an
                         # AND condition for at least one of the selected values to be present
                         secondary_modifier_list = list()
@@ -212,21 +210,21 @@ class AvailibilityQuerySolver:
                         # Not sure where, but even when a secondary modifier is not supplied, an array
                         # with a single entry is provided.
                         # todo: need to confirm if this is in the JSON from the API or our implementation
-                        for type_index, typeAdd in enumerate(all_constraints_for_rule.secondary_modifier, start=0):
-                            if (typeAdd!=""):
+                        for type_index, typeAdd in enumerate(current_rule.secondary_modifier, start=0):
+                            if typeAdd!="":
                                 secondary_modifier_list.append(ConditionOccurrence.condition_type_concept_id == int(typeAdd))
 
-                        if (len(secondary_modifier_list)>0):
+                        if len(secondary_modifier_list)>0:
                             condition = condition.where(or_(*secondary_modifier_list))
 
                         """"
                         VALUES AS NUMBER
                         """
-                        if all_constraints_for_rule.min_value is not None and all_constraints_for_rule.max_value is not None:
+                        if current_rule.min_value is not None and current_rule.max_value is not None:
                             meas = meas.where(
-                                Measurement.value_as_number.between(float(all_constraints_for_rule.min_value), float(all_constraints_for_rule.max_value)))
+                                Measurement.value_as_number.between(float(current_rule.min_value), float(current_rule.max_value)))
                             obs = obs.where(
-                                Observation.value_as_number.between(float(all_constraints_for_rule.min_value), float(all_constraints_for_rule.max_value)))
+                                Observation.value_as_number.between(float(current_rule.min_value), float(current_rule.max_value)))
                         """"
                         RELATIVE TIME SEARCH SECTION
                         """
@@ -254,7 +252,7 @@ class AvailibilityQuerySolver:
                             relative_date = today_date + relativedelta(months=time_to_use)
 
                             # if the left value is blank, it means the original was |1 meaning
-                            # "i want to find this event that occurred less than a month ago"
+                            # "I want to find this event that occurred less than a month ago"
                             # therefore the logic is to search for a date that is after the date
                             # that was a month ago.
                             if left_value_time == "":
@@ -272,14 +270,14 @@ class AvailibilityQuerySolver:
                         PREPARING THE LISTS FOR LATER USE
                         """
                         # improve
-                        ruleConstraints.append(Person.person_id.in_(meas))
-                        ruleConstraints.append(Person.person_id.in_(obs))
-                        ruleConstraints.append(Person.person_id.in_(condition))
-                        ruleConstraints.append(Person.person_id.in_(drug))
+                        rule_constraints.append(Person.person_id.in_(meas))
+                        rule_constraints.append(Person.person_id.in_(obs))
+                        rule_constraints.append(Person.person_id.in_(condition))
+                        rule_constraints.append(Person.person_id.in_(drug))
 
                         # all the constraints for this rule are added as a single list
                         # to the list which captures all rules for the group
-                        list_for_rules.append(ruleConstraints)
+                        list_for_rules.append(rule_constraints)
 
                     else:
                         """
@@ -287,29 +285,29 @@ class AvailibilityQuerySolver:
                         """
 
                         # this is unsupported currently
-                        if all_constraints_for_rule.varname=="AGE":
+                        if current_rule.varname=="AGE":
                            logger.info("An unsupported rule for AGE was detected and ignored")
                            #nothing is done yet, but stops this causing problems
                         else:
-                            concept_domain: str = concepts.get(all_constraints_for_rule.value)
+                            concept_domain: str = concepts.get(current_rule.value)
 
                             if concept_domain == "Gender":
-                                if all_constraints_for_rule.operator == "=":
-                                    person_constraints.append(Person.gender_concept_id == int(all_constraints_for_rule.value))
+                                if current_rule.operator == "=":
+                                    person_constraints.append(Person.gender_concept_id == int(current_rule.value))
                                 else:
-                                    person_constraints.append(Person.gender_concept_id != int(all_constraints_for_rule.value))
+                                    person_constraints.append(Person.gender_concept_id != int(current_rule.value))
 
                             elif concept_domain == "Race":
-                                if all_constraints_for_rule.operator == "=":
-                                    person_constraints.append(Person.race_concept_id == int(all_constraints_for_rule.value))
+                                if current_rule.operator == "=":
+                                    person_constraints.append(Person.race_concept_id == int(current_rule.value))
                                 else:
-                                    person_constraints.append(Person.race_concept_id != int(all_constraints_for_rule.value))
+                                    person_constraints.append(Person.race_concept_id != int(current_rule.value))
 
                             elif concept_domain == "Ethnicity":
-                                if all_constraints_for_rule.operator == "=":
-                                    person_constraints.append(Person.ethnicity_concept_id == int(all_constraints_for_rule.value))
+                                if current_rule.operator == "=":
+                                    person_constraints.append(Person.ethnicity_concept_id == int(current_rule.value))
                                 else:
-                                    person_constraints.append(Person.ethnicity_concept_id != int(all_constraints_for_rule.value))
+                                    person_constraints.append(Person.ethnicity_concept_id != int(current_rule.value))
 
 
                 """
@@ -324,8 +322,8 @@ class AvailibilityQuerySolver:
                     # although this is an AND, we include the top level as AND, but the
                     # sub-query is OR to account for searching in the four tables
 
-                    for rule_index, all_constraints_for_rule in enumerate(list_for_rules, start=0):
-                        root_statement: select = root_statement.where(or_(*all_constraints_for_rule))
+                    for constraint_index, current_constraint in enumerate(list_for_rules, start=0):
+                        root_statement: select = root_statement.where(or_(*current_constraint))
                 else:
                     # this might seem odd, but to add the rules as OR, we have to add them
                     # all at once, therefore listAllParameters is to create one list with
@@ -339,12 +337,12 @@ class AvailibilityQuerySolver:
                     # to get all the constraints in one list, we have to unpack the top-level grouping
                     # list_for_rules contains all the group of constraints for each rule
                     # therefore, we get each group, then for each group, we get each constraint
-                    for rule_index, all_constraints_for_rule in enumerate(list_for_rules, start=0):
-                        for constraint_index, current_constraint in enumerate(all_constraints_for_rule, start=0):
+                    for rule_index, current_rule in enumerate(list_for_rules, start=0):
+                        for constraint_index, current_constraint in enumerate(current_rule, start=0):
                             all_parameters.append(current_constraint)
 
                     # all added as an OR
-                    root_statement = select(Person.person_id).where(or_(*all_parameters))
+                    root_statement: select = select(Person.person_id).where(or_(*all_parameters))
 
                 #store the query for the given group in the list for assembly later across all groups
                 group_statement.append(Person.person_id.in_(root_statement))
@@ -353,7 +351,7 @@ class AvailibilityQuerySolver:
             ALL GROUPS COMPLETED, NOW APPLY LOGIC BETWEEN GROUPS
             """
 
-            # construct the query based on the OR or AND logic specified between groups
+            # construct the query based on the OR/AND logic specified between groups
             if self.query.cohort.groups_operator == "OR":
                 new_statement = select(func.count()).where(or_(*group_statement))
             else:
@@ -489,7 +487,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         return os.linesep.join(results), len(df)
 
 
-# todo - i *think* the only diference between this one and generic is that the allowed_domain list is different. Could we not just have the one class and functions that have this passed in?
+# todo - i *think* the only diferrence between this one and generic is that the allowed_domain list is different. Could we not just have the one class and functions that have this passed in?
 class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
     allowed_domains_map = {
         "Gender": Person,
@@ -609,7 +607,7 @@ def solve_availability(
         RquestResult: Result object for the query
     """
     logger = logging.getLogger(settings.LOGGER_NAME)
-    solver = AvailibilityQuerySolver(db_manager, query)
+    solver = AvailabilityQuerySolver(db_manager, query)
     try:
         count_ = solver.solve_query()
         result = RquestResult(
@@ -668,7 +666,7 @@ def solve_distribution(
 
         result_file = File(
             data=res_b64,
-            description="Result of code.distribution anaylsis",
+            description="Result of code.distribution analysis",
             name=DISTRIBUTION_TYPE_FILE_NAMES_MAP.get(query.code, ""),
             sensitive=True,
             reference="",
