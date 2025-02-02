@@ -150,7 +150,7 @@ class AvailabilityQuerySolver:
                     if current_rule.varcat != "Person": #i.e condition, observation, measurement or drug
 
                         # NOTE: Although the table is specified in the query, to cover for changes in vocabulary
-                        # and for differencs in RQuest OMOP and local OMOP, we now search all four main tables
+                        # and for differences in RQuest OMOP and local OMOP, we now search all four main tables
                         # for the presence of the concept. This is computationally more expensive, but is more r
                         # reliable longer term.
 
@@ -241,9 +241,9 @@ class AvailabilityQuerySolver:
                             else:
                                 time_value_supplied = left_value_time
 
-                            today_date = datetime.now()
+                            today_date: datetime = datetime.now()
 
-                            # converting supplied time (stored as string) to int, and negating.
+                            # converting supplied time (in months) (stored as string) to int, and negating.
                             time_to_use: int = int(time_value_supplied)
                             time_to_use = time_to_use * -1
 
