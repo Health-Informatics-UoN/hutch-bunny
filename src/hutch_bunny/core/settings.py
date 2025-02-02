@@ -1,6 +1,7 @@
 import logging
 from os import environ
 from dotenv import load_dotenv
+from importlib.metadata import version
 
 load_dotenv()
 
@@ -49,10 +50,16 @@ if POLLING_INTERVAL < 0:
 
 COLLECTION_ID = environ.get("COLLECTION_ID")
 
+try:
+    BUNNY_VERSION = version("hutch_bunny")
+except Exception:
+    BUNNY_VERSION = "unknown"
+
 def log_settings():
     from hutch_bunny.core.logger import logger #This is here to prevent a circular import
  
     logger.debug("Running with settings:")
+    logger.debug(f"  BUNNY VERSION: {BUNNY_VERSION}")
     logger.debug(f"  DATASOURCE_USE_TRINO: {DATASOURCE_USE_TRINO}")
     logger.debug(f"  DEFAULT_POSTGRES_DRIVER: {DEFAULT_POSTGRES_DRIVER}")
     logger.debug(f"  DEFAULT_DB_DRIVER: {DEFAULT_DB_DRIVER}")
