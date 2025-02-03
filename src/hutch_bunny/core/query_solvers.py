@@ -10,7 +10,7 @@ from sqlalchemy import (
     or_,
     select,
     func,
-    extract,
+    extract, BinaryExpression,
 )
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
@@ -117,7 +117,7 @@ class AvailabilityQuerySolver:
             for current_group in self.query.cohort.groups:
 
                 # this is used to store all constraints for all rules in the group, one entry per rule
-                list_for_rules = list()
+                list_for_rules: list[list[BinaryExpression[bool]]] = list()
 
                 #captures all the person constraints for the group
                 person_constraints = list()
@@ -127,7 +127,7 @@ class AvailabilityQuerySolver:
 
                     # a list for all the conditions for the rule, each rule generates searches
                     # in four tables, this field captures that
-                    rule_constraints = list()
+                    rule_constraints: list[BinaryExpression[bool]] = list()
 
                     # variables used to capture the relevant detail.
                     # "time" : "|1:TIME:M" in the payload means that
