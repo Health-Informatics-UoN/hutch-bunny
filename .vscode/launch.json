@@ -8,17 +8,33 @@
       "name": "Bunny Daemon",
       "type": "debugpy",
       "request": "launch",
-      "module": "hutch_bunny.daemon"
+      "module": "hutch_bunny.daemon",
+      "justMyCode": true,
+      "console": "integratedTerminal"
     },
     {
-      "name": "Bunny CLI",
+      "name": "Bunny CLI Availability",
       "type": "debugpy",
       "request": "launch",
       "module": "hutch_bunny.cli",
       "args": [
         "--body",
         "tests/queries/availability.json",
-      ]
+      ],
+      "justMyCode": true,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Bunny CLI Distribution",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "hutch_bunny.cli",
+      "args": [
+        "--body",
+        "tests/queries/distribution.json",
+      ],
+      "justMyCode": true,
+      "console": "integratedTerminal"
     }
   ]
 }
