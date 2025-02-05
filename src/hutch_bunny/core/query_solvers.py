@@ -10,7 +10,7 @@ from sqlalchemy import (
     or_,
     select,
     func,
-    extract, BinaryExpression,
+    extract, BinaryExpression, ColumnElement,
 )
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
@@ -104,14 +104,14 @@ class AvailabilityQuerySolver:
     def _solve_rules(self) -> int:
 
         # get the list of concepts to build the query constraints
-        concepts = self._find_concepts()
+        concepts:dict = self._find_concepts()
 
         logger = logging.getLogger(settings.LOGGER_NAME)
 
         with (self.db_manager.engine.connect() as con):
 
             # this is used to store the query for each group, one entry per group
-            group_statement = list()
+            all_groups_queries: list[BinaryExpression[bool]] = list()
 
             # iterate through all the groups specified in the query
             for current_group in self.query.cohort.groups:
@@ -120,7 +120,7 @@ class AvailabilityQuerySolver:
                 list_for_rules: list[list[BinaryExpression[bool]]] = list()
 
                 #captures all the person constraints for the group
-                person_constraints = list()
+                person_constraints_for_group: list[ColumnElement[bool]] = list()
 
                 # for each rule in a group
                 for rule_index, current_rule in enumerate(current_group.rules, start=0):
@@ -293,37 +293,38 @@ class AvailabilityQuerySolver:
 
                             if concept_domain == "Gender":
                                 if current_rule.operator == "=":
-                                    person_constraints.append(Person.gender_concept_id == int(current_rule.value))
+                                    person_constraints_for_group.append(Person.gender_concept_id == int(current_rule.value))
                                 else:
-                                    person_constraints.append(Person.gender_concept_id != int(current_rule.value))
+                                    person_constraints_for_group.append(Person.gender_concept_id != int(current_rule.value))
 
                             elif concept_domain == "Race":
                                 if current_rule.operator == "=":
-                                    person_constraints.append(Person.race_concept_id == int(current_rule.value))
+                                    person_constraints_for_group.append(Person.race_concept_id == int(current_rule.value))
                                 else:
-                                    person_constraints.append(Person.race_concept_id != int(current_rule.value))
+                                    person_constraints_for_group.append(Person.race_concept_id != int(current_rule.value))
 
                             elif concept_domain == "Ethnicity":
                                 if current_rule.operator == "=":
-                                    person_constraints.append(Person.ethnicity_concept_id == int(current_rule.value))
+                                    person_constraints_for_group.append(Person.ethnicity_concept_id == int(current_rule.value))
                                 else:
-                                    person_constraints.append(Person.ethnicity_concept_id != int(current_rule.value))
+                                    person_constraints_for_group.append(Person.ethnicity_concept_id != int(current_rule.value))
 
 
                 """
-                NOTE: all rules done for a group. Now to apply logic between the rules
+                NOTE: all rules done for a single group. Now to apply logic between the rules
                 """
 
                 ## if the logic between the rules for each group is AND
                 if current_group.rules_operator == "AND":
                     # all person rules are added first
-                    root_statement: select = select(Person.person_id).where(*person_constraints)
+                    group_query: select = select(Person.person_id).where(*person_constraints_for_group)
 
                     # although this is an AND, we include the top level as AND, but the
                     # sub-query is OR to account for searching in the four tables
 
                     for constraint_index, current_constraint in enumerate(list_for_rules, start=0):
-                        root_statement: select = root_statement.where(or_(*current_constraint))
+                        #group_query: select = group_query.where(or_(*current_constraint))
+                        group_query: select = group_query.where(or_(*current_constraint))
                 else:
                     # this might seem odd, but to add the rules as OR, we have to add them
                     # all at once, therefore listAllParameters is to create one list with
@@ -331,7 +332,7 @@ class AvailabilityQuerySolver:
                     all_parameters = list()
 
                     #firstly add the person constrains
-                    for rule_index, all_constraints_for_person in enumerate(person_constraints, start=0):
+                    for rule_index, all_constraints_for_person in enumerate(person_constraints_for_group, start=0):
                         all_parameters.append(all_constraints_for_person)
 
                     # to get all the constraints in one list, we have to unpack the top-level grouping
@@ -342,10 +343,10 @@ class AvailabilityQuerySolver:
                             all_parameters.append(current_constraint)
 
                     # all added as an OR
-                    root_statement: select = select(Person.person_id).where(or_(*all_parameters))
+                    group_query: select = select(Person.person_id).where(or_(*all_parameters))
 
                 #store the query for the given group in the list for assembly later across all groups
-                group_statement.append(Person.person_id.in_(root_statement))
+                all_groups_queries.append(Person.person_id.in_(group_query))
 
             """
             ALL GROUPS COMPLETED, NOW APPLY LOGIC BETWEEN GROUPS
@@ -353,16 +354,16 @@ class AvailabilityQuerySolver:
 
             # construct the query based on the OR/AND logic specified between groups
             if self.query.cohort.groups_operator == "OR":
-                new_statement = select(func.count()).where(or_(*group_statement))
+                full_query_all_groups = select(func.count()).where(or_(*all_groups_queries))
             else:
-                new_statement = select(func.count()).where(*group_statement)
+                full_query_all_groups = select(func.count()).where(*all_groups_queries)
 
             # here for debug, prints the SQL statement created
-            print(str(new_statement.compile(
+            print(str(full_query_all_groups.compile(
                 dialect=postgresql.dialect(),
                 compile_kwargs={"literal_binds": True})))
 
-            output = con.execute(new_statement).fetchone()
+            output = con.execute(full_query_all_groups).fetchone()
 
         return int(output[0])
 
