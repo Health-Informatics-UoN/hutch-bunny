@@ -31,6 +31,7 @@ from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.enums import DistributionQueryType
 import hutch_bunny.core.settings as settings
 from hutch_bunny.core.constants import DISTRIBUTION_TYPE_FILE_NAMES_MAP
+from hutch_bunny.core.rquest_dto.rule import Rule
 
 
 # Class for availability queries
@@ -166,7 +167,8 @@ class AvailabilityQuerySolver:
                         # if there is an "Age" query added, this will require a join to the person table, to compare
                         # DOB with the data of event
 
-                        if left_value_time is not None and (left_value_time != "" or right_value_time != "") and time_category == "AGE":
+
+                        if ( (left_value_time is not None or right_value_time is not None) and time_category == "AGE"):
                             condition = condition.join(Person, Person.person_id == ConditionOccurrence.person_id)
                             drug = drug.join(Person, Person.person_id == DrugExposure.person_id)
                             meas = meas.join(Person, Person.person_id == Measurement.person_id)
@@ -175,10 +177,10 @@ class AvailabilityQuerySolver:
                             # due to the way the query is expressed and how split above, if the left value is empty
                             # it indicates a less than search
                             if left_value_time == "":
-                                condition = condition.where(extract('year', ConditionOccurrence.condition_start_date) - extract('year',Person.birth_datetime) < int(right_value_time))
-                                drug = drug.where(extract('year', DrugExposure.drug_exposure_start_date) - extract('year',Person.birth_datetime) < int(right_value_time))
+                                condition = condition.where(extract('year', ConditionOccurrence.condition_start_date) - extract('year', Person.birth_datetime) < int(right_value_time))
+                                drug = drug.where(extract('year', DrugExposure.drug_exposure_start_date) - extract('year', Person.birth_datetime) < int(right_value_time))
                                 meas = meas.where(extract('year', Measurement.measurement_date) - extract('year',Person.birth_datetime) < int(right_value_time))
-                                obs = obs.where(extract('year', Observation.observation_date) - extract('year',Person.birth_datetime) < int(right_value_time))
+                                obs = obs.where(extract('year', Observation.observation_date) - extract('year', Person.birth_datetime) < int(right_value_time))
                             else:
                                 condition = condition.where(extract('year', ConditionOccurrence.condition_start_date) - extract('year',Person.birth_datetime) > int(left_value_time))
                                 drug = drug.where(extract('year', DrugExposure.drug_exposure_start_date) - extract('year',Person.birth_datetime) > int(left_value_time))
@@ -205,17 +207,7 @@ class AvailabilityQuerySolver:
                         # secondary modifier hits another field and only on the condition_occurrence
                         # on the RQuest GUI this is a list that can be created. Assuming this is also an
                         # AND condition for at least one of the selected values to be present
-                        secondary_modifier_list = list()
-
-                        # Not sure where, but even when a secondary modifier is not supplied, an array
-                        # with a single entry is provided.
-                        # todo: need to confirm if this is in the JSON from the API or our implementation
-                        for type_index, typeAdd in enumerate(current_rule.secondary_modifier, start=0):
-                            if typeAdd!="":
-                                secondary_modifier_list.append(ConditionOccurrence.condition_type_concept_id == int(typeAdd))
-
-                        if len(secondary_modifier_list)>0:
-                            condition = condition.where(or_(*secondary_modifier_list))
+                        condition = self.add_secondary_modifiers(current_rule, condition)
 
                         """"
                         VALUES AS NUMBER
@@ -232,24 +224,7 @@ class AvailabilityQuerySolver:
                         if left_value_time is not None and (
                             left_value_time != "" or right_value_time != "") and time_category == "TIME":
 
-                            time_value_supplied:str
-
-                            # have to toggle between left and right, given |1 means less than 1 and
-                            # 1| means greater than 1
-                            if left_value_time == "":
-                                time_value_supplied = right_value_time
-                            else:
-                                time_value_supplied = left_value_time
-
-                            today_date: datetime = datetime.now()
-
-                            # converting supplied time (in months) (stored as string) to int, and negating.
-                            time_to_use: int = int(time_value_supplied)
-                            time_to_use = time_to_use * -1
-
-                            # the relative date to search on, is the current date minus
-                            # the number of months supplied
-                            relative_date = today_date + relativedelta(months=time_to_use)
+                            relative_date = self.calc_relative_date(left_value_time, right_value_time)
 
                             # if the left value is blank, it means the original was |1 meaning
                             # "I want to find this event that occurred less than a month ago"
@@ -269,7 +244,7 @@ class AvailabilityQuerySolver:
                         """"
                         PREPARING THE LISTS FOR LATER USE
                         """
-                        # improve
+
                         rule_constraints.append(Person.person_id.in_(meas))
                         rule_constraints.append(Person.person_id.in_(obs))
                         rule_constraints.append(Person.person_id.in_(condition))
@@ -289,26 +264,7 @@ class AvailabilityQuerySolver:
                            logger.info("An unsupported rule for AGE was detected and ignored")
                            #nothing is done yet, but stops this causing problems
                         else:
-                            concept_domain: str = concepts.get(current_rule.value)
-
-                            if concept_domain == "Gender":
-                                if current_rule.operator == "=":
-                                    person_constraints_for_group.append(Person.gender_concept_id == int(current_rule.value))
-                                else:
-                                    person_constraints_for_group.append(Person.gender_concept_id != int(current_rule.value))
-
-                            elif concept_domain == "Race":
-                                if current_rule.operator == "=":
-                                    person_constraints_for_group.append(Person.race_concept_id == int(current_rule.value))
-                                else:
-                                    person_constraints_for_group.append(Person.race_concept_id != int(current_rule.value))
-
-                            elif concept_domain == "Ethnicity":
-                                if current_rule.operator == "=":
-                                    person_constraints_for_group.append(Person.ethnicity_concept_id == int(current_rule.value))
-                                else:
-                                    person_constraints_for_group.append(Person.ethnicity_concept_id != int(current_rule.value))
-
+                            person_constraints_for_group = self.add_person_constraints(person_constraints_for_group, current_rule, concepts)
 
                 """
                 NOTE: all rules done for a single group. Now to apply logic between the rules
@@ -366,6 +322,68 @@ class AvailabilityQuerySolver:
             output = con.execute(full_query_all_groups).fetchone()
 
         return int(output[0])
+
+    def calc_relative_date(self, left_value_time: str, right_value_time: str) -> datetime:
+
+        time_value_supplied: str
+
+        # have to toggle between left and right, given |1 means less than 1 and
+        # 1| means greater than 1
+        if left_value_time == "":
+            time_value_supplied = right_value_time
+        else:
+            time_value_supplied = left_value_time
+        # converting supplied time (in months) (stored as string) to int, and negating.
+        time_to_use: int = int(time_value_supplied)
+        time_to_use = time_to_use * -1
+
+        # the relative date to search on, is the current date minus
+        # the number of months supplied
+        today_date: datetime = datetime.now()
+        relative_date = today_date + relativedelta(months=time_to_use)
+
+        return relative_date
+
+    def add_person_constraints(self, person_constraints_for_group, current_rule:Rule, concepts):
+        concept_domain: str = concepts.get(current_rule.value)
+
+        if concept_domain == "Gender":
+            if current_rule.operator == "=":
+                person_constraints_for_group.append(Person.gender_concept_id == int(current_rule.value))
+            else:
+                person_constraints_for_group.append(Person.gender_concept_id != int(current_rule.value))
+
+        elif concept_domain == "Race":
+            if current_rule.operator == "=":
+                person_constraints_for_group.append(Person.race_concept_id == int(current_rule.value))
+            else:
+                person_constraints_for_group.append(Person.race_concept_id != int(current_rule.value))
+
+        elif concept_domain == "Ethnicity":
+            if current_rule.operator == "=":
+                person_constraints_for_group.append(Person.ethnicity_concept_id == int(current_rule.value))
+            else:
+                person_constraints_for_group.append(Person.ethnicity_concept_id != int(current_rule.value))
+
+        return person_constraints_for_group
+
+
+    def add_secondary_modifiers(self, current_rule: Rule, condition: select) -> select:
+        # Not sure where, but even when a secondary modifier is not supplied, an array
+        # with a single entry is provided.
+        # todo: need to confirm if this is in the JSON from the API or our implementation
+
+        secondary_modifier_list = list()
+
+
+        for type_index, typeAdd in enumerate(current_rule.secondary_modifier, start=0):
+            if typeAdd != "":
+                secondary_modifier_list.append(ConditionOccurrence.condition_type_concept_id == int(typeAdd))
+
+        if len(secondary_modifier_list) > 0:
+            condition = condition.where(or_(*secondary_modifier_list))
+
+        return condition
 
     """ 
     This is the start of the process that begins to run the queries. 
