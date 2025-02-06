@@ -36,6 +36,11 @@ from hutch_bunny.core.rquest_dto.rule import Rule
 
 # Class for availability queries
 class AvailabilityQuerySolver:
+    meas: select
+    con: select
+    condition: select
+    obs: select
+
     subqueries = list()
     omop_domain_to_omop_table_map = {
         "Condition": ConditionOccurrence,
@@ -121,14 +126,14 @@ class AvailabilityQuerySolver:
                 list_for_rules: list[list[BinaryExpression[bool]]] = list()
 
                 #captures all the person constraints for the group
-                person_constraints_for_group: list[ColumnElement[bool]] = list()
+                person_constraints_for_group: list[ColumnElement[bool]] = []
 
                 # for each rule in a group
-                for rule_index, current_rule in enumerate(current_group.rules, start=0):
+                for current_rule in current_group.rules:
 
                     # a list for all the conditions for the rule, each rule generates searches
                     # in four tables, this field captures that
-                    rule_constraints: list[BinaryExpression[bool]] = list()
+                    rule_constraints: list[BinaryExpression[bool]] = []
 
                     # variables used to capture the relevant detail.
                     # "time" : "|1:TIME:M" in the payload means that
@@ -156,10 +161,10 @@ class AvailabilityQuerySolver:
                         # reliable longer term.
 
                         # initial setting for the four tables
-                        condition: select = select(ConditionOccurrence.person_id)
-                        drug: select = select(DrugExposure.person_id)
-                        meas: select = select(Measurement.person_id)
-                        obs: select = select(Observation.person_id)
+                        self.condition: select = select(ConditionOccurrence.person_id)
+                        self. drug: select = select(DrugExposure.person_id)
+                        self.meas: select = select(Measurement.person_id)
+                        self.obs: select = select(Observation.person_id)
 
                         """"
                         RELATIVE AGE SEARCH
@@ -169,10 +174,7 @@ class AvailabilityQuerySolver:
 
 
                         if ( (left_value_time is not None or right_value_time is not None) and time_category == "AGE"):
-                            condition = condition.join(Person, Person.person_id == ConditionOccurrence.person_id)
-                            drug = drug.join(Person, Person.person_id == DrugExposure.person_id)
-                            meas = meas.join(Person, Person.person_id == Measurement.person_id)
-                            obs = obs.join(Person, Person.person_id == Observation.person_id)
+                            self.add_joins_to_person()
 
                             # due to the way the query is expressed and how split above, if the left value is empty
                             # it indicates a less than search
@@ -244,7 +246,6 @@ class AvailabilityQuerySolver:
                         """"
                         PREPARING THE LISTS FOR LATER USE
                         """
-
                         rule_constraints.append(Person.person_id.in_(meas))
                         rule_constraints.append(Person.person_id.in_(obs))
                         rule_constraints.append(Person.person_id.in_(condition))
@@ -258,7 +259,6 @@ class AvailabilityQuerySolver:
                         """
                         PERSON TABLE RELATED RULES
                         """
-
                         # this is unsupported currently
                         if current_rule.varname=="AGE":
                            logger.info("An unsupported rule for AGE was detected and ignored")
@@ -278,8 +278,7 @@ class AvailabilityQuerySolver:
                     # although this is an AND, we include the top level as AND, but the
                     # sub-query is OR to account for searching in the four tables
 
-                    for constraint_index, current_constraint in enumerate(list_for_rules, start=0):
-                        #group_query: select = group_query.where(or_(*current_constraint))
+                    for current_constraint in list_for_rules:
                         group_query: select = group_query.where(or_(*current_constraint))
                 else:
                     # this might seem odd, but to add the rules as OR, we have to add them
@@ -288,14 +287,14 @@ class AvailabilityQuerySolver:
                     all_parameters = list()
 
                     #firstly add the person constrains
-                    for rule_index, all_constraints_for_person in enumerate(person_constraints_for_group, start=0):
+                    for all_constraints_for_person in person_constraints_for_group:
                         all_parameters.append(all_constraints_for_person)
 
                     # to get all the constraints in one list, we have to unpack the top-level grouping
                     # list_for_rules contains all the group of constraints for each rule
                     # therefore, we get each group, then for each group, we get each constraint
-                    for rule_index, current_rule in enumerate(list_for_rules, start=0):
-                        for constraint_index, current_constraint in enumerate(current_rule, start=0):
+                    for current_rule in list_for_rules:
+                        for current_constraint in current_rule:
                             all_parameters.append(current_constraint)
 
                     # all added as an OR
@@ -323,6 +322,12 @@ class AvailabilityQuerySolver:
 
         return int(output[0])
 
+    def add_joins_to_person(self):
+        self.condition = self.condition.join(Person, Person.person_id == ConditionOccurrence.person_id)
+        self.drug = self.drug.join(Person, Person.person_id == DrugExposure.person_id)
+        self.meas = self.meas.join(Person, Person.person_id == Measurement.person_id)
+        self.obs = self.obs.join(Person, Person.person_id == Observation.person_id)
+
     def calc_relative_date(self, left_value_time: str, right_value_time: str) -> datetime:
 
         time_value_supplied: str
@@ -343,7 +348,6 @@ class AvailabilityQuerySolver:
         relative_date = today_date + relativedelta(months=time_to_use)
 
         return relative_date
-
     def add_person_constraints(self, person_constraints_for_group, current_rule:Rule, concepts):
         concept_domain: str = concepts.get(current_rule.value)
 
