@@ -2,8 +2,7 @@
 
 ## Supported Versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+We support the latest version of Bunny.
 
 | Version | Supported          |
 | ------- | ------------------ |
@@ -13,7 +12,7 @@ currently being supported with security updates.
 
 We take security issues seriously and appreciate your help in keeping Bunny secure. If you discover a vulnerability, please follow the steps below to report it responsibly:
 
-Contact Us: Report the vulnerability by emailing andy.rae@nottingham.ac.uk with the details of the issue.
+Contact Us: Report the vulnerability by emailing <andy.rae@nottingham.ac.uk> with the details of the issue.
 
 Provide Details: Include as much information as possible, including steps to reproduce the issue, potential impact, and any possible fixes you have identified.
 
