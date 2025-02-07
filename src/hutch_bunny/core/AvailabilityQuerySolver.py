@@ -24,10 +24,10 @@ from hutch_bunny.core.rquest_dto.rule import Rule
 
 # Class for availability queries
 class AvailabilityQuerySolver:
-    meas: Select
-    con: Select
+    measurement: Select
+    drug: Select
     condition: Select
-    obs: Select
+    observation: Select
 
     omop_domain_to_omop_table_map = {
         "Condition": ConditionOccurrence,
@@ -145,9 +145,8 @@ class AvailabilityQuerySolver:
                         )
 
                     # if the rule was not linked to a person variable
-                    if (
-                        current_rule.varcat != "Person"
-                    ):  # i.e condition, observation, measurement or drug
+                    if current_rule.varcat != "Person":
+                        # i.e condition, observation, measurement or drug
                         # NOTE: Although the table is specified in the query, to cover for changes in vocabulary
                         # and for differences in RQuest OMOP and local OMOP, we now search all four main tables
                         # for the presence of the concept. This is computationally more expensive, but is more r
@@ -156,8 +155,8 @@ class AvailabilityQuerySolver:
                         # initial setting for the four tables
                         self.condition: Select = select(ConditionOccurrence.person_id)
                         self.drug: Select = select(DrugExposure.person_id)
-                        self.meas: Select = select(Measurement.person_id)
-                        self.obs: Select = select(Observation.person_id)
+                        self.measurement: Select = select(Measurement.person_id)
+                        self.observation: Select = select(Observation.person_id)
 
                         """"
                         RELATIVE AGE SEARCH
@@ -203,8 +202,8 @@ class AvailabilityQuerySolver:
                         """"
                         PREPARING THE LISTS FOR LATER USE
                         """
-                        rule_constraints.append(Person.person_id.in_(self.meas))
-                        rule_constraints.append(Person.person_id.in_(self.obs))
+                        rule_constraints.append(Person.person_id.in_(self.measurement))
+                        rule_constraints.append(Person.person_id.in_(self.observation))
                         rule_constraints.append(Person.person_id.in_(self.condition))
                         rule_constraints.append(Person.person_id.in_(self.drug))
 
@@ -280,7 +279,7 @@ class AvailabilityQuerySolver:
                 full_query_all_groups = select(func.count()).where(*all_groups_queries)
 
             # here for debug, prints the SQL statement created
-            print(
+            logger.info(
                 str(
                     full_query_all_groups.compile(
                         dialect=postgresql.dialect(),
@@ -295,12 +294,12 @@ class AvailabilityQuerySolver:
 
     def _add_range_as_number(self, current_rule: Rule):
         if current_rule.min_value is not None and current_rule.max_value is not None:
-            self.meas = self.meas.where(
+            self.measurement = self.measurement.where(
                 Measurement.value_as_number.between(
                     float(current_rule.min_value), float(current_rule.max_value)
                 )
             )
-            self.obs = self.obs.where(
+            self.observation = self.observation.where(
                 Observation.value_as_number.between(
                     float(current_rule.min_value), float(current_rule.max_value)
                 )
@@ -311,8 +310,8 @@ class AvailabilityQuerySolver:
             Person, Person.person_id == ConditionOccurrence.person_id
         )
         self.drug = self.drug.join(Person, Person.person_id == DrugExposure.person_id)
-        self.meas = self.meas.join(Person, Person.person_id == Measurement.person_id)
-        self.obs = self.obs.join(Person, Person.person_id == Observation.person_id)
+        self.measurement = self.measurement.join(Person, Person.person_id == Measurement.person_id)
+        self.observation = self.observation.join(Person, Person.person_id == Observation.person_id)
 
         # due to the way the query is expressed and how split above, if the left value is empty
         # it indicates a less than search
@@ -323,17 +322,17 @@ class AvailabilityQuerySolver:
                 - extract("year", Person.birth_datetime)
                 < int(right_value_time)
             )
-            self.rug = self.drug.where(
+            self.drug = self.drug.where(
                 extract("year", DrugExposure.drug_exposure_start_date)
                 - extract("year", Person.birth_datetime)
                 < int(right_value_time)
             )
-            self.meas = self.meas.where(
+            self.measurement = self.measurement.where(
                 extract("year", Measurement.measurement_date)
                 - extract("year", Person.birth_datetime)
                 < int(right_value_time)
             )
-            self.obs = self.obs.where(
+            self.observation = self.observation.where(
                 extract("year", Observation.observation_date)
                 - extract("year", Person.birth_datetime)
                 < int(right_value_time)
@@ -349,12 +348,12 @@ class AvailabilityQuerySolver:
                 - extract("year", Person.birth_datetime)
                 > int(left_value_time)
             )
-            self.meas = self.meas.where(
+            self.measurement = self.measurement.where(
                 extract("year", Measurement.measurement_date)
                 - extract("year", Person.birth_datetime)
                 > int(left_value_time)
             )
-            self.obs = self.obs.where(
+            self.observation = self.observation.where(
                 extract("year", Observation.observation_date)
                 - extract("year", Person.birth_datetime)
                 > int(left_value_time)
@@ -383,8 +382,8 @@ class AvailabilityQuerySolver:
         # therefore the logic is to search for a date that is after the date
         # that was a month ago.
         if left_value_time == "":
-            self.meas = self.meas.where(Measurement.measurement_date >= relative_date)
-            self.obs = self.obs.where(Observation.observation_date >= relative_date)
+            self.measurement = self.measurement.where(Measurement.measurement_date >= relative_date)
+            self.observation = self.observation.where(Observation.observation_date >= relative_date)
             self.condition = self.condition.where(
                 ConditionOccurrence.condition_start_date >= relative_date
             )
@@ -392,8 +391,8 @@ class AvailabilityQuerySolver:
                 DrugExposure.drug_exposure_start_date >= relative_date
             )
         else:
-            self.meas = self.meas.where(Measurement.measurement_date <= relative_date)
-            self.obs = self.obs.where(Observation.observation_date <= relative_date)
+            self.measurement = self.measurement.where(Measurement.measurement_date <= relative_date)
+            self.observation = self.observation.where(Observation.observation_date <= relative_date)
             self.condition = self.condition.where(
                 ConditionOccurrence.condition_start_date <= relative_date
             )
@@ -462,10 +461,10 @@ class AvailabilityQuerySolver:
             self.drug = self.drug.where(
                 DrugExposure.drug_concept_id == int(current_rule.value)
             )
-            self.meas = self.meas.where(
+            self.measurement = self.measurement.where(
                 Measurement.measurement_concept_id == int(current_rule.value)
             )
-            self.obs = self.obs.where(
+            self.observation = self.observation.where(
                 Observation.observation_concept_id == int(current_rule.value)
             )
         else:
@@ -475,9 +474,9 @@ class AvailabilityQuerySolver:
             self.drug = self.drug.where(
                 DrugExposure.drug_concept_id != int(current_rule.value)
             )
-            self.meas = self.meas.where(
+            self.measurement = self.measurement.where(
                 Measurement.measurement_concept_id != int(current_rule.value)
             )
-            self.obs = self.obs.where(
+            self.observation = self.observation.where(
                 Observation.observation_concept_id != int(current_rule.value)
             )
