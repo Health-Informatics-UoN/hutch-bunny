@@ -27,6 +27,7 @@ dependencies = [
   # possible extras?
   # "pyodbc>=5.2.0",      # not sure exactly when this is or isn't needed?
   # mysqlclient="^2.1.1" # should be only when targeting mysql - seems to have system dependencies
+  "pydantic-settings>=2.7.1",
 ]
 
 [project.scripts]
