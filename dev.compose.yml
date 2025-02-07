@@ -8,6 +8,16 @@ services:
       - 5432:5432
     environment:
       POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: omop
+
+  omop-lite:
+    image: ghcr.io/health-informatics-uon/omop-lite
+    depends_on:
+      - db
+    environment:
+      DB_PASSWORD: postgres
+      DB_NAME: omop
+      SYNTHETIC: true
 
   adminer:
     image: wodby/adminer

@@ -5,6 +5,7 @@ from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.parser import parser
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.setting_database import setting_database
+import hutch_bunny.core.settings as settings
 
 
 def save_to_output(result: RquestResult, destination: str) -> None:
@@ -29,6 +30,7 @@ def save_to_output(result: RquestResult, destination: str) -> None:
 
 
 def main() -> None:
+    settings.log_settings()
     # Setting database connection
     db_manager = setting_database(logger=logger)
     # Bunny passed args.
@@ -41,5 +43,10 @@ def main() -> None:
     result = execute_query(
         query_dict, results_modifier, logger=logger, db_manager=db_manager
     )
+    logger.debug(f"Results: {result.to_dict()}")
     save_to_output(result, args.output)
     logger.info(f"Saved results to {args.output}")
+
+
+if __name__ == "__main__":
+    main()

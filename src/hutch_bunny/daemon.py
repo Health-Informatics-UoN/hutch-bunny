@@ -41,6 +41,7 @@ def main() -> None:
                 logger=logger,
                 db_manager=db_manager,
             )
+            logger.debug(f"Result: {result.to_dict()}")
             # Check the payload shape
             if not isinstance(result, RquestResult):
                 raise TypeError("Payload does not match RQuest result schema.")
@@ -75,3 +76,7 @@ def main() -> None:
             logger.info("Got http status code: %s", response.status_code)
 
         time.sleep(settings.POLLING_INTERVAL)
+
+
+if __name__ == "__main__":
+    main()
