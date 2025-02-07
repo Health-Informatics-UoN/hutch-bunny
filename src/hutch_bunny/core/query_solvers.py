@@ -6,11 +6,9 @@ import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
-from sqlalchemy import (
-    or_,
-    func,
-    extract, BinaryExpression, ColumnElement, Select
-)
+from sqlalchemy import or_, func, extract, BinaryExpression, ColumnElement, Select
+
+from hutch_bunny.core.AvailabilityQuerySolver import AvailabilityQuerySolver
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
     Concept,
@@ -31,8 +29,6 @@ from hutch_bunny.core.enums import DistributionQueryType
 import hutch_bunny.core.settings as settings
 from hutch_bunny.core.constants import DISTRIBUTION_TYPE_FILE_NAMES_MAP
 from hutch_bunny.core.rquest_dto.rule import Rule
-
-
 
 
 class BaseDistributionQuerySolver:
@@ -211,9 +207,7 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
             # Get the data
             with self.db_manager.engine.connect() as con:
                 res = pd.read_sql(stmnt, con)
-                concepts_df = pd.read_sql_query(
-                    concept_query, con=con
-                )
+                concepts_df = pd.read_sql_query(concept_query, con=con)
             combined = res.merge(
                 concepts_df,
                 left_on=concept_col.name,

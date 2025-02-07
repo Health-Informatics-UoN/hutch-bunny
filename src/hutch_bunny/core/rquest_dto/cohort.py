@@ -8,7 +8,6 @@ class Cohort(BaseDto):
         self.groups = groups
         self.groups_operator = groups_operator
 
-
     def to_dict(self) -> dict:
         """Convert `Cohort` to `dict`
 

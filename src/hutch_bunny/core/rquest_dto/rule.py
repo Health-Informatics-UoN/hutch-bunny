@@ -15,7 +15,6 @@ class Rule:
         secondary_modifier: [] = None,
         **kwargs,
     ) -> None:
-
         self.raw_range = raw_range
         self.value = value
         self.type_ = type_
@@ -71,7 +70,13 @@ class Rule:
         secondary_modifier = dict_.get("secondary_modifier", [])
 
         return cls(
-            type_=type_, value=value, time=time, varname=varname, operator=operator, varcat=varcat, secondary_modifier=secondary_modifier
+            type_=type_,
+            value=value,
+            time=time,
+            varname=varname,
+            operator=operator,
+            varcat=varcat,
+            secondary_modifier=secondary_modifier,
         )
 
     def _parse_numeric(

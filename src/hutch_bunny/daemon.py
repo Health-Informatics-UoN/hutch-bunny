@@ -7,6 +7,7 @@ from hutch_bunny.core.results_modifiers import results_modifiers
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.setting_database import setting_database
 
+
 def main() -> None:
     settings.log_settings()
     # Setting database connection

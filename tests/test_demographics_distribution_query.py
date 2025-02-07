@@ -14,6 +14,7 @@ pytestmark = pytest.mark.skipif(
     os.environ.get("CI") is not None, reason="Skip integration tests in CI"
 )
 
+
 @pytest.fixture
 def distribution_example():
     return RquestResult(

@@ -1,5 +1,6 @@
 from copy import deepcopy
 
+
 def low_number_suppression(value: int | float, threshold: int = 10) -> int | float:
     """Suppress values that fall below a given threshold.
 

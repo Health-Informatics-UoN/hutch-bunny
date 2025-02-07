@@ -19,6 +19,7 @@ pytestmark = pytest.mark.skipif(
     os.environ.get("CI") is not None, reason="Skip integration tests in CI"
 )
 
+
 @pytest.fixture
 def availability_example():
     return RquestResult(
@@ -35,7 +36,9 @@ def availability_example():
 
 @pytest.fixture
 def availability_result(db_manager, availability_query_onerule_equals):
-    return solve_availability(db_manager=db_manager, query=availability_query_onerule_equals)
+    return solve_availability(
+        db_manager=db_manager, query=availability_query_onerule_equals
+    )
 
 
 def test_solve_availability_returns_result(availability_result):

@@ -10,7 +10,6 @@ class Group(BaseDto):
         self.rules = rules
         self.rules_operator = rules_operator
 
-
     def to_dict(self) -> dict:
         """Convert `Group` to `dict`.
 
