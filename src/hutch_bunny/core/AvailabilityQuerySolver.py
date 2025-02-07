@@ -1,7 +1,4 @@
-import base64
-import os
 import logging
-from typing import Tuple
 import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -18,14 +15,10 @@ from hutch_bunny.core.entities import (
     ProcedureOccurrence,
 )
 from sqlalchemy.dialects import postgresql
-from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
-from hutch_bunny.core.rquest_dto.file import File
+from hutch_bunny.core.rquest_dto.query import AvailabilityQuery
 from sqlalchemy import select, Select
 
-from hutch_bunny.core.rquest_dto.result import RquestResult
-from hutch_bunny.core.enums import DistributionQueryType
 import hutch_bunny.core.settings as settings
-from hutch_bunny.core.constants import DISTRIBUTION_TYPE_FILE_NAMES_MAP
 from hutch_bunny.core.rquest_dto.rule import Rule
 
 
