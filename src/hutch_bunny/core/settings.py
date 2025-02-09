@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     ROUNDING_TARGET: int = Field(description='The target for rounding', default=5)
     
     LOGGER_NAME: str = "hutch"
-    LOGGER_LEVEL: str = "INFO"
+    LOGGER_LEVEL: str = Field(description='The level of the logger', default="INFO", alias="BUNNY_LOGGER_LEVEL")
     MSG_FORMAT: str = "%(levelname)s - %(asctime)s - %(message)s"
     DATE_FORMAT: str = "%d-%b-%y %H:%M:%S"
 
