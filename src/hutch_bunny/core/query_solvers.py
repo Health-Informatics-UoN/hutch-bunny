@@ -23,7 +23,7 @@ from hutch_bunny.core.rquest_dto.file import File
 from hutch_bunny.core.rquest_dto.rule import Rule
 from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.enums import DistributionQueryType
-import hutch_bunny.core.settings as settings
+from hutch_bunny.core.settings import get_settings
 from hutch_bunny.core.constants import DISTRIBUTION_TYPE_FILE_NAMES_MAP
 
 
@@ -446,6 +446,7 @@ def solve_availability(
     Returns:
         RquestResult: Result object for the query
     """
+    settings = get_settings()
     logger = logging.getLogger(settings.LOGGER_NAME)
     solver = AvailibilityQuerySolver(db_manager, query)
     try:
