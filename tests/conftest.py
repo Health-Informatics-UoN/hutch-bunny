@@ -5,7 +5,7 @@ from hutch_bunny.core.rquest_dto.cohort import Cohort
 from hutch_bunny.core.rquest_dto.group import Group
 from hutch_bunny.core.rquest_dto.rule import Rule
 from hutch_bunny.core.db_manager import SyncDBManager
-from hutch_bunny.core.query_solvers import AvailabilityQuery, DistributionQuery
+from hutch_bunny.core.solvers.query_solvers import AvailabilityQuery, DistributionQuery
 import hutch_bunny.core.settings as settings
 import hutch_bunny.core.setting_database as db_settings
 

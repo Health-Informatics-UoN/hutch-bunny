@@ -1,12 +1,9 @@
 import pytest
-from hutch_bunny.core.query_solvers import DistributionQuery, solve_distribution
-from hutch_bunny.core.db_manager import SyncDBManager
+from hutch_bunny.core.solvers.query_solvers import solve_distribution
 from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.rquest_dto.file import File
 from dotenv import load_dotenv
 import os
-import hutch_bunny.core.settings as settings
-import hutch_bunny.core.setting_database as db_settings
 
 load_dotenv()
 

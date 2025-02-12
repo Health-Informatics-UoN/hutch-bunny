@@ -3,8 +3,7 @@ import os
 
 import dotenv
 
-from hutch_bunny.core.db_manager import SyncDBManager
-from hutch_bunny.core.query_solvers import solve_availability, solve_distribution
+from hutch_bunny.core.solvers.query_solvers import solve_availability, solve_distribution
 
 dotenv.load_dotenv()
 

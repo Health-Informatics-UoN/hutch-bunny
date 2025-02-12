@@ -3,12 +3,10 @@ import os
 import logging
 from typing import Tuple
 import pandas as pd
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
 
-from sqlalchemy import or_, func, extract, BinaryExpression, ColumnElement, Select
+from sqlalchemy import func
 
-from hutch_bunny.core.AvailabilityQuerySolver import AvailabilityQuerySolver
+from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
     Concept,
@@ -19,16 +17,14 @@ from hutch_bunny.core.entities import (
     DrugExposure,
     ProcedureOccurrence,
 )
-from sqlalchemy.dialects import postgresql
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
 from hutch_bunny.core.rquest_dto.file import File
-from sqlalchemy import select, Select
+from sqlalchemy import select
 
 from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.enums import DistributionQueryType
 import hutch_bunny.core.settings as settings
 from hutch_bunny.core.constants import DISTRIBUTION_TYPE_FILE_NAMES_MAP
-from hutch_bunny.core.rquest_dto.rule import Rule
 
 
 class BaseDistributionQuerySolver:
@@ -100,8 +96,13 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         biobanks = list()
         omop_desc = list()
 
+        logger = logging.getLogger(settings.LOGGER_NAME)
+
+
         with self.db_manager.engine.connect() as con:
             for domain_id in self.allowed_domains_map:
+
+                logger.info(domain_id)
                 # get the right table and column based on the domain
                 table = self.allowed_domains_map[domain_id]
                 concept_col = self.domain_concept_id_map[domain_id]
@@ -125,6 +126,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
                 biobanks.extend([self.query.collection] * len(res))
 
         df["COUNT"] = counts
+        #todo: dont think concepts contains anything?
         df["OMOP"] = concepts
         df["CATEGORY"] = categories
         df["CODE"] = df["OMOP"].apply(lambda x: f"OMOP:{x}")
@@ -141,7 +143,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         return os.linesep.join(results), len(df)
 
 
-# todo - i *think* the only diferrence between this one and generic is that the allowed_domain list is different. Could we not just have the one class and functions that have this passed in?
+# todo - i *think* the only difference between this one and generic is that the allowed_domain list is different. Could we not just have the one class and functions that have this passed in?
 class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
     allowed_domains_map = {
         "Gender": Person,
@@ -181,6 +183,8 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         # Prepare the empty results data frame
         df = pd.DataFrame(columns=self.output_cols)
 
+        logger = logging.getLogger(settings.LOGGER_NAME)
+
         # Get the counts for each concept ID
         counts = list()
         concepts = list()
@@ -190,6 +194,9 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         codes = list()
         descriptions = list()
         alternatives = list()
+
+
+
         for k in self.allowed_domains_map:
             table = self.allowed_domains_map[k]
             concept_col = self.domain_concept_id_map[k]
@@ -198,6 +205,7 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
             stmnt = select(func.count(table.person_id), concept_col).group_by(
                 concept_col
             )
+
 
             # Concept description statement
             concept_query = select(Concept.concept_id, Concept.concept_name).where(
@@ -242,7 +250,7 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         results = list(["\t".join(df.columns)])
         for _, row in df.iterrows():
             results.append("\t".join([str(r) for r in row.values]))
-
+        logger.info(results)
         return os.linesep.join(results), len(df)
 
 
@@ -259,7 +267,7 @@ def solve_availability(
         RquestResult: Result object for the query
     """
     logger = logging.getLogger(settings.LOGGER_NAME)
-    solver = AvailabilityQuerySolver(db_manager, query)
+    solver = AvailabilitySolver(db_manager, query)
     try:
         count_ = solver.solve_query()
         result = RquestResult(
@@ -289,9 +297,13 @@ def _get_distribution_solver(
     Returns:
         BaseDistributionQuerySolver: The solver for the distribution query type.
     """
+    logger = logging.getLogger(settings.LOGGER_NAME)
+
+    logger.info(query.code)
     if query.code == DistributionQueryType.GENERIC:
         return CodeDistributionQuerySolver(db_manager, query)
     if query.code == DistributionQueryType.DEMOGRAPHICS:
+        logger.info("Demographics distribution solver here here")
         return DemographicsDistributionQuerySolver(db_manager, query)
 
 
@@ -308,6 +320,7 @@ def solve_distribution(
         DistributionResult: Result object for the query
     """
     logger = logging.getLogger(settings.LOGGER_NAME)
+    logger.info(query.code)
     solver = _get_distribution_solver(db_manager, query)
     try:
         res, count = solver.solve_query()

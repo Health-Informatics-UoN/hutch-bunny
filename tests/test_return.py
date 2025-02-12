@@ -1,17 +1,10 @@
 import pytest
-from hutch_bunny.core.query_solvers import (
-    AvailabilityQuery,
+from hutch_bunny.core.solvers.query_solvers import (
     solve_availability,
 )
-from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.rquest_dto.result import RquestResult
-from hutch_bunny.core.rquest_dto.cohort import Cohort
-from hutch_bunny.core.rquest_dto.group import Group
-from hutch_bunny.core.rquest_dto.rule import Rule
 from dotenv import load_dotenv
 import os
-import hutch_bunny.core.settings as settings
-import hutch_bunny.core.setting_database as db_settings
 
 load_dotenv()
 

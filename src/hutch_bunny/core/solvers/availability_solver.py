@@ -17,13 +17,14 @@ from hutch_bunny.core.entities import (
 from sqlalchemy.dialects import postgresql
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery
 from sqlalchemy import select, Select
+from sqlalchemy.engine import Engine
 
 import hutch_bunny.core.settings as settings
 from hutch_bunny.core.rquest_dto.rule import Rule
 
 
 # Class for availability queries
-class AvailabilityQuerySolver:
+class AvailabilitySolver:
     measurement: Select
     drug: Select
     condition: Select
@@ -317,47 +318,41 @@ class AvailabilityQuerySolver:
         # it indicates a less than search
 
         if left_value_time == "":
-            self.condition = self.condition.where(
-                extract("year", ConditionOccurrence.condition_start_date)
-                - extract("year", Person.birth_datetime)
+            self.condition = self.condition.where(self._get_year_difference(self.db_manager.engine, ConditionOccurrence.condition_start_date, Person.birth_datetime)
                 < int(right_value_time)
             )
-            self.drug = self.drug.where(
-                extract("year", DrugExposure.drug_exposure_start_date)
-                - extract("year", Person.birth_datetime)
+            self.drug = self.drug.where(self._get_year_difference(self.db_manager.engine, DrugExposure.drug_exposure_start_date, Person.birth_datetime)
                 < int(right_value_time)
             )
-            self.measurement = self.measurement.where(
-                extract("year", Measurement.measurement_date)
-                - extract("year", Person.birth_datetime)
+            self.measurement = self.measurement.where(self._get_year_difference(self.db_manager.engine, Measurement.measurement_date, Person.birth_datetime)
                 < int(right_value_time)
             )
-            self.observation = self.observation.where(
-                extract("year", Observation.observation_date)
-                - extract("year", Person.birth_datetime)
+            self.observation = self.observation.where( self._get_year_difference(self.db_manager.engine, Observation.observation_date, Person.birth_datetime)
                 < int(right_value_time)
             )
         else:
-            self.condition = self.condition.where(
-                extract("year", ConditionOccurrence.condition_start_date)
-                - extract("year", Person.birth_datetime)
+            self.condition = self.condition.where(self._get_year_difference(self.db_manager.engine, ConditionOccurrence.condition_start_date, Person.birth_datetime)
                 > int(left_value_time)
             )
-            self.drug = self.drug.where(
-                extract("year", DrugExposure.drug_exposure_start_date)
-                - extract("year", Person.birth_datetime)
+            self.drug = self.drug.where(self._get_year_difference(self.db_manager.engine, DrugExposure.drug_exposure_start_date, Person.birth_datetime)
                 > int(left_value_time)
             )
             self.measurement = self.measurement.where(
-                extract("year", Measurement.measurement_date)
-                - extract("year", Person.birth_datetime)
+                self._get_year_difference(self.db_manager.engine, Measurement.measurement_date, Person.birth_datetime)
                 > int(left_value_time)
             )
             self.observation = self.observation.where(
-                extract("year", Observation.observation_date)
-                - extract("year", Person.birth_datetime)
+                self._get_year_difference(self.db_manager.engine, Observation.observation_date, Person.birth_datetime)
                 > int(left_value_time)
             )
+
+    def _get_year_difference(self, engine: Engine, start_date, birth_date):
+        if engine.dialect.name == 'postgresql':
+            return func.date_part('year', start_date) - func.date_part('year', birth_date)
+        elif engine.dialect.name == 'mssql':
+            return func.DATEPART('year', start_date) - func.DATEPART('year', birth_date)
+        else:
+            raise NotImplementedError("Unsupported database dialect")
 
     def _add_relative_date(self, left_value_time: str, right_value_time: str):
         time_value_supplied: str

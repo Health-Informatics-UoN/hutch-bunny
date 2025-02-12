@@ -1,6 +1,6 @@
 from typing import Dict, List
 from logging import Logger
-from hutch_bunny.core import query_solvers
+from hutch_bunny.core.solvers import query_solvers
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
 from hutch_bunny.core.obfuscation import (
     apply_filters,
@@ -29,11 +29,13 @@ def execute_query(
     """
 
     logger.info("Processing query...")
+    logger.info(query_dict)
 
     if "analysis" in query_dict.keys():
         logger.debug("Processing distribution query...")
         try:
             query = DistributionQuery.from_dict(query_dict)
+
             result = query_solvers.solve_distribution(
                 db_manager=db_manager, query=query
             )
