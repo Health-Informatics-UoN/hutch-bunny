@@ -213,8 +213,8 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
             res = pd.read_sql(stmnt, con)
             concepts_df = pd.read_sql_query(concept_query, con=con)
 
-        logger.info(concepts_df)
-        logger.info(res)
+        logger.debug(concepts_df)
+        logger.debug(res)
 
         combined = res.merge(
             concepts_df,
@@ -222,7 +222,6 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
             right_on="concept_id",
             how="left",
         )
-        logger.info("here2")
 
         # Compile the data
         counts.append(res.iloc[:, 0].sum())
@@ -255,7 +254,7 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         results = list(["\t".join(df.columns)])
         for _, row in df.iterrows():
             results.append("\t".join([str(r) for r in row.values]))
-        logger.info(results)
+        logger.debug(results)
         return os.linesep.join(results), len(df)
 
 
@@ -304,7 +303,7 @@ def _get_distribution_solver(
     """
     logger = logging.getLogger(settings.LOGGER_NAME)
 
-    logger.info(query.code)
+    logger.debug(query.code)
     if query.code == DistributionQueryType.GENERIC:
         return CodeDistributionQuerySolver(db_manager, query)
     if query.code == DistributionQueryType.DEMOGRAPHICS:
@@ -325,7 +324,7 @@ def solve_distribution(
         DistributionResult: Result object for the query
     """
     logger = logging.getLogger(settings.LOGGER_NAME)
-    logger.info(query.code)
+    logger.debug(query.code)
     solver = _get_distribution_solver(db_manager, query)
     try:
         res, count = solver.solve_query()
@@ -334,7 +333,7 @@ def solve_distribution(
         size = len(res_b64_bytes) / 1000  # length of file data in KB
         res_b64 = res_b64_bytes.decode("utf-8")  # convert back to string, now base64
 
-        logger.info(res_b64)
+        logger.debug(res_b64)
 
         result_file = File(
             data=res_b64,
