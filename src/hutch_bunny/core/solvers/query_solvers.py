@@ -212,12 +212,17 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         with self.db_manager.engine.connect() as con:
             res = pd.read_sql(stmnt, con)
             concepts_df = pd.read_sql_query(concept_query, con=con)
+
+        logger.info(concepts_df)
+        logger.info(res)
+
         combined = res.merge(
             concepts_df,
-            left_on=Person.gender_concept_id,
-            right_on=Concept.concept_id.name,
+            left_on="gender_concept_id",
+            right_on="concept_id",
             how="left",
         )
+        logger.info("here2")
 
         # Compile the data
         counts.append(res.iloc[:, 0].sum())
@@ -328,6 +333,8 @@ def solve_distribution(
         res_b64_bytes = base64.b64encode(res.encode("utf-8"))  # bytes
         size = len(res_b64_bytes) / 1000  # length of file data in KB
         res_b64 = res_b64_bytes.decode("utf-8")  # convert back to string, now base64
+
+        logger.info(res_b64)
 
         result_file = File(
             data=res_b64,
