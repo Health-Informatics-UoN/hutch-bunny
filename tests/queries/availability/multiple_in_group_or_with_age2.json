@@ -1,0 +1,29 @@
+{
+  "task_id" : "job-2025-02-14-09:04:03-RQ-4b5efbbe-4d8a-4a41-873b-70916ec58c94",
+  "project" : "RQ-4b5efbbe-4d8a-4a41-873b-70916ec58c94",
+  "owner" : "user1",
+  "cohort" : {
+    "groups" : [ {
+      "rules" : [ {
+        "varname" : "OMOP",
+        "varcat" : "Person",
+        "type" : "TEXT",
+        "oper" : "=",
+        "value" : "8532"
+      }, {
+        "varname" : "OMOP",
+        "varcat" : "Condition",
+        "type" : "TEXT",
+        "oper" : "=",
+        "value" : "4152142",
+        "time" : "|10:AGE:Y"
+      } ],
+      "rules_oper" : "OR"
+    } ],
+    "groups_oper" : "AND"
+  },
+  "collection" : "RQ-CC-034170a5-5e8e-441a-9475-41f1eb2b1334",
+  "protocol_version" : "v2",
+  "char_salt" : "fc19a662-5b6b-421a-975c-ce278e44ba27",
+  "uuid" : "0c557625-6230-4891-86eb-180d39e08047"
+}

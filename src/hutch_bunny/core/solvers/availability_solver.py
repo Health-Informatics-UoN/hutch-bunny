@@ -128,8 +128,8 @@ class AvailabilitySolver:
                     # "time" : "|1:TIME:M" in the payload means that
                     # if the | is on the left of the value it was less than 1 month
                     # if it was "1|:TIME:M" it would mean greater than one month
-                    left_value_time: str
-                    right_value_time: str
+                    left_value_time: str | None = None
+                    right_value_time: str | None = None
 
                     # if a time is supplied split the string out to component parts
                     if current_rule.time:
