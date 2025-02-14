@@ -186,56 +186,53 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         logger = logging.getLogger(settings.LOGGER_NAME)
 
         # Get the counts for each concept ID
-        counts = list()
-        concepts = list()
-        categories = list()
-        biobanks = list()
-        datasets = list()
-        codes = list()
-        descriptions = list()
-        alternatives = list()
+        counts = []
+        concepts = []
+        categories = []
+        biobanks = []
+        datasets = []
+        codes = []
+        descriptions = []
+        alternatives = []
+
+        # People count statement
+        stmnt = select(func.count(Person.person_id), Person.gender_concept_id).group_by(
+            Person.gender_concept_id
+        )
+
+        concepts.append(8507)
+        concepts.append(8532)
+
+        # Concept description statement
+        concept_query = select(Concept.concept_id, Concept.concept_name).where(
+            Concept.concept_id.in_(concepts)
+        )
+
+        # Get the data
+        with self.db_manager.engine.connect() as con:
+            res = pd.read_sql(stmnt, con)
+            concepts_df = pd.read_sql_query(concept_query, con=con)
+        combined = res.merge(
+            concepts_df,
+            left_on=Person.gender_concept_id,
+            right_on=Concept.concept_id.name,
+            how="left",
+        )
+
+        # Compile the data
+        counts.append(res.iloc[:, 0].sum())
+        concepts.extend(res.iloc[:, 1])
+        categories.append("DEMOGRAPHICS")
+        biobanks.append(self.query.collection)
+        datasets.append("person")
+        descriptions.append("Sex")
+        codes.append("SEX")
 
 
-
-        for k in self.allowed_domains_map:
-            table = self.allowed_domains_map[k]
-            concept_col = self.domain_concept_id_map[k]
-
-            # People count statement
-            stmnt = select(func.count(table.person_id), concept_col).group_by(
-                concept_col
-            )
-
-
-            # Concept description statement
-            concept_query = select(Concept.concept_id, Concept.concept_name).where(
-                Concept.concept_id.in_(concepts)
-            )
-
-            # Get the data
-            with self.db_manager.engine.connect() as con:
-                res = pd.read_sql(stmnt, con)
-                concepts_df = pd.read_sql_query(concept_query, con=con)
-            combined = res.merge(
-                concepts_df,
-                left_on=concept_col.name,
-                right_on=Concept.concept_id.name,
-                how="left",
-            )
-
-            # Compile the data
-            counts.append(res.iloc[:, 0].sum())
-            concepts.extend(res.iloc[:, 1])
-            categories.append("DEMOGRAPHICS")
-            biobanks.append(self.query.collection)
-            datasets.append(table.__tablename__)
-            descriptions.append(k)
-            codes.append(k.upper())
-
-            alternative = "^"
-            for _, row in combined.iterrows():
-                alternative += f"{row[Concept.concept_name.name]}|{row.iloc[0]}^"
-            alternatives.append(alternative)
+        alternative = "^"
+        for _, row in combined.iterrows():
+            alternative += f"{row[Concept.concept_name.name]}|{row.iloc[0]}^"
+        alternatives.append(alternative)
 
         # Fill out the results table
         df["COUNT"] = counts
@@ -245,6 +242,9 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         df["DATASET"] = datasets
         df["DESCRIPTION"] = descriptions
         df["ALTERNATIVES"] = alternatives
+
+        df = df.fillna("")
+
 
         # Convert df to tab separated string
         results = list(["\t".join(df.columns)])
