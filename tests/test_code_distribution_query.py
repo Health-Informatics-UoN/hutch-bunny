@@ -30,7 +30,7 @@ def db_manager():
 def distribution_query():
     return DistributionQuery(
         owner="user1",
-        code="GENERAL",
+        code="GENERIC",
         analysis="DISTRIBUTION",
         uuid="unique_id",
         collection="collection_id",
