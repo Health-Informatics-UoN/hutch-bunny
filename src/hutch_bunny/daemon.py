@@ -6,12 +6,12 @@ from hutch_bunny.core.task_api_client import TaskApiClient
 from hutch_bunny.core.results_modifiers import results_modifiers
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.setting_database import setting_database
-from typing import cast
 from importlib.metadata import version
+
 
 def main() -> None:
     logger.info(f"Starting Bunny version {version('hutch_bunny')} ")
-    settings: DaemonSettings = cast(DaemonSettings, get_settings(daemon=True))
+    settings: DaemonSettings = get_settings(daemon=True)
     logger.debug("Settings: %s", settings.model_dump())
     # Setting database connection
     db_manager = setting_database(logger=logger)
