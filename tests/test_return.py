@@ -3,9 +3,6 @@ from hutch_bunny.core.query_solvers import (
     solve_availability,
 )
 from hutch_bunny.core.rquest_dto.result import RquestResult
-from dotenv import load_dotenv
-
-load_dotenv()
 
 @pytest.fixture
 def availability_example():
@@ -13,7 +10,7 @@ def availability_example():
         uuid="unique_id",
         status="ok",
         collection_id="collection_id",
-        count=6272,
+        count=44,
         datasets_count=0,
         files=[],
         message="",

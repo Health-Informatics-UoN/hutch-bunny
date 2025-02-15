@@ -16,8 +16,8 @@ def distribution_example():
             File(
                 name="demographics.distribution",
                 data="",
-                description="Result of demographics.distribution analysis",
-                size=0.308,
+                description="Result of code.distribution analysis",
+                size=0.268,
                 type_="BCOS",
                 sensitive=True,
                 reference="",

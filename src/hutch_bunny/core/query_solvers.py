@@ -506,7 +506,7 @@ def solve_distribution(
 
         result_file = File(
             data=res_b64,
-            description="Result of code.distribution anaylsis",
+            description="Result of code.distribution analysis",
             name=DISTRIBUTION_TYPE_FILE_NAMES_MAP.get(query.code, ""),
             sensitive=True,
             reference="",
