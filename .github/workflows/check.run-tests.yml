@@ -31,8 +31,6 @@ jobs:
 
       omop-lite:
         image: ghcr.io/health-informatics-uon/omop-lite
-        depends_on:
-          - postgres
         environment:
           DB_PASSWORD: postgres
           DB_NAME: hutch-omop
