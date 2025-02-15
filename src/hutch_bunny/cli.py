@@ -36,20 +36,12 @@ def main() -> None:
     # Bunny passed args.
     args = parser.parse_args()
 
-
     with open(args.body) as body:
         query_dict = json.load(body)
-
-    modifiers_list = results_modifiers(
-        low_number_suppression_threshold=int(
-            settings.LOW_NUMBER_SUPPRESSION_THRESHOLD or 0
-        ),
-        rounding_target=int(settings.ROUNDING_TARGET or 0),
-    )
-
+    results_modifier = get_results_modifiers_from_str(args.results_modifiers)
 
     result = execute_query(
-        query_dict, modifiers_list, logger=logger, db_manager=db_manager
+        query_dict, results_modifier, logger=logger, db_manager=db_manager
     )
     logger.debug(f"Results: {result.to_dict()}")
     save_to_output(result, args.output)
