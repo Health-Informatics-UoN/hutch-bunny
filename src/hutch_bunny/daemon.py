@@ -10,6 +10,7 @@ from hutch_bunny.core.setting_database import setting_database
 
 def main() -> None:
     settings.log_settings()
+
     # Setting database connection
     db_manager = setting_database(logger=logger)
     # Task Api Client class init.

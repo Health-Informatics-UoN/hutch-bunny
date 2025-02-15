@@ -56,7 +56,7 @@ def apply_filters(value: int | float, filters: list) -> int | float:
     result = value
     filters_copy = deepcopy(filters)
     for f in filters_copy:
-        if action := actions.get(f.pop("id", None)):
+        if  action := actions.get(f.pop("id", None)):
             result = action(result, **f)
             if result == 0:
                 break  # don't apply any more filters

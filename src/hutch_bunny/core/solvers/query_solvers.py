@@ -6,6 +6,7 @@ import pandas as pd
 
 from sqlalchemy import func
 
+from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
@@ -28,13 +29,12 @@ from hutch_bunny.core.constants import DISTRIBUTION_TYPE_FILE_NAMES_MAP
 
 
 class BaseDistributionQuerySolver:
-    def solve_query(self) -> Tuple[str, int]:
+    def solve_query(self, filters: list) -> Tuple[str, int]:
         raise NotImplementedError
 
 
 # class for distribution queries
 class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
-    # todo - can the following be placed somewhere once as its repeated for all classes handling queries
     allowed_domains_map = {
         "Condition": ConditionOccurrence,
         "Ethnicity": Person,
@@ -79,7 +79,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         self.db_manager = db_manager
         self.query = query
 
-    def solve_query(self) -> Tuple[str, int]:
+    def solve_query(self, filters: list) -> Tuple[str, int]:
         """Build table of distribution query and return as a TAB separated string
         along with the number of rows.
 
@@ -90,11 +90,11 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         df = pd.DataFrame(columns=self.output_cols)
 
         # Get the counts for each concept ID
-        counts = list()
-        concepts = list()
-        categories = list()
-        biobanks = list()
-        omop_desc = list()
+        counts: list = []
+        concepts: list = []
+        categories: list = []
+        biobanks:list  = []
+        omop_desc:list = []
 
         logger = logging.getLogger(settings.LOGGER_NAME)
 
@@ -102,7 +102,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         with self.db_manager.engine.connect() as con:
             for domain_id in self.allowed_domains_map:
 
-                logger.info(domain_id)
+                logger.debug(domain_id)
                 # get the right table and column based on the domain
                 table = self.allowed_domains_map[domain_id]
                 concept_col = self.domain_concept_id_map[domain_id]
@@ -118,12 +118,17 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
                     .group_by(Concept.concept_id, Concept.concept_name)
                 )
                 res = pd.read_sql(stmnt, con)
+
+
                 counts.extend(res.iloc[:, 0])
                 concepts.extend(res.iloc[:, 1])
                 omop_desc.extend(res.iloc[:, 2])
                 # add the same category and collection if, for the number of results received
                 categories.extend([domain_id] * len(res))
                 biobanks.extend([self.query.collection] * len(res))
+
+        for i in range(len(counts)):
+            counts[i] = apply_filters(counts[i], filters)
 
         df["COUNT"] = counts
         #todo: dont think concepts contains anything?
@@ -143,14 +148,8 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         return os.linesep.join(results), len(df)
 
 
-# todo - i *think* the only difference between this one and generic is that the allowed_domain list is different. Could we not just have the one class and functions that have this passed in?
 class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
-    allowed_domains_map = {
-        "Gender": Person,
-    }
-    domain_concept_id_map = {
-        "Gender": Person.gender_concept_id,
-    }
+
     output_cols = [
         "BIOBANK",
         "CODE",
@@ -173,7 +172,7 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         self.db_manager = db_manager
         self.query = query
 
-    def solve_query(self) -> Tuple[str, int]:
+    def solve_query(self, filters: list) -> Tuple[str, int]:
         """Build table of distribution query and return as a TAB separated string
         along with the number of rows.
 
@@ -183,17 +182,15 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         # Prepare the empty results data frame
         df = pd.DataFrame(columns=self.output_cols)
 
-        logger = logging.getLogger(settings.LOGGER_NAME)
-
         # Get the counts for each concept ID
-        counts = []
-        concepts = []
-        categories = []
-        biobanks = []
-        datasets = []
-        codes = []
-        descriptions = []
-        alternatives = []
+        counts:list = []
+        concepts:list = []
+        categories:list = []
+        biobanks:list = []
+        datasets:list = []
+        codes:list = []
+        descriptions:list = []
+        alternatives:list = []
 
         # People count statement
         stmnt = select(func.count(Person.person_id), Person.gender_concept_id).group_by(
@@ -213,9 +210,6 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
             res = pd.read_sql(stmnt, con)
             concepts_df = pd.read_sql_query(concept_query, con=con)
 
-        logger.debug(concepts_df)
-        logger.debug(res)
-
         combined = res.merge(
             concepts_df,
             left_on="gender_concept_id",
@@ -223,8 +217,10 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
             how="left",
         )
 
+        suppressed_count:int = apply_filters(res.iloc[:, 0].sum(), filters)
+
         # Compile the data
-        counts.append(res.iloc[:, 0].sum())
+        counts.append(suppressed_count)
         concepts.extend(res.iloc[:, 1])
         categories.append("DEMOGRAPHICS")
         biobanks.append(self.query.collection)
@@ -232,10 +228,9 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         descriptions.append("Sex")
         codes.append("SEX")
 
-
         alternative = "^"
         for _, row in combined.iterrows():
-            alternative += f"{row[Concept.concept_name.name]}|{row.iloc[0]}^"
+            alternative += f"{row[Concept.concept_name.name]}|{apply_filters(row.iloc[0], filters)}^"
         alternatives.append(alternative)
 
         # Fill out the results table
@@ -249,12 +244,10 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
 
         df = df.fillna("")
 
-
         # Convert df to tab separated string
         results = list(["\t".join(df.columns)])
         for _, row in df.iterrows():
             results.append("\t".join([str(r) for r in row.values]))
-        logger.debug(results)
         return os.linesep.join(results), len(df)
 
 
@@ -301,18 +294,15 @@ def _get_distribution_solver(
     Returns:
         BaseDistributionQuerySolver: The solver for the distribution query type.
     """
-    logger = logging.getLogger(settings.LOGGER_NAME)
 
-    logger.debug(query.code)
     if query.code == DistributionQueryType.GENERIC:
         return CodeDistributionQuerySolver(db_manager, query)
     if query.code == DistributionQueryType.DEMOGRAPHICS:
-        logger.info("Demographics distribution solver here here")
         return DemographicsDistributionQuerySolver(db_manager, query)
 
 
 def solve_distribution(
-    db_manager: SyncDBManager, query: DistributionQuery
+    filters: list, db_manager: SyncDBManager, query: DistributionQuery
 ) -> RquestResult:
     """Solve RQuest distribution queries.
 
@@ -324,16 +314,14 @@ def solve_distribution(
         DistributionResult: Result object for the query
     """
     logger = logging.getLogger(settings.LOGGER_NAME)
-    logger.debug(query.code)
     solver = _get_distribution_solver(db_manager, query)
     try:
-        res, count = solver.solve_query()
+        res, count = solver.solve_query(filters)
         # Convert file data to base64
         res_b64_bytes = base64.b64encode(res.encode("utf-8"))  # bytes
         size = len(res_b64_bytes) / 1000  # length of file data in KB
         res_b64 = res_b64_bytes.decode("utf-8")  # convert back to string, now base64
 
-        logger.debug(res_b64)
 
         result_file = File(
             data=res_b64,
