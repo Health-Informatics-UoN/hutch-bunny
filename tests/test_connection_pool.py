@@ -1,16 +1,4 @@
-import pytest
-import os
-
-import dotenv
-
-from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.query_solvers import solve_availability,solve_distribution
-
-dotenv.load_dotenv()
-
-pytestmark = pytest.mark.skipif(
-    os.environ.get("CI") is not None, reason="Skip integration tests in CI"
-)
 
 def test_pool_clean_up_availability(db_manager,availability_query_onerule_equals,
                                     availability_query_onerule_notequals,

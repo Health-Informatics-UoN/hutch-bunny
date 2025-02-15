@@ -10,11 +10,6 @@ import hutch_bunny.core.setting_database as db_settings
 
 load_dotenv()
 
-pytestmark = pytest.mark.skipif(
-    os.environ.get("CI") is not None, reason="Skip integration tests in CI"
-)
-
-
 @pytest.fixture
 def db_manager():
     datasource_db_port = os.getenv("DATASOURCE_DB_PORT")
