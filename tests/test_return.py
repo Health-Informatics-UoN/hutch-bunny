@@ -1,5 +1,5 @@
 import pytest
-from hutch_bunny.core.query_solvers import (
+from hutch_bunny.core.solvers.query_solvers import (
     solve_availability,
 )
 from hutch_bunny.core.rquest_dto.result import RquestResult

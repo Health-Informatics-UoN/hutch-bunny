@@ -1,4 +1,4 @@
-from hutch_bunny.core.query_solvers import solve_availability,solve_distribution
+from hutch_bunny.core.solvers.query_solvers import solve_availability,solve_distribution
 
 def test_pool_clean_up_availability(db_manager,availability_query_onerule_equals,
                                     availability_query_onerule_notequals,
