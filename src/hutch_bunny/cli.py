@@ -41,7 +41,7 @@ def main() -> None:
     with open(args.body) as body:
         query_dict = json.load(body)
 
-    results_modifier = get_results_modifiers_from_str(args.results_modifiers)
+    results_modifier: list[dict] = get_results_modifiers_from_str(args.results_modifiers)
 
     result = execute_query(
         results_modifier,query_dict, logger=logger, db_manager=db_manager

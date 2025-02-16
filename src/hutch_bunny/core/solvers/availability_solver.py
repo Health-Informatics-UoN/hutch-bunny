@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
-from sqlalchemy import or_, func, extract, BinaryExpression, ColumnElement, Select
+from sqlalchemy import or_, func, BinaryExpression, ColumnElement
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
     Concept,
@@ -47,7 +47,7 @@ class AvailabilitySolver:
         self.db_manager = db_manager
         self.query = query
 
-    def solve_query(self, results_modifier:list) -> int:
+    def solve_query(self, results_modifier:list[dict]) -> int:
         """
         This is the start of the process that begins to run the queries.
         (1) call solve_rules that takes each group and adds those results to the sub_queries list
@@ -63,10 +63,7 @@ class AvailabilitySolver:
         Although the query payload will tell you where the OMOP concept is from (based on the RQUEST OMOP version, this is
         a safer method as we know concepts can move between tables based on a vocab.
 
-        Therefore this helps to account for a difference between the Bunny vocab version and the RQUEST OMOP version.
-
-        #TODO: this does not cover the scenario that is possible to occur where the local vocab model may say the concept
-        should be based in one table but it is actually present in another
+        Therefore, this helps to account for a difference between the Bunny vocab version and the RQUEST OMOP version.
 
         """
         concept_ids = set()
@@ -87,7 +84,7 @@ class AvailabilitySolver:
         }
         return concept_dict
 
-    def _solve_rules(self, results_modifier:list) -> int:
+    def _solve_rules(self, results_modifier:list[dict]) -> int:
         """Function for taking the JSON query from RQUEST and creating the required query to run against the OMOP database.
 
         RQUEST API spec can have multiple groups in each query, and then a condition between the groups.
@@ -152,7 +149,7 @@ class AvailabilitySolver:
 
                     # if the rule was not linked to a person variable
                     if current_rule.varcat != "Person":
-                        # i.e condition, observation, measurement or drug
+                        # i.e. condition, observation, measurement or drug
                         # NOTE: Although the table is specified in the query, to cover for changes in vocabulary
                         # and for differences in RQuest OMOP and local OMOP, we now search all four main tables
                         # for the presence of the concept. This is computationally more expensive, but is more r
@@ -297,7 +294,7 @@ class AvailabilitySolver:
                 full_query_all_groups = full_query_all_groups.having(func.count()>low_number)
 
             # here for debug, prints the SQL statement created
-            logger.info(
+            logger.debug(
                 str(
                     full_query_all_groups.compile(
                         dialect=postgresql.dialect(),

@@ -83,6 +83,11 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         """Build table of distribution query and return as a TAB separated string
         along with the number of rows.
 
+       Parameters
+        ----------
+        results_modifier: List
+        A list of modifiers to be applied to the results of the query before returning them to Relay
+
         Returns:
             Tuple[str, int]: The table as a string and the number of rows.
         """
@@ -192,9 +197,14 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         self.db_manager = db_manager
         self.query = query
 
-    def solve_query(self, results_modifier:list) -> Tuple[str, int]:
+    def solve_query(self, results_modifier:list[dict]) -> Tuple[str, int]:
         """Build table of distribution query and return as a TAB separated string
         along with the number of rows.
+
+        Parameters
+        ----------
+        results_modifier: List
+        A list of modifiers to be applied to the results of the query before returning them to Relay
 
         Returns:
             Tuple[str, int]: The table as a string and the number of rows.
@@ -283,13 +293,17 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
 
 
 def solve_availability(
-    results_modifier:list, db_manager: SyncDBManager, query: AvailabilityQuery
+    results_modifier:list[dict], db_manager: SyncDBManager, query: AvailabilityQuery
 ) -> RquestResult:
     """Solve RQuest availability queries.
 
     Args:
+        results_modifier: List
+            A list of modifiers to be applied to the results of the query before returning them to Relay
+
         db_manager (SyncDBManager): The database manager
         query (AvailabilityQuery): The availability query object
+
 
     Returns:
         RquestResult: Result object for the query
@@ -333,13 +347,15 @@ def _get_distribution_solver(
 
 
 def solve_distribution(
-    results_modifier:list, db_manager: SyncDBManager, query: DistributionQuery
+    results_modifier:list[dict], db_manager: SyncDBManager, query: DistributionQuery
 ) -> RquestResult:
     """Solve RQuest distribution queries.
 
     Args:
         db_manager (SyncDBManager): The database manager
         query (DistributionQuery): The distribution query object
+        results_modifier: List
+            A list of modifiers to be applied to the results of the query before returning them to Relay
 
     Returns:
         DistributionResult: Result object for the query

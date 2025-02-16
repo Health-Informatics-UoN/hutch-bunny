@@ -9,7 +9,7 @@ from hutch_bunny.core.rquest_dto.result import RquestResult
 
 
 def execute_query(
-    results_modifier: list,
+    results_modifier: list[dict],
     query_dict: Dict,
     logger: Logger,
     db_manager,
@@ -19,10 +19,11 @@ def execute_query(
 
     Parameters
     ----------
+    results_modifier: List
+        A list of modifiers to be applied to the results of the query before returning them to Relay
+
     query_dict: Dict
         A dictionary carrying the payload for the query. If there is an 'analysis' item in the query, it's a distribution query. Otherwise, it executes an availability query
-    results_modifers: List
-        A list of modifiers applied to the results of the query before returning them to Relay
 
     Returns
         RquestResult

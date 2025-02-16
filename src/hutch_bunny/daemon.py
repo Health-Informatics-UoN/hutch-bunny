@@ -16,7 +16,7 @@ def main() -> None:
     # Task Api Client class init.
     client = TaskApiClient()
     # Building results modifiers
-    modifiers_list = results_modifiers(
+    result_modifier:list[dict] = results_modifiers(
         low_number_suppression_threshold=int(
             settings.LOW_NUMBER_SUPPRESSION_THRESHOLD or 0
         ),
@@ -28,12 +28,6 @@ def main() -> None:
         else f"task/nextjob/{settings.COLLECTION_ID}"
     )
 
-    # low_number:int = int(getattr(settings, 'LOW_NUMBER_SUPPRESSION_THRESHOLD', 10))
-    # rounding:int = int(getattr(settings, 'ROUNDING_TARGET', 10))
-    #
-    # logger.info(low_number)
-    # logger.info(rounding)
-
     # Polling forever to get query from Relay
     while True:
         response = client.get(endpoint=polling_endpoint)
@@ -43,7 +37,7 @@ def main() -> None:
             # Convert Response to Dict
             query_dict: dict = response.json()
             # Start querying
-            result = execute_query(modifiers_list,
+            result = execute_query(result_modifier,
                 query_dict,
                 logger=logger,
                 db_manager=db_manager,
