@@ -28,6 +28,8 @@ from hutch_bunny.core.settings import get_settings
 from hutch_bunny.core.constants import DISTRIBUTION_TYPE_FILE_NAMES_MAP
 
 
+settings = get_settings()
+
 class BaseDistributionQuerySolver:
     def solve_query(self, filters: list) -> Tuple[str, int]:
         raise NotImplementedError
