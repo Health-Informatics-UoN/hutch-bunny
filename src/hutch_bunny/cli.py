@@ -38,7 +38,6 @@ def main() -> None:
     # Bunny passed args.
     args = parser.parse_args()
 
-    logger.info(args)
     with open(args.body) as body:
         query_dict = json.load(body)
 

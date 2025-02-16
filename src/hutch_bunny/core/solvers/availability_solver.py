@@ -15,6 +15,8 @@ from hutch_bunny.core.entities import (
     ProcedureOccurrence,
 )
 from sqlalchemy.dialects import postgresql
+
+from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery
 from sqlalchemy import select, Select
 from sqlalchemy.engine import Engine
@@ -306,7 +308,8 @@ class AvailabilitySolver:
 
             output = con.execute(full_query_all_groups).fetchone()
 
-        return int(output[0])
+        return apply_filters(int(output[0]), results_modifier)
+
 
     def _add_range_as_number(self, current_rule: Rule):
         if current_rule.min_value is not None and current_rule.max_value is not None:

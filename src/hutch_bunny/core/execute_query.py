@@ -56,7 +56,6 @@ def execute_query(
             result = query_solvers.solve_availability(results_modifier,
                 db_manager=db_manager, query=query
             )
-            result.count = apply_filters(result.count, results_modifier)
             return result
         except TypeError as te:  # raised if the distribution query json format is wrong
             logger.error(str(te), exc_info=True)
