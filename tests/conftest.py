@@ -5,9 +5,10 @@ from hutch_bunny.core.rquest_dto.cohort import Cohort
 from hutch_bunny.core.rquest_dto.group import Group
 from hutch_bunny.core.rquest_dto.rule import Rule
 from hutch_bunny.core.db_manager import SyncDBManager
-from hutch_bunny.core.query_solvers import AvailabilityQuery, DistributionQuery
+from hutch_bunny.core.solvers.query_solvers import AvailabilityQuery, DistributionQuery
 import hutch_bunny.core.settings as settings
 import hutch_bunny.core.setting_database as db_settings
+
 
 @pytest.fixture
 def db_manager():
@@ -23,6 +24,7 @@ def db_manager():
         ),
         schema=os.getenv("DATASOURCE_DB_SCHEMA"),
     )
+
 
 @pytest.fixture
 def availability_query_onerule_equals():
@@ -51,6 +53,7 @@ def availability_query_onerule_equals():
         owner="user1",
     )
 
+
 @pytest.fixture
 def availability_query_onerule_notequals():
     return AvailabilityQuery(
@@ -78,6 +81,7 @@ def availability_query_onerule_notequals():
         owner="user1",
     )
 
+
 @pytest.fixture
 def availability_query_tworules_equals():
     return AvailabilityQuery(
@@ -98,7 +102,7 @@ def availability_query_tworules_equals():
                             type_="TEXT",
                             operator="=",
                             value="28060",
-                        )
+                        ),
                     ],
                     rules_operator="AND",
                 ),
@@ -111,6 +115,7 @@ def availability_query_tworules_equals():
         collection="collection_id",
         owner="user1",
     )
+
 
 @pytest.fixture
 def availability_query_tworules_notequals():
@@ -132,7 +137,7 @@ def availability_query_tworules_notequals():
                             type_="TEXT",
                             operator="!=",
                             value="28060",
-                        )
+                        ),
                     ],
                     rules_operator="AND",
                 ),
@@ -146,6 +151,7 @@ def availability_query_tworules_notequals():
         owner="user1",
     )
 
+
 @pytest.fixture
 def distribution_query():
     return DistributionQuery(
@@ -155,4 +161,3 @@ def distribution_query():
         uuid="unique_id",
         collection="collection_id",
     )
-

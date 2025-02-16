@@ -1,6 +1,6 @@
 from typing import Dict, List
 from logging import Logger
-from hutch_bunny.core import query_solvers
+from hutch_bunny.core.solvers import query_solvers
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
 from hutch_bunny.core.obfuscation import (
     apply_filters,
@@ -29,14 +29,17 @@ def execute_query(
     """
 
     logger.info("Processing query...")
+    logger.debug(query_dict)
 
     if "analysis" in query_dict.keys():
         logger.debug("Processing distribution query...")
         try:
             query = DistributionQuery.from_dict(query_dict)
-            result = query_solvers.solve_distribution(
+            logger.debug(results_modifiers)
+            result = query_solvers.solve_distribution(results_modifiers,
                 db_manager=db_manager, query=query
             )
+
             return result
         except TypeError as te:  # raised if the distribution query json format is wrong
             logger.error(str(te), exc_info=True)
@@ -49,6 +52,7 @@ def execute_query(
         logger.debug("Processing availability query...")
         try:
             query = AvailabilityQuery.from_dict(query_dict)
+
             result = query_solvers.solve_availability(
                 db_manager=db_manager, query=query
             )

@@ -2,7 +2,7 @@ from typing import Any, Optional
 
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.engine import URL as SQLAURL
-from trino.sqlalchemy import URL as TrinoURL # TODO: how to do as optional?
+from trino.sqlalchemy import URL as TrinoURL  # TODO: how to do as optional?
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -107,11 +107,13 @@ class SyncDBManager(BaseDBManager):
 
         if connect_args is not None:
             self.engine = create_engine(url=url, connect_args=connect_args)
-        else: 
+        else:
             self.engine = create_engine(url=url)
 
         if self.schema is not None:
-            self.engine.update_execution_options(schema_translate_map={None: self.schema}) 
+            self.engine.update_execution_options(
+                schema_translate_map={None: self.schema}
+            )
 
         self.inspector = inspect(self.engine)
 

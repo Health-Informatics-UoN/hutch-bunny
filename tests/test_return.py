@@ -1,23 +1,9 @@
 import pytest
-from hutch_bunny.core.query_solvers import (
-    AvailabilityQuery,
+from hutch_bunny.core.solvers.query_solvers import (
     solve_availability,
 )
-from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.rquest_dto.result import RquestResult
-from hutch_bunny.core.rquest_dto.cohort import Cohort
-from hutch_bunny.core.rquest_dto.group import Group
-from hutch_bunny.core.rquest_dto.rule import Rule
-from dotenv import load_dotenv
-import os
-import hutch_bunny.core.settings as settings
-import hutch_bunny.core.setting_database as db_settings
 
-load_dotenv()
-
-pytestmark = pytest.mark.skipif(
-    os.environ.get("CI") is not None, reason="Skip integration tests in CI"
-)
 
 @pytest.fixture
 def availability_example():
@@ -25,7 +11,7 @@ def availability_example():
         uuid="unique_id",
         status="ok",
         collection_id="collection_id",
-        count=6272,
+        count=44,
         datasets_count=0,
         files=[],
         message="",
@@ -35,7 +21,9 @@ def availability_example():
 
 @pytest.fixture
 def availability_result(db_manager, availability_query_onerule_equals):
-    return solve_availability(db_manager=db_manager, query=availability_query_onerule_equals)
+    return solve_availability(
+        db_manager=db_manager, query=availability_query_onerule_equals
+    )
 
 
 def test_solve_availability_returns_result(availability_result):
