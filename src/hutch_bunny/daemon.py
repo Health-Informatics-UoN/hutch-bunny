@@ -28,11 +28,11 @@ def main() -> None:
         else f"task/nextjob/{settings.COLLECTION_ID}"
     )
 
-    low_number: int =  int(settings.LOW_NUMBER_SUPPRESSION_THRESHOLD) or 10
-    rounding: int =  int(settings.ROUNDING_TARGET) or 10
-
-    logger.info(low_number)
-    logger.info(rounding)
+    # low_number:int = int(getattr(settings, 'LOW_NUMBER_SUPPRESSION_THRESHOLD', 10))
+    # rounding:int = int(getattr(settings, 'ROUNDING_TARGET', 10))
+    #
+    # logger.info(low_number)
+    # logger.info(rounding)
 
     # Polling forever to get query from Relay
     while True:
@@ -43,9 +43,8 @@ def main() -> None:
             # Convert Response to Dict
             query_dict: dict = response.json()
             # Start querying
-            result = execute_query(low_number, rounding,
+            result = execute_query(modifiers_list,
                 query_dict,
-                results_modifiers=modifiers_list,
                 logger=logger,
                 db_manager=db_manager,
             )

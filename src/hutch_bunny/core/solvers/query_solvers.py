@@ -29,7 +29,7 @@ from hutch_bunny.core.constants import DISTRIBUTION_TYPE_FILE_NAMES_MAP
 
 
 class BaseDistributionQuerySolver:
-    def solve_query(self, low_number:int, rounding:int) -> Tuple[str, int]:
+    def solve_query(self, results_modifier: list) -> Tuple[str, int]:
         raise NotImplementedError
 
 
@@ -79,7 +79,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         self.db_manager = db_manager
         self.query = query
 
-    def solve_query(self, low_number:int, rounding:int) -> Tuple[str, int]:
+    def solve_query(self, results_modifier:list) -> Tuple[str, int]:
         """Build table of distribution query and return as a TAB separated string
         along with the number of rows.
 
@@ -88,6 +88,10 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         """
         # Prepare the empty results data frame
         df = pd.DataFrame(columns=self.output_cols)
+
+        low_number = next((item['threshold'] for item in results_modifier if item['id'] == "Low Number Suppression"),
+                          10)
+        rounding = next((item['nearest'] for item in results_modifier if item['id'] == "Rounding"), 10)
 
         # Get the counts for each concept ID
         counts: list = []
@@ -143,8 +147,8 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
                 categories.extend([domain_id] * len(res))
                 biobanks.extend([self.query.collection] * len(res))
 
-        # for i in range(len(counts)):
-        #     counts[i] = apply_filters(counts[i], filters)
+        for i in range(len(counts)):
+            counts[i] = apply_filters(counts[i], results_modifier)
 
         df["COUNT"] = counts
         #todo: dont think concepts contains anything?
@@ -188,7 +192,7 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         self.db_manager = db_manager
         self.query = query
 
-    def solve_query(self, low_number:int, rounding:int) -> Tuple[str, int]:
+    def solve_query(self, results_modifier:list) -> Tuple[str, int]:
         """Build table of distribution query and return as a TAB separated string
         along with the number of rows.
 
@@ -197,6 +201,10 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         """
         # Prepare the empty results data frame
         df = pd.DataFrame(columns=self.output_cols)
+
+        low_number = next((item['threshold'] for item in results_modifier if item['id'] == "Low Number Suppression"),
+                          10)
+        rounding = next((item['nearest'] for item in results_modifier if item['id'] == "Rounding"), 10)
 
         # Get the counts for each concept ID
         counts:list = []
@@ -240,10 +248,10 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
             how="left",
         )
 
-        # suppressed_count:int = apply_filters(res.iloc[:, 0].sum(), filters)
+        suppressed_count:int = apply_filters(res.iloc[:, 0].sum(), results_modifier)
 
         # Compile the data
-        counts.append(res.iloc[:, 0].sum())
+        counts.append(suppressed_count)
         concepts.extend(res.iloc[:, 1])
         categories.append("DEMOGRAPHICS")
         biobanks.append(self.query.collection)
@@ -253,7 +261,7 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
 
         alternative = "^"
         for _, row in combined.iterrows():
-            alternative += f"{row[Concept.concept_name.name]}|{apply_filters(row.iloc[0], filters)}^"
+            alternative += f"{row[Concept.concept_name.name]}|{apply_filters(row.iloc[0], results_modifier)}^"
         alternatives.append(alternative)
 
         # Fill out the results table
@@ -275,7 +283,7 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
 
 
 def solve_availability(
-    low_number:int, rounding: int, db_manager: SyncDBManager, query: AvailabilityQuery
+    results_modifier:list, db_manager: SyncDBManager, query: AvailabilityQuery
 ) -> RquestResult:
     """Solve RQuest availability queries.
 
@@ -289,7 +297,7 @@ def solve_availability(
     logger = logging.getLogger(settings.LOGGER_NAME)
     solver = AvailabilitySolver(db_manager, query)
     try:
-        count_ = solver.solve_query(low_number, rounding)
+        count_ = solver.solve_query(results_modifier)
         result = RquestResult(
             status="ok", count=count_, collection_id=query.collection, uuid=query.uuid
         )
@@ -325,7 +333,7 @@ def _get_distribution_solver(
 
 
 def solve_distribution(
-    low_number: int, rounding:int, db_manager: SyncDBManager, query: DistributionQuery
+    results_modifier:list, db_manager: SyncDBManager, query: DistributionQuery
 ) -> RquestResult:
     """Solve RQuest distribution queries.
 
@@ -339,7 +347,7 @@ def solve_distribution(
     logger = logging.getLogger(settings.LOGGER_NAME)
     solver = _get_distribution_solver(db_manager, query)
     try:
-        res, count = solver.solve_query(filters)
+        res, count = solver.solve_query(results_modifier)
         # Convert file data to base64
         res_b64_bytes = base64.b64encode(res.encode("utf-8"))  # bytes
         size = len(res_b64_bytes) / 1000  # length of file data in KB

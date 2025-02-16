@@ -45,14 +45,14 @@ class AvailabilitySolver:
         self.db_manager = db_manager
         self.query = query
 
-    def solve_query(self, low_number:int, rounding:int) -> int:
+    def solve_query(self, results_modifier:list) -> int:
         """
         This is the start of the process that begins to run the queries.
         (1) call solve_rules that takes each group and adds those results to the sub_queries list
         (2) this function then iterates through the list of groups to resolve the logic (AND/OR) between groups
         """
         # resolve within the group
-        return self._solve_rules(low_number, rounding)
+        return self._solve_rules(results_modifier)
 
     def _find_concepts(self) -> dict:
         """Function that takes all the concept IDs in the cohort definition, looks them up in the OMOP database
@@ -85,7 +85,7 @@ class AvailabilitySolver:
         }
         return concept_dict
 
-    def _solve_rules(self, low_number: int, rounding:int) -> int:
+    def _solve_rules(self, results_modifier:list) -> int:
         """Function for taking the JSON query from RQUEST and creating the required query to run against the OMOP database.
 
         RQUEST API spec can have multiple groups in each query, and then a condition between the groups.
@@ -103,6 +103,9 @@ class AvailabilitySolver:
         """
         # get the list of concepts to build the query constraints
         concepts: dict = self._find_concepts()
+
+        low_number = next((item['threshold'] for item in results_modifier if item['id'] == "Low Number Suppression"),10)
+        rounding = next((item['nearest'] for item in results_modifier if item['id'] == "Rounding"), 10)
 
         logger = logging.getLogger(settings.LOGGER_NAME)
 
