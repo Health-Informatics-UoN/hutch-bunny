@@ -5,25 +5,25 @@ def test_pool_clean_up_availability(db_manager,availability_query_onerule_equals
                                     availability_query_tworules_equals,
                                     availability_query_tworules_notequals):
     starting_checked_out_connections = db_manager.engine.pool.checkedout()
-    solve_availability(db_manager=db_manager, query=availability_query_onerule_equals)
+    solve_availability(results_modifier=[],db_manager=db_manager, query=availability_query_onerule_equals)
     ending_checked_out_connections = db_manager.engine.pool.checkedout()
     assert starting_checked_out_connections == ending_checked_out_connections
 
     starting_checked_out_connections = db_manager.engine.pool.checkedout()
     solve_availability(
-        db_manager=db_manager, query=availability_query_onerule_notequals
+        results_modifier=[],db_manager=db_manager, query=availability_query_onerule_notequals
     )
     ending_checked_out_connections = db_manager.engine.pool.checkedout()
     assert starting_checked_out_connections == ending_checked_out_connections
 
     starting_checked_out_connections = db_manager.engine.pool.checkedout()
-    solve_availability(db_manager=db_manager, query=availability_query_tworules_equals)
+    solve_availability(results_modifier=[],db_manager=db_manager, query=availability_query_tworules_equals)
     ending_checked_out_connections = db_manager.engine.pool.checkedout()
     assert starting_checked_out_connections == ending_checked_out_connections
 
     starting_checked_out_connections = db_manager.engine.pool.checkedout()
     solve_availability(
-        db_manager=db_manager, query=availability_query_tworules_notequals
+        results_modifier=[],db_manager=db_manager, query=availability_query_tworules_notequals
     )
     ending_checked_out_connections = db_manager.engine.pool.checkedout()
     assert starting_checked_out_connections == ending_checked_out_connections
