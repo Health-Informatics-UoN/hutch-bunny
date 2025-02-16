@@ -11,7 +11,7 @@ def availability_example():
         uuid="unique_id",
         status="ok",
         collection_id="collection_id",
-        count=44,
+        count=40,
         datasets_count=0,
         files=[],
         message="",
