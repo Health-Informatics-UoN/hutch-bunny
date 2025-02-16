@@ -29,7 +29,7 @@ from hutch_bunny.core.constants import DISTRIBUTION_TYPE_FILE_NAMES_MAP
 
 
 class BaseDistributionQuerySolver:
-    def solve_query(self, filters: list) -> Tuple[str, int]:
+    def solve_query(self, low_number:int, rounding:int) -> Tuple[str, int]:
         raise NotImplementedError
 
 
@@ -79,7 +79,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         self.db_manager = db_manager
         self.query = query
 
-    def solve_query(self, filters: list) -> Tuple[str, int]:
+    def solve_query(self, low_number:int, rounding:int) -> Tuple[str, int]:
         """Build table of distribution query and return as a TAB separated string
         along with the number of rows.
 
@@ -108,17 +108,33 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
                 concept_col = self.domain_concept_id_map[domain_id]
 
                 # gets a list of all concepts within this given table and their respective counts
-                stmnt = (
-                    select(
-                        func.count(table.person_id),
-                        Concept.concept_id,
-                        Concept.concept_name,
-                    )
-                    .join(Concept, concept_col == Concept.concept_id)
-                    .group_by(Concept.concept_id, Concept.concept_name)
-                )
-                res = pd.read_sql(stmnt, con)
 
+                if (rounding>0):
+                    stmnt = (
+                        select(
+                            func.count(table.person_id),
+                            Concept.concept_id,
+                            Concept.concept_name,
+                        )
+                        .join(Concept, concept_col == Concept.concept_id)
+                        .group_by(Concept.concept_id, Concept.concept_name)
+                    )
+                else:
+
+                    stmnt = (
+                        select(
+                            func.round((func.count() / rounding)) * rounding,
+                            Concept.concept_id,
+                            Concept.concept_name,
+                        )
+                        .join(Concept, concept_col == Concept.concept_id)
+                        .group_by(Concept.concept_id, Concept.concept_name)
+                    )
+
+                if low_number > 0:
+                    stmnt = stmnt.having(func.count() > low_number)
+
+                res = pd.read_sql(stmnt, con)
 
                 counts.extend(res.iloc[:, 0])
                 concepts.extend(res.iloc[:, 1])
@@ -127,8 +143,8 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
                 categories.extend([domain_id] * len(res))
                 biobanks.extend([self.query.collection] * len(res))
 
-        for i in range(len(counts)):
-            counts[i] = apply_filters(counts[i], filters)
+        # for i in range(len(counts)):
+        #     counts[i] = apply_filters(counts[i], filters)
 
         df["COUNT"] = counts
         #todo: dont think concepts contains anything?
@@ -172,7 +188,7 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         self.db_manager = db_manager
         self.query = query
 
-    def solve_query(self, filters: list) -> Tuple[str, int]:
+    def solve_query(self, low_number:int, rounding:int) -> Tuple[str, int]:
         """Build table of distribution query and return as a TAB separated string
         along with the number of rows.
 
@@ -192,10 +208,17 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         descriptions:list = []
         alternatives:list = []
 
+
         # People count statement
-        stmnt = select(func.count(Person.person_id), Person.gender_concept_id).group_by(
-            Person.gender_concept_id
-        )
+        if rounding>0:
+            stmnt = select(func.round((func.count() / rounding)) * rounding, Person.gender_concept_id).group_by(
+                Person.gender_concept_id)
+        else:
+            stmnt = select(func.count(Person.person_id), Person.gender_concept_id).group_by(
+                Person.gender_concept_id)
+
+        if low_number>0:
+            stmnt = stmnt.having(func.count() > low_number)
 
         concepts.append(8507)
         concepts.append(8532)
@@ -217,10 +240,10 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
             how="left",
         )
 
-        suppressed_count:int = apply_filters(res.iloc[:, 0].sum(), filters)
+        # suppressed_count:int = apply_filters(res.iloc[:, 0].sum(), filters)
 
         # Compile the data
-        counts.append(suppressed_count)
+        counts.append(res.iloc[:, 0].sum())
         concepts.extend(res.iloc[:, 1])
         categories.append("DEMOGRAPHICS")
         biobanks.append(self.query.collection)
@@ -252,7 +275,7 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
 
 
 def solve_availability(
-    db_manager: SyncDBManager, query: AvailabilityQuery
+    low_number:int, rounding: int, db_manager: SyncDBManager, query: AvailabilityQuery
 ) -> RquestResult:
     """Solve RQuest availability queries.
 
@@ -266,7 +289,7 @@ def solve_availability(
     logger = logging.getLogger(settings.LOGGER_NAME)
     solver = AvailabilitySolver(db_manager, query)
     try:
-        count_ = solver.solve_query()
+        count_ = solver.solve_query(low_number, rounding)
         result = RquestResult(
             status="ok", count=count_, collection_id=query.collection, uuid=query.uuid
         )
@@ -302,7 +325,7 @@ def _get_distribution_solver(
 
 
 def solve_distribution(
-    filters: list, db_manager: SyncDBManager, query: DistributionQuery
+    low_number: int, rounding:int, db_manager: SyncDBManager, query: DistributionQuery
 ) -> RquestResult:
     """Solve RQuest distribution queries.
 

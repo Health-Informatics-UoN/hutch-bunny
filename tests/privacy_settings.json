@@ -1,0 +1,10 @@
+[
+  {
+    "id": "Low Number Suppression",
+    "threshold": 10
+  },
+  {
+    "id": "Rounding",
+    "nearest": 100
+  }
+]

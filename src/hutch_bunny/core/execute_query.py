@@ -9,8 +9,9 @@ from hutch_bunny.core.rquest_dto.result import RquestResult
 
 
 def execute_query(
+    low_number: int,
+    rounding: int,
     query_dict: Dict,
-    results_modifiers: List,
     logger: Logger,
     db_manager,
 ) -> RquestResult:
@@ -35,8 +36,8 @@ def execute_query(
         logger.debug("Processing distribution query...")
         try:
             query = DistributionQuery.from_dict(query_dict)
-            logger.debug(results_modifiers)
-            result = query_solvers.solve_distribution(results_modifiers,
+
+            result = query_solvers.solve_distribution(low_number, rounding,
                 db_manager=db_manager, query=query
             )
 
@@ -53,10 +54,10 @@ def execute_query(
         try:
             query = AvailabilityQuery.from_dict(query_dict)
 
-            result = query_solvers.solve_availability(
+            result = query_solvers.solve_availability(low_number, rounding,
                 db_manager=db_manager, query=query
             )
-            result.count = apply_filters(result.count, results_modifiers)
+            # result.count = apply_filters(result.count, results_modifiers)
             return result
         except TypeError as te:  # raised if the distribution query json format is wrong
             logger.error(str(te), exc_info=True)

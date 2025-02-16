@@ -45,14 +45,14 @@ class AvailabilitySolver:
         self.db_manager = db_manager
         self.query = query
 
-    def solve_query(self) -> int:
+    def solve_query(self, low_number:int, rounding:int) -> int:
         """
         This is the start of the process that begins to run the queries.
         (1) call solve_rules that takes each group and adds those results to the sub_queries list
         (2) this function then iterates through the list of groups to resolve the logic (AND/OR) between groups
         """
         # resolve within the group
-        return self._solve_rules()
+        return self._solve_rules(low_number, rounding)
 
     def _find_concepts(self) -> dict:
         """Function that takes all the concept IDs in the cohort definition, looks them up in the OMOP database
@@ -85,7 +85,7 @@ class AvailabilitySolver:
         }
         return concept_dict
 
-    def _solve_rules(self) -> int:
+    def _solve_rules(self, low_number: int, rounding:int) -> int:
         """Function for taking the JSON query from RQUEST and creating the required query to run against the OMOP database.
 
         RQUEST API spec can have multiple groups in each query, and then a condition between the groups.
@@ -273,11 +273,23 @@ class AvailabilitySolver:
 
             # construct the query based on the OR/AND logic specified between groups
             if self.query.cohort.groups_operator == "OR":
-                full_query_all_groups = select(func.count()).where(
-                    or_(*all_groups_queries)
-                )
+
+                if rounding>0:
+                    full_query_all_groups = select(func.round((func.count()/rounding))*rounding).where(
+                        or_(*all_groups_queries)
+                    )
+                else:
+                    full_query_all_groups = select(func.count()).where(
+                        or_(*all_groups_queries)
+                    )
             else:
-                full_query_all_groups = select(func.count()).where(*all_groups_queries)
+                if rounding > 0:
+                    full_query_all_groups = select(func.round((func.count()/rounding))*rounding).where(*all_groups_queries)
+                else:
+                    full_query_all_groups = select(func.count()).where(*all_groups_queries)
+
+            if low_number>0:
+                full_query_all_groups = full_query_all_groups.having(func.count()>low_number)
 
             # here for debug, prints the SQL statement created
             logger.info(

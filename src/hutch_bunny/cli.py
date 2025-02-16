@@ -1,4 +1,6 @@
 import json
+
+from hutch_bunny.core.obfuscation import low_number_suppression
 from hutch_bunny.core.results_modifiers import get_results_modifiers_from_str, results_modifiers
 from hutch_bunny.core.execute_query import execute_query
 from hutch_bunny.core.rquest_dto.result import RquestResult
@@ -36,12 +38,18 @@ def main() -> None:
     # Bunny passed args.
     args = parser.parse_args()
 
+    logger.info(args)
     with open(args.body) as body:
         query_dict = json.load(body)
+
+    logger.info(args.results_modifiers)
     results_modifier = get_results_modifiers_from_str(args.results_modifiers)
 
+    low_number=  next((item['threshold'] for item in results_modifier if item['id'] == "Low Number Suppression"), 10)
+    rounding =  next((item['nearest'] for item in results_modifier if item['id'] == "Rounding"), 10)
+
     result = execute_query(
-        query_dict, results_modifier, logger=logger, db_manager=db_manager
+        low_number,rounding,query_dict, logger=logger, db_manager=db_manager
     )
     logger.debug(f"Results: {result.to_dict()}")
     save_to_output(result, args.output)
