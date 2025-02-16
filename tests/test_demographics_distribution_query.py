@@ -2,14 +2,7 @@ import pytest
 from hutch_bunny.core.solvers.query_solvers import solve_distribution
 from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.rquest_dto.file import File
-from dotenv import load_dotenv
-import os
 
-load_dotenv()
-
-pytestmark = pytest.mark.skipif(
-    os.environ.get("CI") is not None, reason="Skip integration tests in CI"
-)
 
 
 @pytest.fixture
@@ -24,8 +17,8 @@ def distribution_example():
             File(
                 name="demographics.distribution",
                 data="",
-                description="Result of demographics.distribution analysis",
-                size=0.308,
+                description="Result of code.distribution analysis",
+                size=0.268,
                 type_="BCOS",
                 sensitive=True,
                 reference="",
@@ -39,7 +32,7 @@ def distribution_example():
 @pytest.fixture
 def distribution_result(db_manager, distribution_query):
     db_manager.list_tables()
-    return solve_distribution(db_manager=db_manager, query=distribution_query)
+    return solve_distribution(filters=[], db_manager=db_manager, query=distribution_query)
 
 
 def test_solve_distribution_returns_result(distribution_result):

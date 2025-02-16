@@ -10,11 +10,6 @@ import hutch_bunny.core.setting_database as db_settings
 
 load_dotenv()
 
-pytestmark = pytest.mark.skipif(
-    os.environ.get("CI") is not None, reason="Skip integration tests in CI"
-)
-
-
 @pytest.fixture
 def db_manager():
     datasource_db_port = os.getenv("DATASOURCE_DB_PORT")
@@ -35,7 +30,7 @@ def db_manager():
 def distribution_query():
     return DistributionQuery(
         owner="user1",
-        code="GENERAL",
+        code="GENERIC",
         analysis="DISTRIBUTION",
         uuid="unique_id",
         collection="collection_id",
@@ -69,7 +64,7 @@ def distribution_example():
 @pytest.fixture
 def distribution_result(db_manager, distribution_query):
     db_manager.list_tables()
-    return solve_distribution(db_manager=db_manager, query=distribution_query)
+    return solve_distribution(filters=[], db_manager=db_manager, query=distribution_query)
 
 
 def test_solve_distribution_returns_result(distribution_result):
