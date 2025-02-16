@@ -47,7 +47,7 @@ class AvailabilitySolver:
         self.db_manager = db_manager
         self.query = query
 
-    def solve_query(self, results_modifier:list[dict]) -> int:
+    def solve_query(self, results_modifier: list[dict]) -> int:
         """
         This is the start of the process that begins to run the queries.
         (1) call solve_rules that takes each group and adds those results to the sub_queries list
@@ -84,7 +84,7 @@ class AvailabilitySolver:
         }
         return concept_dict
 
-    def _solve_rules(self, results_modifier:list[dict]) -> int:
+    def _solve_rules(self, results_modifier: list[dict]) -> int:
         """Function for taking the JSON query from RQUEST and creating the required query to run against the OMOP database.
 
         RQUEST API spec can have multiple groups in each query, and then a condition between the groups.
@@ -103,8 +103,18 @@ class AvailabilitySolver:
         # get the list of concepts to build the query constraints
         concepts: dict = self._find_concepts()
 
-        low_number = next((item['threshold'] for item in results_modifier if item['id'] == "Low Number Suppression"),10)
-        rounding = next((item['nearest'] for item in results_modifier if item['id'] == "Rounding"), 10)
+        low_number = next(
+            (
+                item["threshold"]
+                for item in results_modifier
+                if item["id"] == "Low Number Suppression"
+            ),
+            10,
+        )
+        rounding = next(
+            (item["nearest"] for item in results_modifier if item["id"] == "Rounding"),
+            10,
+        )
 
         logger = logging.getLogger(settings.LOGGER_NAME)
 
@@ -135,9 +145,7 @@ class AvailabilitySolver:
 
                     # if a time is supplied split the string out to component parts
                     if current_rule.time:
-                        time_value, time_category, _ = current_rule.time.split(
-                            ":"
-                        )
+                        time_value, time_category, _ = current_rule.time.split(":")
                         left_value_time, right_value_time = time_value.split("|")
 
                     # if a number was supplied, it is in the format "value" : "0.0|200.0"
@@ -275,23 +283,28 @@ class AvailabilitySolver:
 
             # construct the query based on the OR/AND logic specified between groups
             if self.query.cohort.groups_operator == "OR":
-
-                if rounding>0:
-                    full_query_all_groups = select(func.round((func.count()/rounding))*rounding).where(
-                        or_(*all_groups_queries)
-                    )
+                if rounding > 0:
+                    full_query_all_groups = select(
+                        func.round((func.count() / rounding)) * rounding
+                    ).where(or_(*all_groups_queries))
                 else:
                     full_query_all_groups = select(func.count()).where(
                         or_(*all_groups_queries)
                     )
             else:
                 if rounding > 0:
-                    full_query_all_groups = select(func.round((func.count()/rounding))*rounding).where(*all_groups_queries)
+                    full_query_all_groups = select(
+                        func.round((func.count() / rounding)) * rounding
+                    ).where(*all_groups_queries)
                 else:
-                    full_query_all_groups = select(func.count()).where(*all_groups_queries)
+                    full_query_all_groups = select(func.count()).where(
+                        *all_groups_queries
+                    )
 
-            if low_number>0:
-                full_query_all_groups = full_query_all_groups.having(func.count()>low_number)
+            if low_number > 0:
+                full_query_all_groups = full_query_all_groups.having(
+                    func.count() > low_number
+                )
 
             # here for debug, prints the SQL statement created
             logger.debug(
@@ -306,7 +319,6 @@ class AvailabilitySolver:
             output = con.execute(full_query_all_groups).fetchone()
 
         return apply_filters(int(output[0]), results_modifier)
-
 
     def _add_range_as_number(self, current_rule: Rule):
         if current_rule.min_value is not None and current_rule.max_value is not None:
@@ -326,46 +338,90 @@ class AvailabilitySolver:
             Person, Person.person_id == ConditionOccurrence.person_id
         )
         self.drug = self.drug.join(Person, Person.person_id == DrugExposure.person_id)
-        self.measurement = self.measurement.join(Person, Person.person_id == Measurement.person_id)
-        self.observation = self.observation.join(Person, Person.person_id == Observation.person_id)
+        self.measurement = self.measurement.join(
+            Person, Person.person_id == Measurement.person_id
+        )
+        self.observation = self.observation.join(
+            Person, Person.person_id == Observation.person_id
+        )
 
         # due to the way the query is expressed and how split above, if the left value is empty
         # it indicates a less than search
 
         if left_value_time == "":
-            self.condition = self.condition.where(self._get_year_difference(self.db_manager.engine, ConditionOccurrence.condition_start_date, Person.birth_datetime)
+            self.condition = self.condition.where(
+                self._get_year_difference(
+                    self.db_manager.engine,
+                    ConditionOccurrence.condition_start_date,
+                    Person.birth_datetime,
+                )
                 < int(right_value_time)
             )
-            self.drug = self.drug.where(self._get_year_difference(self.db_manager.engine, DrugExposure.drug_exposure_start_date, Person.birth_datetime)
+            self.drug = self.drug.where(
+                self._get_year_difference(
+                    self.db_manager.engine,
+                    DrugExposure.drug_exposure_start_date,
+                    Person.birth_datetime,
+                )
                 < int(right_value_time)
             )
-            self.measurement = self.measurement.where(self._get_year_difference(self.db_manager.engine, Measurement.measurement_date, Person.birth_datetime)
+            self.measurement = self.measurement.where(
+                self._get_year_difference(
+                    self.db_manager.engine,
+                    Measurement.measurement_date,
+                    Person.birth_datetime,
+                )
                 < int(right_value_time)
             )
-            self.observation = self.observation.where( self._get_year_difference(self.db_manager.engine, Observation.observation_date, Person.birth_datetime)
+            self.observation = self.observation.where(
+                self._get_year_difference(
+                    self.db_manager.engine,
+                    Observation.observation_date,
+                    Person.birth_datetime,
+                )
                 < int(right_value_time)
             )
         else:
-            self.condition = self.condition.where(self._get_year_difference(self.db_manager.engine, ConditionOccurrence.condition_start_date, Person.birth_datetime)
+            self.condition = self.condition.where(
+                self._get_year_difference(
+                    self.db_manager.engine,
+                    ConditionOccurrence.condition_start_date,
+                    Person.birth_datetime,
+                )
                 > int(left_value_time)
             )
-            self.drug = self.drug.where(self._get_year_difference(self.db_manager.engine, DrugExposure.drug_exposure_start_date, Person.birth_datetime)
+            self.drug = self.drug.where(
+                self._get_year_difference(
+                    self.db_manager.engine,
+                    DrugExposure.drug_exposure_start_date,
+                    Person.birth_datetime,
+                )
                 > int(left_value_time)
             )
             self.measurement = self.measurement.where(
-                self._get_year_difference(self.db_manager.engine, Measurement.measurement_date, Person.birth_datetime)
+                self._get_year_difference(
+                    self.db_manager.engine,
+                    Measurement.measurement_date,
+                    Person.birth_datetime,
+                )
                 > int(left_value_time)
             )
             self.observation = self.observation.where(
-                self._get_year_difference(self.db_manager.engine, Observation.observation_date, Person.birth_datetime)
+                self._get_year_difference(
+                    self.db_manager.engine,
+                    Observation.observation_date,
+                    Person.birth_datetime,
+                )
                 > int(left_value_time)
             )
 
     def _get_year_difference(self, engine: Engine, start_date, birth_date):
-        if engine.dialect.name == 'postgresql':
-            return func.date_part('year', start_date) - func.date_part('year', birth_date)
-        elif engine.dialect.name == 'mssql':
-            return func.DATEPART('year', start_date) - func.DATEPART('year', birth_date)
+        if engine.dialect.name == "postgresql":
+            return func.date_part("year", start_date) - func.date_part(
+                "year", birth_date
+            )
+        elif engine.dialect.name == "mssql":
+            return func.DATEPART("year", start_date) - func.DATEPART("year", birth_date)
         else:
             raise NotImplementedError("Unsupported database dialect")
 
@@ -392,8 +448,12 @@ class AvailabilitySolver:
         # therefore the logic is to search for a date that is after the date
         # that was a month ago.
         if left_value_time == "":
-            self.measurement = self.measurement.where(Measurement.measurement_date >= relative_date)
-            self.observation = self.observation.where(Observation.observation_date >= relative_date)
+            self.measurement = self.measurement.where(
+                Measurement.measurement_date >= relative_date
+            )
+            self.observation = self.observation.where(
+                Observation.observation_date >= relative_date
+            )
             self.condition = self.condition.where(
                 ConditionOccurrence.condition_start_date >= relative_date
             )
@@ -401,8 +461,12 @@ class AvailabilitySolver:
                 DrugExposure.drug_exposure_start_date >= relative_date
             )
         else:
-            self.measurement = self.measurement.where(Measurement.measurement_date <= relative_date)
-            self.observation = self.observation.where(Observation.observation_date <= relative_date)
+            self.measurement = self.measurement.where(
+                Measurement.measurement_date <= relative_date
+            )
+            self.observation = self.observation.where(
+                Observation.observation_date <= relative_date
+            )
             self.condition = self.condition.where(
                 ConditionOccurrence.condition_start_date <= relative_date
             )

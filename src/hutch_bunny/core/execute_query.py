@@ -37,8 +37,8 @@ def execute_query(
         try:
             query = DistributionQuery.from_dict(query_dict)
 
-            result = query_solvers.solve_distribution(results_modifier,
-                db_manager=db_manager, query=query
+            result = query_solvers.solve_distribution(
+                results_modifier, db_manager=db_manager, query=query
             )
 
             return result
@@ -54,8 +54,8 @@ def execute_query(
         try:
             query = AvailabilityQuery.from_dict(query_dict)
 
-            result = query_solvers.solve_availability(results_modifier,
-                db_manager=db_manager, query=query
+            result = query_solvers.solve_availability(
+                results_modifier, db_manager=db_manager, query=query
             )
             return result
         except TypeError as te:  # raised if the distribution query json format is wrong

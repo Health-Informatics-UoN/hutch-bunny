@@ -79,38 +79,45 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         self.db_manager = db_manager
         self.query = query
 
-    def solve_query(self, results_modifier:list) -> Tuple[str, int]:
+    def solve_query(self, results_modifier: list) -> Tuple[str, int]:
         """Build table of distribution query and return as a TAB separated string
-        along with the number of rows.
+         along with the number of rows.
 
-       Parameters
-        ----------
-        results_modifier: List
-        A list of modifiers to be applied to the results of the query before returning them to Relay
+        Parameters
+         ----------
+         results_modifier: List
+         A list of modifiers to be applied to the results of the query before returning them to Relay
 
-        Returns:
-            Tuple[str, int]: The table as a string and the number of rows.
+         Returns:
+             Tuple[str, int]: The table as a string and the number of rows.
         """
         # Prepare the empty results data frame
         df = pd.DataFrame(columns=self.output_cols)
 
-        low_number = next((item['threshold'] for item in results_modifier if item['id'] == "Low Number Suppression"),
-                          10)
-        rounding = next((item['nearest'] for item in results_modifier if item['id'] == "Rounding"), 10)
+        low_number = next(
+            (
+                item["threshold"]
+                for item in results_modifier
+                if item["id"] == "Low Number Suppression"
+            ),
+            10,
+        )
+        rounding = next(
+            (item["nearest"] for item in results_modifier if item["id"] == "Rounding"),
+            10,
+        )
 
         # Get the counts for each concept ID
         counts: list = []
         concepts: list = []
         categories: list = []
-        biobanks:list  = []
-        omop_desc:list = []
+        biobanks: list = []
+        omop_desc: list = []
 
         logger = logging.getLogger(settings.LOGGER_NAME)
 
-
         with self.db_manager.engine.connect() as con:
             for domain_id in self.allowed_domains_map:
-
                 logger.debug(domain_id)
                 # get the right table and column based on the domain
                 table = self.allowed_domains_map[domain_id]
@@ -118,7 +125,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
 
                 # gets a list of all concepts within this given table and their respective counts
 
-                if (rounding>0):
+                if rounding > 0:
                     stmnt = (
                         select(
                             func.count(table.person_id),
@@ -129,7 +136,6 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
                         .group_by(Concept.concept_id, Concept.concept_name)
                     )
                 else:
-
                     stmnt = (
                         select(
                             func.round((func.count() / rounding)) * rounding,
@@ -156,7 +162,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
             counts[i] = apply_filters(counts[i], results_modifier)
 
         df["COUNT"] = counts
-        #todo: dont think concepts contains anything?
+        # todo: dont think concepts contains anything?
         df["OMOP"] = concepts
         df["CATEGORY"] = categories
         df["CODE"] = df["OMOP"].apply(lambda x: f"OMOP:{x}")
@@ -174,7 +180,6 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
 
 
 class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
-
     output_cols = [
         "BIOBANK",
         "CODE",
@@ -197,7 +202,7 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         self.db_manager = db_manager
         self.query = query
 
-    def solve_query(self, results_modifier:list[dict]) -> Tuple[str, int]:
+    def solve_query(self, results_modifier: list[dict]) -> Tuple[str, int]:
         """Build table of distribution query and return as a TAB separated string
         along with the number of rows.
 
@@ -212,30 +217,41 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         # Prepare the empty results data frame
         df = pd.DataFrame(columns=self.output_cols)
 
-        low_number = next((item['threshold'] for item in results_modifier if item['id'] == "Low Number Suppression"),
-                          10)
-        rounding = next((item['nearest'] for item in results_modifier if item['id'] == "Rounding"), 10)
+        low_number = next(
+            (
+                item["threshold"]
+                for item in results_modifier
+                if item["id"] == "Low Number Suppression"
+            ),
+            10,
+        )
+        rounding = next(
+            (item["nearest"] for item in results_modifier if item["id"] == "Rounding"),
+            10,
+        )
 
         # Get the counts for each concept ID
-        counts:list = []
-        concepts:list = []
-        categories:list = []
-        biobanks:list = []
-        datasets:list = []
-        codes:list = []
-        descriptions:list = []
-        alternatives:list = []
-
+        counts: list = []
+        concepts: list = []
+        categories: list = []
+        biobanks: list = []
+        datasets: list = []
+        codes: list = []
+        descriptions: list = []
+        alternatives: list = []
 
         # People count statement
-        if rounding>0:
-            stmnt = select(func.round((func.count() / rounding)) * rounding, Person.gender_concept_id).group_by(
-                Person.gender_concept_id)
+        if rounding > 0:
+            stmnt = select(
+                func.round((func.count() / rounding)) * rounding,
+                Person.gender_concept_id,
+            ).group_by(Person.gender_concept_id)
         else:
-            stmnt = select(func.count(Person.person_id), Person.gender_concept_id).group_by(
-                Person.gender_concept_id)
+            stmnt = select(
+                func.count(Person.person_id), Person.gender_concept_id
+            ).group_by(Person.gender_concept_id)
 
-        if low_number>0:
+        if low_number > 0:
             stmnt = stmnt.having(func.count() > low_number)
 
         concepts.append(8507)
@@ -258,7 +274,7 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
             how="left",
         )
 
-        suppressed_count:int = apply_filters(res.iloc[:, 0].sum(), results_modifier)
+        suppressed_count: int = apply_filters(res.iloc[:, 0].sum(), results_modifier)
 
         # Compile the data
         counts.append(suppressed_count)
@@ -293,7 +309,7 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
 
 
 def solve_availability(
-    results_modifier:list[dict], db_manager: SyncDBManager, query: AvailabilityQuery
+    results_modifier: list[dict], db_manager: SyncDBManager, query: AvailabilityQuery
 ) -> RquestResult:
     """Solve RQuest availability queries.
 
@@ -347,7 +363,7 @@ def _get_distribution_solver(
 
 
 def solve_distribution(
-    results_modifier:list[dict], db_manager: SyncDBManager, query: DistributionQuery
+    results_modifier: list[dict], db_manager: SyncDBManager, query: DistributionQuery
 ) -> RquestResult:
     """Solve RQuest distribution queries.
 
@@ -368,7 +384,6 @@ def solve_distribution(
         res_b64_bytes = base64.b64encode(res.encode("utf-8"))  # bytes
         size = len(res_b64_bytes) / 1000  # length of file data in KB
         res_b64 = res_b64_bytes.decode("utf-8")  # convert back to string, now base64
-
 
         result_file = File(
             data=res_b64,

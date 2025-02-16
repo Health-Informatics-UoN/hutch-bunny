@@ -16,7 +16,7 @@ def main() -> None:
     # Task Api Client class init.
     client = TaskApiClient()
     # Building results modifiers
-    result_modifier:list[dict] = results_modifiers(
+    result_modifier: list[dict] = results_modifiers(
         low_number_suppression_threshold=int(
             settings.LOW_NUMBER_SUPPRESSION_THRESHOLD or 0
         ),
@@ -37,7 +37,8 @@ def main() -> None:
             # Convert Response to Dict
             query_dict: dict = response.json()
             # Start querying
-            result = execute_query(result_modifier,
+            result = execute_query(
+                result_modifier,
                 query_dict,
                 logger=logger,
                 db_manager=db_manager,

@@ -37,7 +37,7 @@ def get_results_modifiers_from_str(params: str) -> list[dict]:
         list: The list of parameter dicts of results modifiers
     """
 
-    deserialised_params:list[dict] = json.loads(params)
+    deserialised_params: list[dict] = json.loads(params)
     if not isinstance(deserialised_params, list):
         raise ValueError(
             f"{get_results_modifiers_from_str.__name__} requires a JSON list"

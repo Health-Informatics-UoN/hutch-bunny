@@ -22,7 +22,9 @@ def availability_example():
 @pytest.fixture
 def availability_result(db_manager, availability_query_onerule_equals):
     return solve_availability(
-        results_modifier=[], db_manager=db_manager, query=availability_query_onerule_equals
+        results_modifier=[],
+        db_manager=db_manager,
+        query=availability_query_onerule_equals,
     )
 
 
