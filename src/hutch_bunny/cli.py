@@ -1,5 +1,5 @@
 import json
-from hutch_bunny.core.results_modifiers import get_results_modifiers_from_str
+from hutch_bunny.core.results_modifiers import get_results_modifiers_from_str, results_modifiers
 from hutch_bunny.core.execute_query import execute_query
 from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.parser import parser

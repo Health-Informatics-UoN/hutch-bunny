@@ -4,6 +4,7 @@ from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.rquest_dto.file import File
 
 
+
 @pytest.fixture
 def distribution_example():
     return RquestResult(
