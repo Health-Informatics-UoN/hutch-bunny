@@ -10,6 +10,7 @@ import hutch_bunny.core.setting_database as db_settings
 
 load_dotenv()
 
+
 @pytest.fixture
 def db_manager():
     datasource_db_port = os.getenv("DATASOURCE_DB_PORT")
@@ -64,7 +65,9 @@ def distribution_example():
 @pytest.fixture
 def distribution_result(db_manager, distribution_query):
     db_manager.list_tables()
-    return solve_distribution(filters=[], db_manager=db_manager, query=distribution_query)
+    return solve_distribution(
+        results_modifier=[], db_manager=db_manager, query=distribution_query
+    )
 
 
 def test_solve_distribution_returns_result(distribution_result):

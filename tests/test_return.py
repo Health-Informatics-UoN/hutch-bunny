@@ -11,7 +11,7 @@ def availability_example():
         uuid="unique_id",
         status="ok",
         collection_id="collection_id",
-        count=44,
+        count=40,
         datasets_count=0,
         files=[],
         message="",
@@ -22,7 +22,9 @@ def availability_example():
 @pytest.fixture
 def availability_result(db_manager, availability_query_onerule_equals):
     return solve_availability(
-        db_manager=db_manager, query=availability_query_onerule_equals
+        results_modifier=[],
+        db_manager=db_manager,
+        query=availability_query_onerule_equals,
     )
 
 

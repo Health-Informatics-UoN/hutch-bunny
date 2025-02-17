@@ -23,7 +23,9 @@ DEFAULT_DB_DRIVER = DEFAULT_POSTGRES_DRIVER
 
 # Logging configuration
 LOGGER_NAME = "hutch"
-LOGGER_LEVEL = logging.getLevelNamesMapping().get(environ.get("BUNNY_LOGGER_LEVEL") or "INFO", "INFO")
+LOGGER_LEVEL = logging.getLevelNamesMapping().get(
+    environ.get("BUNNY_LOGGER_LEVEL") or "INFO", "INFO"
+)
 BACKUP_LOGGER_NAME = "backup"
 MSG_FORMAT = "%(levelname)s - %(asctime)s - %(message)s"
 DATE_FORMAT = "%d-%b-%y %H:%M:%S"
@@ -54,9 +56,12 @@ try:
 except Exception:
     BUNNY_VERSION = "unknown"
 
+
 def log_settings():
-    from hutch_bunny.core.logger import logger #This is here to prevent a circular import
- 
+    from hutch_bunny.core.logger import (
+        logger,
+    )  # This is here to prevent a circular import
+
     logger.debug("Running with settings:")
     logger.debug(f"  BUNNY VERSION: {BUNNY_VERSION}")
     logger.debug(f"  DATASOURCE_USE_TRINO: {DATASOURCE_USE_TRINO}")
@@ -71,7 +76,9 @@ def log_settings():
     logger.debug(f"  TASK_API_USERNAME: {TASK_API_USERNAME}")
     logger.debug(f"  TASK_API_PASSWORD: {TASK_API_PASSWORD}")
     logger.debug(f"  TASK_API_TYPE: {TASK_API_TYPE}")
-    logger.debug(f"  LOW_NUMBER_SUPPRESSION_THRESHOLD: {LOW_NUMBER_SUPPRESSION_THRESHOLD}")
+    logger.debug(
+        f"  LOW_NUMBER_SUPPRESSION_THRESHOLD: {LOW_NUMBER_SUPPRESSION_THRESHOLD}"
+    )
     logger.debug(f"  ROUNDING_TARGET: {ROUNDING_TARGET}")
     logger.debug(f"  POLLING_INTERVAL_DEFAULT: {POLLING_INTERVAL_DEFAULT}")
     logger.debug(f"  POLLING_INTERVAL: {POLLING_INTERVAL}")

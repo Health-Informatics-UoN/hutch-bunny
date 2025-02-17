@@ -10,7 +10,7 @@ from hutch_bunny.core.rquest_dto.result import RquestResult
 
 def execute_query(
     query_dict: Dict,
-    results_modifiers: List,
+    results_modifier: list[dict],
     logger: Logger,
     db_manager,
 ) -> RquestResult:
@@ -19,10 +19,11 @@ def execute_query(
 
     Parameters
     ----------
+    results_modifier: List
+        A list of modifiers to be applied to the results of the query before returning them to Relay
+
     query_dict: Dict
         A dictionary carrying the payload for the query. If there is an 'analysis' item in the query, it's a distribution query. Otherwise, it executes an availability query
-    results_modifers: List
-        A list of modifiers applied to the results of the query before returning them to Relay
 
     Returns
         RquestResult
@@ -35,9 +36,9 @@ def execute_query(
         logger.debug("Processing distribution query...")
         try:
             query = DistributionQuery.from_dict(query_dict)
-            logger.debug(results_modifiers)
-            result = query_solvers.solve_distribution(results_modifiers,
-                db_manager=db_manager, query=query
+
+            result = query_solvers.solve_distribution(
+                results_modifier, db_manager=db_manager, query=query
             )
 
             return result
@@ -54,9 +55,8 @@ def execute_query(
             query = AvailabilityQuery.from_dict(query_dict)
 
             result = query_solvers.solve_availability(
-                db_manager=db_manager, query=query
+                results_modifier, db_manager=db_manager, query=query
             )
-            result.count = apply_filters(result.count, results_modifiers)
             return result
         except TypeError as te:  # raised if the distribution query json format is wrong
             logger.error(str(te), exc_info=True)
