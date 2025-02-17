@@ -38,8 +38,8 @@ def main() -> None:
             query_dict: dict = response.json()
             # Start querying
             result = execute_query(
-                result_modifier,
                 query_dict,
+                result_modifier,
                 logger=logger,
                 db_manager=db_manager,
             )

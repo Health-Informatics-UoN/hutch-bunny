@@ -9,8 +9,8 @@ from hutch_bunny.core.rquest_dto.result import RquestResult
 
 
 def execute_query(
-    results_modifier: list[dict],
     query_dict: Dict,
+    results_modifier: list[dict],
     logger: Logger,
     db_manager,
 ) -> RquestResult:
