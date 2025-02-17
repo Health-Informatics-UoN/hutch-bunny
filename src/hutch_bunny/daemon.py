@@ -7,8 +7,10 @@ from hutch_bunny.core.results_modifiers import results_modifiers
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.setting_database import setting_database
 
+
 def main() -> None:
     settings.log_settings()
+
     # Setting database connection
     db_manager = setting_database(logger=logger)
     # Task Api Client class init.
@@ -40,6 +42,7 @@ def main() -> None:
                 logger=logger,
                 db_manager=db_manager,
             )
+            logger.debug(f"Result: {result.to_dict()}")
             # Check the payload shape
             if not isinstance(result, RquestResult):
                 raise TypeError("Payload does not match RQuest result schema.")
@@ -74,3 +77,7 @@ def main() -> None:
             logger.info("Got http status code: %s", response.status_code)
 
         time.sleep(settings.POLLING_INTERVAL)
+
+
+if __name__ == "__main__":
+    main()

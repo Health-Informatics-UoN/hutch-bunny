@@ -1,4 +1,25 @@
-FROM ghcr.io/astral-sh/uv:bookworm-slim
+# Install uv
+FROM python:3.13-slim AS builder
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Change the working directory to the `app` directory
+WORKDIR /app
+
+# Install dependencies
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-install-project --no-editable
+    
+# Copy the project into the intermediate image
+COPY . /app
+
+# Sync the project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-editable
+
+# ------
+FROM python:3.13-slim
 
 LABEL org.opencontainers.image.title=Hutch\ Bunny
 LABEL org.opencontainers.image.description=Hutch\ Bunny
@@ -8,9 +29,10 @@ LABEL org.opencontainers.image.documentation=https://health-informatics-uon.gith
 LABEL org.opencontainers.image.source=https://github.com/Health-Informatics-UoN/hutch-bunny
 LABEL org.opencontainers.image.licenses=MIT
 
-COPY . /app
-WORKDIR /app
+# Copy the environment, but not the source code
+COPY --from=builder --chown=app:app /app/.venv /app/.venv
 
-RUN uv sync --frozen
+ENV PATH="/app/.venv/bin:$PATH" 
 
-ENTRYPOINT ["uv", "run", "bunny-daemon"]
+# Run Bunny Daemon by default; user can override and run the CLI by specifying `bunny`
+CMD ["bunny-daemon"]

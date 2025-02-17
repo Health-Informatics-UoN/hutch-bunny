@@ -41,7 +41,10 @@ class TaskApiClient:
         Returns:
             Response: The response object returned by the requests library.
         """
-        logger.debug("Sending %s request to %s with data %s and kwargs %s" % (method.value, url,data, kwargs))
+        logger.debug(
+            "Sending %s request to %s with data %s and kwargs %s"
+            % (method.value, url, data, kwargs)
+        )
         basicAuth = HTTPBasicAuth(self.username, self.password)
         response = requests.request(
             method=method.value, url=url, json=data, auth=basicAuth, **kwargs
