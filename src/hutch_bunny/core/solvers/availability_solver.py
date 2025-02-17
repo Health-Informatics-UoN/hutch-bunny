@@ -18,7 +18,7 @@ from sqlalchemy.dialects import postgresql
 
 from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery
-from sqlalchemy import select, Select
+from sqlalchemy import select, Select, text
 from sqlalchemy.engine import Engine
 
 import hutch_bunny.core.settings as settings
@@ -421,7 +421,7 @@ class AvailabilitySolver:
                 "year", birth_date
             )
         elif engine.dialect.name == "mssql":
-            return func.DATEPART("year", start_date) - func.DATEPART("year", birth_date)
+            return func.DATEPART(text("year"), start_date) - func.DATEPART(text("year"), birth_date)
         else:
             raise NotImplementedError("Unsupported database dialect")
 
