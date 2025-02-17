@@ -56,4 +56,10 @@ jobs:
         run: uv sync --frozen --dev
 
       - name: Run tests
-        run: uv run pytest tests
+        run: uv run pytest tests --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov=hutch_bunny tests | tee pytest-coverage.txt
+
+      - name: Pytest coverage comment
+        uses: MishaKav/pytest-coverage-comment@81882822c5b22af01f91bd3eacb1cefb6ad73dc2
+        with:
+          pytest-coverage-path: pytest-coverage.txt
+          junitxml-path: pytest.xml

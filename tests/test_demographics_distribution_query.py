@@ -4,7 +4,6 @@ from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.rquest_dto.file import File
 
 
-
 @pytest.fixture
 def distribution_example():
     return RquestResult(
@@ -32,7 +31,9 @@ def distribution_example():
 @pytest.fixture
 def distribution_result(db_manager, distribution_query):
     db_manager.list_tables()
-    return solve_distribution(filters=[], db_manager=db_manager, query=distribution_query)
+    return solve_distribution(
+        results_modifier=[], db_manager=db_manager, query=distribution_query
+    )
 
 
 def test_solve_distribution_returns_result(distribution_result):
