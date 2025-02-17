@@ -16,7 +16,7 @@ def main() -> None:
     # Task Api Client class init.
     client = TaskApiClient()
     # Building results modifiers
-    modifiers_list = results_modifiers(
+    result_modifier: list[dict] = results_modifiers(
         low_number_suppression_threshold=int(
             settings.LOW_NUMBER_SUPPRESSION_THRESHOLD or 0
         ),
@@ -27,6 +27,7 @@ def main() -> None:
         if settings.TASK_API_TYPE
         else f"task/nextjob/{settings.COLLECTION_ID}"
     )
+
     # Polling forever to get query from Relay
     while True:
         response = client.get(endpoint=polling_endpoint)
@@ -38,7 +39,7 @@ def main() -> None:
             # Start querying
             result = execute_query(
                 query_dict,
-                results_modifiers=modifiers_list,
+                result_modifier,
                 logger=logger,
                 db_manager=db_manager,
             )

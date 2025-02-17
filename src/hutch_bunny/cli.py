@@ -1,5 +1,10 @@
 import json
-from hutch_bunny.core.results_modifiers import get_results_modifiers_from_str, results_modifiers
+
+from hutch_bunny.core.obfuscation import low_number_suppression
+from hutch_bunny.core.results_modifiers import (
+    get_results_modifiers_from_str,
+    results_modifiers,
+)
 from hutch_bunny.core.execute_query import execute_query
 from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.parser import parser
@@ -38,7 +43,10 @@ def main() -> None:
 
     with open(args.body) as body:
         query_dict = json.load(body)
-    results_modifier = get_results_modifiers_from_str(args.results_modifiers)
+
+    results_modifier: list[dict] = get_results_modifiers_from_str(
+        args.results_modifiers
+    )
 
     result = execute_query(
         query_dict, results_modifier, logger=logger, db_manager=db_manager
