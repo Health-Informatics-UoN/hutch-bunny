@@ -116,8 +116,6 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         biobanks: list = []
         omop_desc: list = []
 
-        settings = get_settings()
-
         logger = logging.getLogger(settings.LOGGER_NAME)
 
         with self.db_manager.engine.connect() as con:
