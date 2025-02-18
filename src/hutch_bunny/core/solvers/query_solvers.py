@@ -128,7 +128,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
                 if rounding > 0:
                     stmnt = (
                         select(
-                            func.count(table.person_id),
+                            func.round((func.count() / rounding)) * rounding,
                             Concept.concept_id,
                             Concept.concept_name,
                         )
@@ -138,7 +138,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
                 else:
                     stmnt = (
                         select(
-                            func.round((func.count() / rounding)) * rounding,
+                            func.count(table.person_id),
                             Concept.concept_id,
                             Concept.concept_name,
                         )
