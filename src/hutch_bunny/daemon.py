@@ -1,4 +1,5 @@
-import time
+from logging import Logger
+from hutch_bunny.core.db_manager import BaseDBManager
 from hutch_bunny.core.settings import get_settings, DaemonSettings
 from hutch_bunny.core.execute_query import execute_query
 from hutch_bunny.core.rquest_dto.result import RquestResult
@@ -9,7 +10,20 @@ from hutch_bunny.core.setting_database import setting_database
 from hutch_bunny.core.polling_service import PollingService
 from importlib.metadata import version
 
-def handle_task(task_data, db_manager, settings, logger, task_api_client):
+def handle_task(task_data: dict, db_manager: BaseDBManager, settings: DaemonSettings, logger: Logger, task_api_client: TaskApiClient) -> None:
+    """
+    Handles a task by executing a query and sending the results to the task API.
+
+    Args:
+        task_data (dict): The task data to execute the query on.
+        db_manager (BaseDBManager): The database manager to use to execute the query.
+        settings (DaemonSettings): The settings to use to execute the query.
+        logger (Logger): The logger to use to log messages.
+        task_api_client (TaskApiClient): The task API client to use to send the results.
+
+    Returns:
+        None
+    """
     result_modifier: list[dict] = results_modifiers(
         low_number_suppression_threshold=int(
             settings.LOW_NUMBER_SUPPRESSION_THRESHOLD or 0
@@ -28,6 +42,9 @@ def handle_task(task_data, db_manager, settings, logger, task_api_client):
 
 
 def main() -> None:
+    """
+    Main function to start the daemon process.
+    """
     logger.info(f"Starting Bunny version {version('hutch_bunny')} ")
     settings: DaemonSettings = get_settings(daemon=True)
     logger.debug("Settings: %s", settings.safe_model_dump())
