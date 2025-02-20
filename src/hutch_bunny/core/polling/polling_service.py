@@ -45,7 +45,7 @@ class PollingService:
             else f"task/nextjob/{settings.COLLECTION_ID}"
         )
 
-    def poll_for_tasks(self) -> None:
+    def poll_for_tasks(self, max_iterations=None):
         """
         Polls the task API for tasks and processes them.
 
@@ -55,9 +55,12 @@ class PollingService:
         backoff_time = settings.INITIAL_BACKOFF
         max_backoff_time = settings.MAX_BACKOFF
         polling_interval = settings.POLLING_INTERVAL
+        iteration = 0
 
         self.logger.info("Polling for tasks...")
         while True:
+            if max_iterations is not None and iteration >= max_iterations:
+                break
             try:
                 response = self.client.get(endpoint=self.polling_endpoint)
                 if response.status_code == 200:
@@ -81,3 +84,4 @@ class PollingService:
                 backoff_time = min(backoff_time * 2, max_backoff_time)
 
             time.sleep(polling_interval)
+            iteration += 1
