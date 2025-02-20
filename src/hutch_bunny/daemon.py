@@ -7,6 +7,27 @@ from hutch_bunny.core.logger import logger
 from hutch_bunny.core.setting_database import setting_database
 from hutch_bunny.core.polling_service import PollingService
 
+def handle_response(response, db_manager, result_modifier):
+    if response.status_code == 200:
+        logger.info("Job received. Resolving...")
+        logger.debug("JSON Response: %s", response.json())
+        query_dict: dict = response.json()
+        result = execute_query(
+            query_dict,
+            result_modifier,
+            logger=logger,
+            db_manager=db_manager,
+        )
+        logger.debug(f"Result: {result.to_dict()}")
+        if not isinstance(result, RquestResult):
+            raise TypeError("Payload does not match RQuest result schema.")
+        # send_results(result)
+    elif response.status_code == 204:
+        logger.info("Looking for job...")
+    elif response.status_code == 401:
+        logger.info("Failed to authenticate with task server.")
+    else:
+        logger.info("Got http status code: %s", response.status_code)
 
 def main() -> None:
     settings.log_settings()
@@ -24,8 +45,9 @@ def main() -> None:
         else f"task/nextjob/{settings.COLLECTION_ID}"
     )
 
-    polling_service = PollingService(client, logger, polling_endpoint)
-    polling_service.poll_for_jobs(db_manager, result_modifier)
+    polling_service = PollingService(client, logger, polling_endpoint, 
+                                     lambda response: handle_response(response, db_manager, result_modifier))
+    polling_service.poll_for_jobs()
 
 
 if __name__ == "__main__":

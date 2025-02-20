@@ -6,19 +6,21 @@ import hutch_bunny.core.settings as settings
 
 
 class PollingService:
-    def __init__(self, client, logger, polling_endpoint: str):
+    def __init__(self, client, logger, polling_endpoint: str, response_handler):
         self.client = client
         self.logger = logger
         self.polling_endpoint = polling_endpoint
+        self.response_handler = response_handler
 
-    def poll_for_jobs(self, db_manager, result_modifier):
+    def poll_for_jobs(self):
         backoff_time = settings.INITIAL_BACKOFF
         max_backoff_time = settings.MAX_BACKOFF
+        polling_interval = settings.POLLING_INTERVAL
 
         while True:
             try:
                 response = self.client.get(endpoint=self.polling_endpoint)
-                self.handle_response(response, db_manager, result_modifier)
+                self.response_handler(response)
                 
                 # Reset backoff time on success
                 backoff_time = settings.INITIAL_BACKOFF  
@@ -27,6 +29,8 @@ class PollingService:
                 time.sleep(backoff_time)
                 # Exponential backoff
                 backoff_time = min(backoff_time * 2, max_backoff_time) 
+            
+            time.sleep(polling_interval)
 
     def handle_response(self, response, db_manager, result_modifier):
         if response.status_code == 200:

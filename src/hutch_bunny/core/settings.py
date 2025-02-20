@@ -51,6 +51,9 @@ if POLLING_INTERVAL < 0:
 
 COLLECTION_ID = environ.get("COLLECTION_ID")
 
+INITIAL_BACKOFF = 1
+MAX_BACKOFF = 60
+
 try:
     BUNNY_VERSION = version("hutch_bunny")
 except Exception:
