@@ -7,17 +7,13 @@ from logging import Logger
 
 @pytest.fixture
 def mock_settings():
-    with patch(
-        "hutch_bunny.core.polling.polling_service.get_settings"
-    ) as mock_get_settings:
-        mock_settings = Mock()
-        mock_settings.COLLECTION_ID = "test_collection"
-        mock_settings.TASK_API_TYPE = "test_type"
-        mock_settings.INITIAL_BACKOFF = 1
-        mock_settings.MAX_BACKOFF = 8
-        mock_settings.POLLING_INTERVAL = 0.1
-        mock_get_settings.return_value = mock_settings
-        yield mock_settings
+    mock_settings = Mock()
+    mock_settings.COLLECTION_ID = 'test_collection'
+    mock_settings.TASK_API_TYPE = 'test_type'
+    mock_settings.INITIAL_BACKOFF = 1
+    mock_settings.MAX_BACKOFF = 8
+    mock_settings.POLLING_INTERVAL = 0.1
+    return mock_settings
 
 
 @pytest.fixture
@@ -42,7 +38,7 @@ def test_poll_for_tasks_success(
     mock_client.get.return_value.status_code = 200
     mock_client.get.return_value.json.return_value = {"task": "data"}
 
-    polling_service = PollingService(mock_client, mock_logger, mock_task_handler)
+    polling_service = PollingService(mock_client, mock_logger, mock_task_handler, mock_settings)
 
     # Act
     with patch("time.sleep", return_value=None):  # To speed up the test
@@ -59,7 +55,7 @@ def test_poll_for_tasks_no_task(
     # Arrange
     mock_client.get.return_value.status_code = 204
 
-    polling_service = PollingService(mock_client, mock_logger, mock_task_handler)
+    polling_service = PollingService(mock_client, mock_logger, mock_task_handler, mock_settings)
 
     # Act
     with patch("time.sleep", return_value=None):  # To speed up the test
@@ -74,7 +70,7 @@ def test_construct_polling_endpoint_with_type(
     mock_settings, mock_client, mock_logger, mock_task_handler
 ):
     # Arrange
-    polling_service = PollingService(mock_client, mock_logger, mock_task_handler)
+    polling_service = PollingService(mock_client, mock_logger, mock_task_handler, mock_settings)
 
     # Act
     endpoint = polling_service._construct_polling_endpoint()
@@ -87,18 +83,14 @@ def test_construct_polling_endpoint_without_type(
     mock_client, mock_logger, mock_task_handler
 ):
     # Arrange
-    with patch(
-        "hutch_bunny.core.polling.polling_service.get_settings"
-    ) as mock_get_settings:
-        mock_settings = Mock()
-        mock_settings.COLLECTION_ID = "test_collection"
-        mock_settings.TASK_API_TYPE = None
-        mock_get_settings.return_value = mock_settings
+    mock_settings = Mock()
+    mock_settings.COLLECTION_ID = "test_collection"
+    mock_settings.TASK_API_TYPE = None
 
-        polling_service = PollingService(mock_client, mock_logger, mock_task_handler)
+    polling_service = PollingService(mock_client, mock_logger, mock_task_handler, mock_settings)
 
-        # Act
-        endpoint = polling_service._construct_polling_endpoint()
+    # Act
+    endpoint = polling_service._construct_polling_endpoint()
 
-        # Assert
-        assert endpoint == "task/nextjob/test_collection"
+    # Assert
+    assert endpoint == "task/nextjob/test_collection"
