@@ -77,6 +77,8 @@ class DaemonSettings(Settings):
     )
     COLLECTION_ID: str = Field(description="The collection ID")
     POLLING_INTERVAL: int = Field(description="The polling interval", default=5)
+    INITIAL_BACKOFF: int = Field(description="The initial backoff in seconds", default=5)
+    MAX_BACKOFF: int = Field(description="The maximum backoff in seconds", default=60)
 
     def safe_model_dump(self) -> dict:
         """
