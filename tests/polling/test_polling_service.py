@@ -38,7 +38,7 @@ def test_poll_for_tasks_success(
     mock_client.get.return_value.status_code = 200
     mock_client.get.return_value.json.return_value = {"task": "data"}
 
-    polling_service = PollingService(mock_client, mock_logger, mock_task_handler, mock_settings)
+    polling_service = PollingService(mock_client, mock_task_handler, mock_settings, mock_logger)
 
     # Act
     with patch("time.sleep", return_value=None):  # To speed up the test
@@ -55,7 +55,7 @@ def test_poll_for_tasks_no_task(
     # Arrange
     mock_client.get.return_value.status_code = 204
 
-    polling_service = PollingService(mock_client, mock_logger, mock_task_handler, mock_settings)
+    polling_service = PollingService(mock_client, mock_task_handler, mock_settings, mock_logger)
 
     # Act
     with patch("time.sleep", return_value=None):  # To speed up the test
@@ -70,7 +70,7 @@ def test_construct_polling_endpoint_with_type(
     mock_settings, mock_client, mock_logger, mock_task_handler
 ):
     # Arrange
-    polling_service = PollingService(mock_client, mock_logger, mock_task_handler, mock_settings)
+    polling_service = PollingService(mock_client, mock_task_handler, mock_settings, mock_logger)
 
     # Act
     endpoint = polling_service._construct_polling_endpoint()
@@ -87,7 +87,7 @@ def test_construct_polling_endpoint_without_type(
     mock_settings.COLLECTION_ID = "test_collection"
     mock_settings.TASK_API_TYPE = None
 
-    polling_service = PollingService(mock_client, mock_logger, mock_task_handler, mock_settings)
+    polling_service = PollingService(mock_client, mock_task_handler, mock_settings, mock_logger)
 
     # Act
     endpoint = polling_service._construct_polling_endpoint()
