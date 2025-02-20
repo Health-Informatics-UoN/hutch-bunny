@@ -3,7 +3,7 @@ import time
 from typing import Callable
 import requests
 from hutch_bunny.core.settings import get_settings, DaemonSettings
-from hutch_bunny.core.task_api_client import TaskApiClient
+from hutch_bunny.core.polling.task_api_client import TaskApiClient
 
 settings: DaemonSettings = get_settings(daemon=True)
 
