@@ -24,9 +24,11 @@ from sqlalchemy import select
 
 from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.enums import DistributionQueryType
-import hutch_bunny.core.settings as settings
+from hutch_bunny.core.settings import get_settings
 from hutch_bunny.core.constants import DISTRIBUTION_TYPE_FILE_NAMES_MAP
 
+
+settings = get_settings()
 
 class BaseDistributionQuerySolver:
     def solve_query(self, results_modifier: list) -> Tuple[str, int]:

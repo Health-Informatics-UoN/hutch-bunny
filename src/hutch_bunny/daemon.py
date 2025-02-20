@@ -1,4 +1,5 @@
-import hutch_bunny.core.settings as settings
+import time
+from hutch_bunny.core.settings import get_settings, DaemonSettings
 from hutch_bunny.core.execute_query import execute_query
 from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.task_api_client import TaskApiClient
@@ -6,6 +7,7 @@ from hutch_bunny.core.results_modifiers import results_modifiers
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.setting_database import setting_database
 from hutch_bunny.core.polling_service import PollingService
+from importlib.metadata import version
 
 def handle_response(response, db_manager, result_modifier):
     if response.status_code == 200:
@@ -30,8 +32,13 @@ def handle_response(response, db_manager, result_modifier):
         logger.info("Got http status code: %s", response.status_code)
 
 def main() -> None:
-    settings.log_settings()
+    logger.info(f"Starting Bunny version {version('hutch_bunny')} ")
+    settings: DaemonSettings = get_settings(daemon=True)
+    logger.debug("Settings: %s", settings.safe_model_dump())
+
+    # Setting database connection
     db_manager = setting_database(logger=logger)
+    
     client = TaskApiClient()
     result_modifier: list[dict] = results_modifiers(
         low_number_suppression_threshold=int(

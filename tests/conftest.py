@@ -6,23 +6,25 @@ from hutch_bunny.core.rquest_dto.group import Group
 from hutch_bunny.core.rquest_dto.rule import Rule
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.solvers.query_solvers import AvailabilityQuery, DistributionQuery
-import hutch_bunny.core.settings as settings
+from hutch_bunny.core.settings import get_settings
 import hutch_bunny.core.setting_database as db_settings
 
+
+settings = get_settings()
 
 @pytest.fixture
 def db_manager():
     datasource_db_port = os.getenv("DATASOURCE_DB_PORT")
     return SyncDBManager(
-        username=os.getenv("DATASOURCE_DB_USERNAME"),
-        password=os.getenv("DATASOURCE_DB_PASSWORD"),
-        host=os.getenv("DATASOURCE_DB_HOST"),
+        username=settings.DATASOURCE_DB_USERNAME,
+        password=settings.DATASOURCE_DB_PASSWORD,
+        host=settings.DATASOURCE_DB_HOST,
         port=(int(datasource_db_port) if datasource_db_port is not None else None),
-        database=os.getenv("DATASOURCE_DB_DATABASE"),
+        database=settings.DATASOURCE_DB_DATABASE,
         drivername=db_settings.expand_short_drivers(
-            os.getenv("DATASOURCE_DB_DRIVERNAME", settings.DEFAULT_DB_DRIVER)
+            settings.DEFAULT_DB_DRIVER
         ),
-        schema=os.getenv("DATASOURCE_DB_SCHEMA"),
+        schema=settings.DATASOURCE_DB_SCHEMA,
     )
 
 

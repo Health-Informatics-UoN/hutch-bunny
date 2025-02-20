@@ -1,7 +1,10 @@
 from logging import Logger
 from os import environ
 from hutch_bunny.core.db_manager import SyncDBManager, TrinoDBManager
-import hutch_bunny.core.settings as settings
+
+from hutch_bunny.core.settings import get_settings
+
+settings = get_settings()
 
 
 def expand_short_drivers(drivername: str):
@@ -21,44 +24,40 @@ def expand_short_drivers(drivername: str):
     return drivername
 
 
-def setting_database(logger: Logger):
+def setting_database(logger: Logger) -> SyncDBManager | TrinoDBManager:
     logger.info("Setting up database connection...")
 
     # Trino has some different settings / defaults comapred with SQLAlchemy
     if settings.DATASOURCE_USE_TRINO:
         datasource_db_port = environ.get("DATASOURCE_DB_PORT", 8080)
         try:
-            db_manager = TrinoDBManager(
-                username=environ.get("DATASOURCE_DB_USERNAME", "trino-user"),
-                password=environ.get("DATASOURCE_DB_PASSWORD"),
-                host=environ.get("DATASOURCE_DB_HOST"),
-                port=int(datasource_db_port),
-                schema=environ.get("DATASOURCE_DB_SCHEMA"),
-                catalog=environ.get("DATASOURCE_DB_CATALOG"),
+            return TrinoDBManager(
+                username=settings.DATASOURCE_DB_USERNAME,
+                password=settings.DATASOURCE_DB_PASSWORD,
+                host=settings.DATASOURCE_DB_HOST,
+                port=settings.DATASOURCE_DB_PORT,
+                schema=settings.DATASOURCE_DB_SCHEMA,
+                catalog=settings.DATASOURCE_DB_CATALOG,
             )
         except TypeError as e:
             logger.error(str(e))
             exit()
     else:
-        datasource_db_port = environ.get("DATASOURCE_DB_PORT")
-        datasource_db_drivername = expand_short_drivers(
-            environ.get("DATASOURCE_DB_DRIVERNAME", settings.DEFAULT_DB_DRIVER)
-        )
+        datasource_db_port = settings.DATASOURCE_DB_PORT
+        datasource_db_drivername = expand_short_drivers(settings.DEFAULT_DB_DRIVER)
 
         try:
-            db_manager = SyncDBManager(
-                username=environ.get("DATASOURCE_DB_USERNAME"),
-                password=environ.get("DATASOURCE_DB_PASSWORD"),
-                host=environ.get("DATASOURCE_DB_HOST"),
+            return SyncDBManager(
+                username=settings.DATASOURCE_DB_USERNAME,
+                password=settings.DATASOURCE_DB_PASSWORD,
+                host=settings.DATASOURCE_DB_HOST,
                 port=(
                     int(datasource_db_port) if datasource_db_port is not None else None
                 ),
-                database=environ.get("DATASOURCE_DB_DATABASE"),
+                database=settings.DATASOURCE_DB_DATABASE,
                 drivername=datasource_db_drivername,
-                schema=environ.get("DATASOURCE_DB_SCHEMA"),
+                schema=settings.DATASOURCE_DB_SCHEMA,
             )
         except TypeError as e:
             logger.error(str(e))
             exit()
-
-    return db_manager

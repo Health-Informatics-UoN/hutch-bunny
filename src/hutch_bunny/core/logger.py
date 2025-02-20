@@ -1,6 +1,8 @@
 import logging
-import hutch_bunny.core.settings as settings
+from hutch_bunny.core.settings import get_settings
 import sys
+
+settings = get_settings()
 
 logger = logging.getLogger(settings.LOGGER_NAME)
 LOG_FORMAT = logging.Formatter(
