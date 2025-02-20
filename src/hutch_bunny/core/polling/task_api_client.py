@@ -100,7 +100,6 @@ class TaskApiClient:
         Args:
             endpoint (str): The endpoint to which the POST request is sent.
             data (dict): The data to send in the body of the request.
-            **kwargs: Additional keyword arguments to pass to the requests method.
         """
         return_endpoint = f"task/result/{result.uuid}/{result.collection_id}"
         for _ in range(4):
