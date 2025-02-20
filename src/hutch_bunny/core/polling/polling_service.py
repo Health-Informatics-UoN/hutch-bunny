@@ -2,11 +2,8 @@ from logging import Logger
 import time
 from typing import Callable
 import requests
-from hutch_bunny.core.settings import get_settings, DaemonSettings
+from hutch_bunny.core.settings import DaemonSettings
 from hutch_bunny.core.polling.task_api_client import TaskApiClient
-
-settings: DaemonSettings = get_settings(daemon=True)
-
 
 class PollingService:
     """
@@ -14,22 +11,28 @@ class PollingService:
     """
 
     def __init__(
-        self, client: TaskApiClient, logger: Logger, task_handler: Callable
+        self,
+        client: TaskApiClient,
+        task_handler: Callable,
+        settings: DaemonSettings,
+        logger: Logger,
     ) -> None:
         """
         Initializes the PollingService.
 
         Args:
             client (TaskApiClient): The client to use to poll the task API.
-            logger (Logger): The logger to use to log messages.
             task_handler (Callable): The function to call to handle the task.
+            settings (DaemonSettings): The settings to use to poll the task API.
+            logger (Logger): The logger to use to log messages.
 
         Returns:
             None
         """
         self.client = client
-        self.logger = logger
         self.task_handler = task_handler
+        self.settings = settings
+        self.logger = logger
         self.polling_endpoint = self._construct_polling_endpoint()
 
     def _construct_polling_endpoint(self) -> str:
@@ -40,9 +43,9 @@ class PollingService:
             str: The polling endpoint for the task API.
         """
         return (
-            f"task/nextjob/{settings.COLLECTION_ID}.{settings.TASK_API_TYPE}"
-            if settings.TASK_API_TYPE
-            else f"task/nextjob/{settings.COLLECTION_ID}"
+            f"task/nextjob/{self.settings.COLLECTION_ID}.{self.settings.TASK_API_TYPE}"
+            if self.settings.TASK_API_TYPE
+            else f"task/nextjob/{self.settings.COLLECTION_ID}"
         )
 
     def poll_for_tasks(self, max_iterations=None):
@@ -52,9 +55,9 @@ class PollingService:
         Returns:
             None
         """
-        backoff_time = settings.INITIAL_BACKOFF
-        max_backoff_time = settings.MAX_BACKOFF
-        polling_interval = settings.POLLING_INTERVAL
+        backoff_time = self.settings.INITIAL_BACKOFF
+        max_backoff_time = self.settings.MAX_BACKOFF
+        polling_interval = self.settings.POLLING_INTERVAL
         iteration = 0
 
         self.logger.info("Polling for tasks...")
@@ -69,7 +72,7 @@ class PollingService:
                     task_data = response.json()
                     self.task_handler(task_data)
 
-                    backoff_time = settings.INITIAL_BACKOFF
+                    backoff_time = self.settings.INITIAL_BACKOFF
                 elif response.status_code == 204:
                     self.logger.debug("No task found. Looking for job...")
                 elif response.status_code == 401:

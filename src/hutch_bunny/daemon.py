@@ -21,8 +21,9 @@ def main() -> None:
     client = TaskApiClient()
     polling_service = PollingService(
         client,
-        logger,
         lambda task_data: handle_task(task_data, db_manager, settings, logger, client),
+        settings,
+        logger,
     )
     polling_service.poll_for_tasks()
 
