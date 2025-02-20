@@ -1,10 +1,10 @@
 from hutch_bunny.core.settings import get_settings, DaemonSettings
-from hutch_bunny.core.polling.task_api_client import TaskApiClient
+from hutch_bunny.core.upstream.task_api_client import TaskApiClient
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.setting_database import setting_database
-from hutch_bunny.core.polling.polling_service import PollingService
+from hutch_bunny.core.upstream.polling_service import PollingService
 from importlib.metadata import version
-from hutch_bunny.core.polling.task_handler import handle_task
+from hutch_bunny.core.upstream.task_handler import handle_task
 
 
 def main() -> None:

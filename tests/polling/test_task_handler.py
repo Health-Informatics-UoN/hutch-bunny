@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock, patch
-from src.hutch_bunny.core.polling.task_handler import handle_task
+from src.hutch_bunny.core.upstream.task_handler import handle_task
 from src.hutch_bunny.core.rquest_dto.result import RquestResult
 
 @pytest.fixture
@@ -37,7 +37,7 @@ def test_handle_task_success(mock_db_manager, mock_settings, mock_logger, mock_t
         {'id': 'Rounding', 'nearest': 2}
     ]
     
-    with patch('src.hutch_bunny.core.polling.task_handler.execute_query', return_value=mock_result) as mock_execute_query:
+    with patch('src.hutch_bunny.core.upstream.task_handler.execute_query', return_value=mock_result) as mock_execute_query:
         # Act
         handle_task(task_data, mock_db_manager, mock_settings, mock_logger, mock_task_api_client)
 

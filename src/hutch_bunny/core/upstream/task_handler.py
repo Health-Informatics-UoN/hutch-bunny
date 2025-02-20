@@ -2,7 +2,7 @@ from logging import Logger
 from hutch_bunny.core.db_manager import BaseDBManager
 from hutch_bunny.core.settings import DaemonSettings
 from hutch_bunny.core.execute_query import execute_query
-from hutch_bunny.core.polling.task_api_client import TaskApiClient
+from hutch_bunny.core.upstream.task_api_client import TaskApiClient
 from hutch_bunny.core.results_modifiers import results_modifiers
 
 
