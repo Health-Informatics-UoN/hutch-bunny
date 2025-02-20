@@ -2,7 +2,6 @@ from logging import Logger
 from hutch_bunny.core.db_manager import BaseDBManager
 from hutch_bunny.core.settings import DaemonSettings
 from hutch_bunny.core.execute_query import execute_query
-from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.polling.task_api_client import TaskApiClient
 from hutch_bunny.core.results_modifiers import results_modifiers
 
@@ -39,6 +38,4 @@ def handle_task(
         logger=logger,
         db_manager=db_manager,
     )
-    if not isinstance(result, RquestResult):
-        raise TypeError("Payload does not match RQuest result schema.")
     task_api_client.send_results(result)
