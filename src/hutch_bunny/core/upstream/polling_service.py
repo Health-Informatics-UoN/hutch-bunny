@@ -74,7 +74,7 @@ class PollingService:
 
                     backoff_time = self.settings.INITIAL_BACKOFF
                 elif response.status_code == 204:
-                    self.logger.debug("No task found. Looking for job...")
+                    self.logger.debug("No task found. Looking for task...")
                 elif response.status_code == 401:
                     self.logger.info("Failed to authenticate with task server.")
                 else:

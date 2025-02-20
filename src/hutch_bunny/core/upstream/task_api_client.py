@@ -109,7 +109,7 @@ class TaskApiClient:
                     200 <= response.status_code < 300
                     or 400 <= response.status_code < 500
                 ):
-                    logger.info("Job resolved.")
+                    logger.info("Task resolved.")
                     logger.debug(f"Response status: {response.status_code}")
                     logger.debug(f"Response: {response.text}")
                     break
