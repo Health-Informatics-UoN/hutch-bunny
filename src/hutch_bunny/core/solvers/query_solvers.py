@@ -30,6 +30,7 @@ from hutch_bunny.core.constants import DISTRIBUTION_TYPE_FILE_NAMES_MAP
 
 settings = get_settings()
 
+
 class BaseDistributionQuerySolver:
     def solve_query(self, results_modifier: list) -> Tuple[str, int]:
         raise NotImplementedError

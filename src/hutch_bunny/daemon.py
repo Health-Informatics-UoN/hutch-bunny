@@ -17,11 +17,12 @@ def main() -> None:
 
     # Setting database connection
     db_manager = setting_database(logger=logger)
-    
+
     client = TaskApiClient()
     polling_service = PollingService(
-        client, logger, 
-        lambda task_data: handle_task(task_data, db_manager, settings, logger, client)
+        client,
+        logger,
+        lambda task_data: handle_task(task_data, db_manager, settings, logger, client),
     )
     polling_service.poll_for_tasks()
 

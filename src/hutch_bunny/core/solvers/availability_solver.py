@@ -25,6 +25,7 @@ from hutch_bunny.core.rquest_dto.rule import Rule
 
 settings = get_settings()
 
+
 # Class for availability queries
 class AvailabilitySolver:
     measurement: Select
@@ -421,7 +422,9 @@ class AvailabilitySolver:
                 "year", birth_date
             )
         elif engine.dialect.name == "mssql":
-            return func.DATEPART(text("year"), start_date) - func.DATEPART(text("year"), birth_date)
+            return func.DATEPART(text("year"), start_date) - func.DATEPART(
+                text("year"), birth_date
+            )
         else:
             raise NotImplementedError("Unsupported database dialect")
 

@@ -7,11 +7,15 @@ from hutch_bunny.core.polling.task_api_client import TaskApiClient
 
 settings: DaemonSettings = get_settings(daemon=True)
 
+
 class PollingService:
     """
     Polls the task API for tasks and processes them.
     """
-    def __init__(self, client: TaskApiClient, logger: Logger, task_handler: Callable) -> None:
+
+    def __init__(
+        self, client: TaskApiClient, logger: Logger, task_handler: Callable
+    ) -> None:
         """
         Initializes the PollingService.
 
@@ -60,9 +64,9 @@ class PollingService:
                     self.logger.info("Task received. Resolving...")
                     self.logger.debug(f"Task: {response.json()}")
                     task_data = response.json()
-                    self.task_handler(task_data)  
+                    self.task_handler(task_data)
 
-                    backoff_time = settings.INITIAL_BACKOFF  
+                    backoff_time = settings.INITIAL_BACKOFF
                 elif response.status_code == 204:
                     self.logger.debug("No task found. Looking for job...")
                 elif response.status_code == 401:
@@ -71,9 +75,9 @@ class PollingService:
                     self.logger.info(f"Got http status code: {response.status_code}")
             except requests.exceptions.RequestException as e:
                 self.logger.error(f"Network error occurred: {e}")
-                
+
                 # Exponential backoff
                 time.sleep(backoff_time)
-                backoff_time = min(backoff_time * 2, max_backoff_time) 
-            
+                backoff_time = min(backoff_time * 2, max_backoff_time)
+
             time.sleep(polling_interval)

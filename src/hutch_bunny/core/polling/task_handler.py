@@ -6,7 +6,14 @@ from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.polling.task_api_client import TaskApiClient
 from hutch_bunny.core.results_modifiers import results_modifiers
 
-def handle_task(task_data: dict, db_manager: BaseDBManager, settings: DaemonSettings, logger: Logger, task_api_client: TaskApiClient) -> None:
+
+def handle_task(
+    task_data: dict,
+    db_manager: BaseDBManager,
+    settings: DaemonSettings,
+    logger: Logger,
+    task_api_client: TaskApiClient,
+) -> None:
     """
     Handles a task by executing a query and sending the results to the task API.
 

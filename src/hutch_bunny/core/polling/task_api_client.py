@@ -92,7 +92,6 @@ class TaskApiClient:
         """
         url = f"{self.base_url}/{endpoint}"
         return self.request(SupportedMethod.GET, url, **kwargs)
-    
 
     def send_results(self, result: RquestResult):
         """
@@ -107,7 +106,10 @@ class TaskApiClient:
         for _ in range(4):
             try:
                 response = self.post(endpoint=return_endpoint, data=result.to_dict())
-                if 200 <= response.status_code < 300 or 400 <= response.status_code < 500:
+                if (
+                    200 <= response.status_code < 300
+                    or 400 <= response.status_code < 500
+                ):
                     logger.info("Job resolved.")
                     logger.debug(f"Response status: {response.status_code}")
                     logger.debug(f"Response: {response.text}")
