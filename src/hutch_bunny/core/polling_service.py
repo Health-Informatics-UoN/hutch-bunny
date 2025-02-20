@@ -1,24 +1,53 @@
+from logging import Logger
 import time
+from typing import Callable
 import requests
 from hutch_bunny.core.settings import get_settings, DaemonSettings
+from hutch_bunny.core.task_api_client import TaskApiClient
 
 settings: DaemonSettings = get_settings(daemon=True)
 
 class PollingService:
-    def __init__(self, client, logger, task_handler):
+    """
+    Polls the task API for tasks and processes them.
+    """
+    def __init__(self, client: TaskApiClient, logger: Logger, task_handler: Callable) -> None:
+        """
+        Initializes the PollingService.
+
+        Args:
+            client (TaskApiClient): The client to use to poll the task API.
+            logger (Logger): The logger to use to log messages.
+            task_handler (Callable): The function to call to handle the task.
+
+        Returns:
+            None
+        """
         self.client = client
         self.logger = logger
         self.task_handler = task_handler
         self.polling_endpoint = self._construct_polling_endpoint()
 
-    def _construct_polling_endpoint(self):
+    def _construct_polling_endpoint(self) -> str:
+        """
+        Constructs the polling endpoint for the task API.
+
+        Returns:
+            str: The polling endpoint for the task API.
+        """
         return (
             f"task/nextjob/{settings.COLLECTION_ID}.{settings.TASK_API_TYPE}"
             if settings.TASK_API_TYPE
             else f"task/nextjob/{settings.COLLECTION_ID}"
         )
 
-    def poll_for_tasks(self):
+    def poll_for_tasks(self) -> None:
+        """
+        Polls the task API for tasks and processes them.
+
+        Returns:
+            None
+        """
         backoff_time = settings.INITIAL_BACKOFF
         max_backoff_time = settings.MAX_BACKOFF
         polling_interval = settings.POLLING_INTERVAL
