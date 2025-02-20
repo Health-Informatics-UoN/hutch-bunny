@@ -1,7 +1,9 @@
+import time
 from requests.models import Response
 from enum import Enum
 import requests
 from requests.auth import HTTPBasicAuth
+from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.settings import get_settings, DaemonSettings
 from typing import Optional
 from hutch_bunny.core.logger import logger
@@ -90,3 +92,31 @@ class TaskApiClient:
         """
         url = f"{self.base_url}/{endpoint}"
         return self.request(SupportedMethod.GET, url, **kwargs)
+    
+
+    def send_results(self, result: RquestResult):
+        """
+        Sends a POST request to the specified endpoint with data and additional parameters.
+
+        Args:
+            endpoint (str): The endpoint to which the POST request is sent.
+            data (dict): The data to send in the body of the request.
+            **kwargs: Additional keyword arguments to pass to the requests method.
+        """
+        return_endpoint = f"task/result/{result.uuid}/{result.collection_id}"
+        for _ in range(4):
+            try:
+                response = self.post(endpoint=return_endpoint, data=result.to_dict())
+                if 200 <= response.status_code < 300 or 400 <= response.status_code < 500:
+                    logger.info("Job resolved.")
+                    logger.debug(f"Response status: {response.status_code}")
+                    logger.debug(f"Response: {response.text}")
+                    break
+                else:
+                    logger.warning(
+                        f"Failed to post to {return_endpoint} at {time.time()}. Trying again..."
+                    )
+                    time.sleep(5)
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Network error occurred while posting results: {e}")
+                time.sleep(5)

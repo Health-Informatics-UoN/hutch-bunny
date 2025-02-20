@@ -25,7 +25,7 @@ def expand_short_drivers(drivername: str):
 
 
 def setting_database(logger: Logger) -> SyncDBManager | TrinoDBManager:
-    logger.info("Setting up database connection...")
+    logger.info("Connecting to database...")
 
     # Trino has some different settings / defaults comapred with SQLAlchemy
     if settings.DATASOURCE_USE_TRINO:
