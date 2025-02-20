@@ -12,7 +12,7 @@ from importlib.metadata import version
 def main() -> None:
     logger.info(f"Starting Bunny version {version('hutch_bunny')} ")
     settings: DaemonSettings = get_settings(daemon=True)
-    logger.debug("Settings: %s", settings.model_dump())
+    logger.debug("Settings: %s", settings.safe_model_dump())
     # Setting database connection
     db_manager = setting_database(logger=logger)
     # Task Api Client class init.

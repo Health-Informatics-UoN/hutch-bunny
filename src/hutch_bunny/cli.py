@@ -38,7 +38,7 @@ def save_to_output(result: RquestResult, destination: str) -> None:
 def main() -> None:
     logger.info(f"Starting Bunny version: {version('hutch_bunny')}")
     settings: Settings = get_settings()
-    logger.debug("Settings: %s", settings.model_dump())
+    logger.debug("Settings: %s", settings.safe_model_dump())
     # Setting database connection
     db_manager = setting_database(logger=logger)
     # Bunny passed args.

@@ -57,6 +57,12 @@ class Settings(BaseSettings):
         description="The catalog for the datasource database", default="hutch"
     )
 
+    def safe_model_dump(self) -> dict:
+        """
+        Convert settings to a dictionary, excluding sensitive fields.
+        """
+        return self.model_dump(exclude={"DATASOURCE_DB_PASSWORD"})
+
 
 class DaemonSettings(Settings):
     """
@@ -71,6 +77,12 @@ class DaemonSettings(Settings):
     )
     COLLECTION_ID: str = Field(description="The collection ID")
     POLLING_INTERVAL: int = Field(description="The polling interval", default=5)
+
+    def safe_model_dump(self) -> dict:
+        """
+        Convert settings to a dictionary, excluding sensitive fields.
+        """
+        return self.model_dump(exclude={"DATASOURCE_DB_PASSWORD", "TASK_API_PASSWORD"})
 
 
 @overload
