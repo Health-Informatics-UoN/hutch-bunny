@@ -20,8 +20,9 @@ def low_number_suppression(value: int | float, threshold: int = 10) -> int | flo
     return value if value > threshold else 0
 
 
-def rounding(value: int | float, nearest: int = 10) -> int:
+def rounding(value: int | float, nearest: int = 10) -> int | float:
     """Round the value to the nearest base number, e.g. 10.
+    If nearest is 0, the value is returned unchanged.
 
     Args:
         value (int | float): The value to be rounded
@@ -36,6 +37,8 @@ def rounding(value: int | float, nearest: int = 10) -> int:
         >>> rounding(160, nearest=100)
         200
     """
+    if nearest == 0:
+        return value
     return nearest * round(value / nearest)
 
 

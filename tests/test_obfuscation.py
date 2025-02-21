@@ -31,6 +31,9 @@ def test_rounding():
     # Test rounding is applied the boundary
     assert rounding(150, nearest=100) == 200
 
+    # Test rounding can be set to 0
+    assert rounding(123, nearest=0) == 123
+
 
 def test_apply_filters_rounding():
     # Test rounding only
