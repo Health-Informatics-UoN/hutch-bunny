@@ -67,7 +67,7 @@ def test_poll_for_tasks_no_task(
         polling_service.poll_for_tasks(max_iterations=1)
 
     # Assert
-    mock_logger.debug.assert_called_with("No task found. Looking for job...")
+    mock_logger.debug.assert_called_with("No task found. Looking for task...")
     mock_task_handler.assert_not_called()
 
 
