@@ -64,6 +64,7 @@ jobs:
         run: |
           set -e
           uv run pytest tests --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov=hutch_bunny tests | tee pytest-coverage.txt
+          test ${PIPESTATUS[0]} -eq 0
 
       - name: Pytest coverage comment
         uses: MishaKav/pytest-coverage-comment@81882822c5b22af01f91bd3eacb1cefb6ad73dc2
