@@ -93,16 +93,18 @@ class TaskApiClient:
         url = f"{self.base_url}/{endpoint}"
         return self.request(SupportedMethod.GET, url, **kwargs)
 
-    def send_results(self, result: RquestResult):
+    def send_results(self, result: RquestResult, retry_count: int = 4, retry_delay: int = 5):
         """
         Sends a POST request to the specified endpoint with data and additional parameters.
 
         Args:
             endpoint (str): The endpoint to which the POST request is sent.
             data (dict): The data to send in the body of the request.
+            retry_count (int): The number of times to retry the request.
+            retry_delay (int): The delay between retries.
         """
         return_endpoint = f"task/result/{result.uuid}/{result.collection_id}"
-        for _ in range(4):
+        for _ in range(retry_count):
             try:
                 response = self.post(endpoint=return_endpoint, data=result.to_dict())
                 if (
@@ -117,7 +119,7 @@ class TaskApiClient:
                     logger.warning(
                         f"Failed to post to {return_endpoint} at {time.time()}. Trying again..."
                     )
-                    time.sleep(5)
+                    time.sleep(retry_delay)
             except requests.exceptions.RequestException as e:
                 logger.error(f"Network error occurred while posting results: {e}")
-                time.sleep(5)
+                time.sleep(retry_delay)
