@@ -140,3 +140,23 @@ def test_send_results_retry_logic(mock_request, task_api_client):
 
     # Assert
     assert mock_request.call_count == 4
+
+
+@patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
+@patch("src.hutch_bunny.core.upstream.task_api_client.logger")
+def test_send_results_network_error(mock_logger, mock_request, task_api_client):
+    # Arrange
+    mock_request.side_effect = RequestException("Network error")
+    mock_result = Mock()
+    mock_result.uuid = "1234"
+    mock_result.collection_id = "5678"
+    mock_result.to_dict.return_value = {"key": "value"}
+
+    # Act
+    task_api_client.send_results(mock_result, retry_count=4, retry_delay=0.1)
+
+    # Assert
+    assert mock_request.call_count == 4 
+    mock_logger.error.assert_called_with(
+        "Network error occurred while posting results: Network error"
+    )
