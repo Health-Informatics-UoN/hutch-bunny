@@ -1,4 +1,5 @@
 from hutch_bunny.core.settings import get_settings, DaemonSettings
+from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.upstream.task_api_client import TaskApiClient
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.setting_database import setting_database
