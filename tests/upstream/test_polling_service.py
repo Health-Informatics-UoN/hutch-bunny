@@ -111,6 +111,8 @@ def test_unauthorized_status_code(
 ):
     # Arrange
     mock_client.get.return_value.status_code = 401
+    mock_client.get.return_value.raise_for_status.side_effect = requests.exceptions.RequestException()
+
     polling_service = PollingService(
         mock_client, mock_task_handler, mock_settings, mock_logger
     )
@@ -119,7 +121,7 @@ def test_unauthorized_status_code(
     polling_service.poll_for_tasks(max_iterations=1)
 
     # Assert
-    mock_logger.info.assert_called_with("Failed to authenticate with task server.")
+    mock_logger.error.assert_called_with("Network error occurred: ")
 
 
 @patch("time.sleep", return_value=None)

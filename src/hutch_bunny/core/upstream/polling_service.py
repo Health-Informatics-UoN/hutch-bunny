@@ -66,6 +66,8 @@ class PollingService:
                 break
             try:
                 response = self.client.get(endpoint=self.polling_endpoint)
+                response.raise_for_status()
+
                 if response.status_code == 200:
                     self.logger.info("Task received. Resolving...")
                     self.logger.debug(f"Task: {response.json()}")
@@ -75,13 +77,11 @@ class PollingService:
                     backoff_time = self.settings.INITIAL_BACKOFF
                 elif response.status_code == 204:
                     self.logger.debug("No task found. Looking for task...")
-                elif response.status_code == 401:
-                    self.logger.info("Failed to authenticate with task server.")
+                    backoff_time = self.settings.INITIAL_BACKOFF
                 else:
                     self.logger.info(f"Got http status code: {response.status_code}")
             except requests.exceptions.RequestException as e:
                 self.logger.error(f"Network error occurred: {e}")
-
                 # Exponential backoff
                 time.sleep(backoff_time)
                 backoff_time = min(backoff_time * 2, max_backoff_time)
