@@ -2,9 +2,11 @@ from requests.models import Response
 from enum import Enum
 import requests
 from requests.auth import HTTPBasicAuth
-import hutch_bunny.core.settings as settings
+from hutch_bunny.core.settings import get_settings, DaemonSettings
 from typing import Optional
 from hutch_bunny.core.logger import logger
+
+settings: DaemonSettings = get_settings(daemon=True)
 
 
 class SupportedMethod(Enum):

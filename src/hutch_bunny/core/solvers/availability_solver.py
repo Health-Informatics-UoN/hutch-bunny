@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
-from sqlalchemy import or_, func, BinaryExpression, ColumnElement
+from sqlalchemy import or_, func, BinaryExpression, ColumnElement, select, Select, text
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
     Concept,
@@ -18,12 +18,12 @@ from sqlalchemy.dialects import postgresql
 
 from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery
-from sqlalchemy import select, Select
 from sqlalchemy.engine import Engine
 
-import hutch_bunny.core.settings as settings
+from hutch_bunny.core.settings import get_settings
 from hutch_bunny.core.rquest_dto.rule import Rule
 
+settings = get_settings()
 
 # Class for availability queries
 class AvailabilitySolver:
@@ -421,7 +421,7 @@ class AvailabilitySolver:
                 "year", birth_date
             )
         elif engine.dialect.name == "mssql":
-            return func.DATEPART("year", start_date) - func.DATEPART("year", birth_date)
+            return func.DATEPART(text("year"), start_date) - func.DATEPART(text("year"), birth_date)
         else:
             raise NotImplementedError("Unsupported database dialect")
 

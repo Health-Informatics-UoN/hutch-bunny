@@ -1,85 +1,119 @@
-import logging
-from os import environ
-from dotenv import load_dotenv
-
-load_dotenv()
-
-
-##
-# DB Connection Settings
-#   Additional settings reads are in `setting_database.py`
-##
-
-DATASOURCE_USE_TRINO = bool(environ.get("DATASOURCE_USE_TRINO", False))
-
-# what unqualified `postgresql` will turn into. if left blank, will use SQLalchemy's default of `postgresql+psycopg2`
-DEFAULT_POSTGRES_DRIVER = "postgresql+psycopg"
-
-# what unqualified `mssql` will turn into. if left blank, will use SQLalchemy's default of `mssql+pymssql`
-DEFAULT_MSSQL_DRIVER = "mssql+pymssql"
-
-# what SQLAlchemy will use if DATASOURCE_DB_DRIVERNAME is not specified in the environment
-DEFAULT_DB_DRIVER = DEFAULT_POSTGRES_DRIVER
-
-# Logging configuration
-LOGGER_NAME = "hutch"
-LOGGER_LEVEL = logging.getLevelNamesMapping().get(
-    environ.get("BUNNY_LOGGER_LEVEL") or "INFO", "INFO"
-)
-BACKUP_LOGGER_NAME = "backup"
-MSG_FORMAT = "%(levelname)s - %(asctime)s - %(message)s"
-DATE_FORMAT = "%d-%b-%y %H:%M:%S"
-
-TASK_API_BASE_URL = environ.get("TASK_API_BASE_URL")
-TASK_API_USERNAME = environ.get("TASK_API_USERNAME")
-TASK_API_PASSWORD = environ.get("TASK_API_PASSWORD")
-TASK_API_TYPE = environ.get("TASK_API_TYPE")
-if TASK_API_TYPE and TASK_API_TYPE not in ["a", "b", "c"]:
-    raise TypeError("TASK_API_TYPE must be either 'a' or 'b' or 'c'")
-
-LOW_NUMBER_SUPPRESSION_THRESHOLD = environ.get("LOW_NUMBER_SUPPRESSION_THRESHOLD")
-ROUNDING_TARGET = environ.get("ROUNDING_TARGET")
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
+from typing import Optional, Literal, overload
+from functools import cache
 
 
-POLLING_INTERVAL_DEFAULT = 5
-### currently no guards to ensure that POLLING_INTERVAL and POLLING_TIMEOUT are >=0
-POLLING_INTERVAL = int(environ.get("POLLING_INTERVAL", POLLING_INTERVAL_DEFAULT))
+class Settings(BaseSettings):
+    """
+    Settings for the application
+    """
 
-if POLLING_INTERVAL < 0:
-    print("POLLING_INTERVAL must be a positive integer. Setting to default 5s...")
-    POLLING_INTERVAL = POLLING_INTERVAL_DEFAULT
-
-COLLECTION_ID = environ.get("COLLECTION_ID")
-
-try:
-    BUNNY_VERSION = version("hutch_bunny")
-except Exception:
-    BUNNY_VERSION = "unknown"
-
-
-def log_settings():
-    from hutch_bunny.core.logger import (
-        logger,
-    )  # This is here to prevent a circular import
-
-    logger.debug("Running with settings:")
-    logger.debug(f"  BUNNY VERSION: {BUNNY_VERSION}")
-    logger.debug(f"  DATASOURCE_USE_TRINO: {DATASOURCE_USE_TRINO}")
-    logger.debug(f"  DEFAULT_POSTGRES_DRIVER: {DEFAULT_POSTGRES_DRIVER}")
-    logger.debug(f"  DEFAULT_DB_DRIVER: {DEFAULT_DB_DRIVER}")
-    logger.debug(f"  LOGGER_NAME: {LOGGER_NAME}")
-    logger.debug(f"  LOGGER_LEVEL: {LOGGER_LEVEL}")
-    logger.debug(f"  BACKUP_LOGGER_NAME: {BACKUP_LOGGER_NAME}")
-    logger.debug(f"  MSG_FORMAT: {MSG_FORMAT}")
-    logger.debug(f"  DATE_FORMAT: {DATE_FORMAT}")
-    logger.debug(f"  TASK_API_BASE_URL: {TASK_API_BASE_URL}")
-    logger.debug(f"  TASK_API_USERNAME: {TASK_API_USERNAME}")
-    logger.debug(f"  TASK_API_PASSWORD: {TASK_API_PASSWORD}")
-    logger.debug(f"  TASK_API_TYPE: {TASK_API_TYPE}")
-    logger.debug(
-        f"  LOW_NUMBER_SUPPRESSION_THRESHOLD: {LOW_NUMBER_SUPPRESSION_THRESHOLD}"
+    model_config = SettingsConfigDict(validate_default=False)
+    DATASOURCE_USE_TRINO: bool = Field(
+        description="Whether to use Trino as the datasource", default=False
     )
-    logger.debug(f"  ROUNDING_TARGET: {ROUNDING_TARGET}")
-    logger.debug(f"  POLLING_INTERVAL_DEFAULT: {POLLING_INTERVAL_DEFAULT}")
-    logger.debug(f"  POLLING_INTERVAL: {POLLING_INTERVAL}")
-    logger.debug(f"  COLLECTION_ID: {COLLECTION_ID}")
+    DEFAULT_POSTGRES_DRIVER: str = Field(
+        description="The default postgres driver", default="postgresql+psycopg"
+    )
+    DEFAULT_MSSQL_DRIVER: str = Field(
+        description="The default mssql driver", default="mssql+pymssql"
+    )
+    DEFAULT_DB_DRIVER: str = Field(
+        description="The default database driver", default="postgresql+psycopg"
+    )
+    LOW_NUMBER_SUPPRESSION_THRESHOLD: int = Field(
+        description="The threshold for low numbers", default=5
+    )
+    ROUNDING_TARGET: int = Field(description="The target for rounding", default=5)
+
+    LOGGER_NAME: str = "hutch"
+    LOGGER_LEVEL: str = Field(
+        description="The level of the logger. Must be one of: DEBUG, INFO, WARNING, ERROR, CRITICAL",
+        default="INFO",
+        alias="BUNNY_LOGGER_LEVEL",
+        pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$"
+    )
+    MSG_FORMAT: str = "%(levelname)s - %(asctime)s - %(message)s"
+    DATE_FORMAT: str = "%d-%b-%y %H:%M:%S"
+
+    DATASOURCE_DB_USERNAME: str = Field(
+        description="The username for the datasource database", default="trino-user"
+    )
+    DATASOURCE_DB_PASSWORD: str = Field(
+        description="The password for the datasource database"
+    )
+    DATASOURCE_DB_HOST: str = Field(description="The host for the datasource database")
+    DATASOURCE_DB_PORT: int = Field(
+        description="The port for the datasource database", default=8080
+    )
+    DATASOURCE_DB_SCHEMA: str = Field(
+        description="The schema for the datasource database"
+    )
+    DATASOURCE_DB_DATABASE: str = Field(
+        description="The database for the datasource database"
+    )
+    DATASOURCE_DB_CATALOG: str = Field(
+        description="The catalog for the datasource database", default="hutch"
+    )
+
+    def safe_model_dump(self) -> dict:
+        """
+        Convert settings to a dictionary, excluding sensitive fields.
+        """
+        return self.model_dump(exclude={"DATASOURCE_DB_PASSWORD"})
+
+
+class DaemonSettings(Settings):
+    """
+    Settings for the daemon
+    """
+
+    TASK_API_BASE_URL: str = Field(description="The base URL of the task API")
+    TASK_API_USERNAME: str = Field(description="The username for the task API")
+    TASK_API_PASSWORD: str = Field(description="The password for the task API")
+    TASK_API_TYPE: Optional[Literal["a", "b"]] = Field(
+        description="The type of task API to use", default=None
+    )
+    COLLECTION_ID: str = Field(description="The collection ID")
+    POLLING_INTERVAL: int = Field(description="The polling interval", default=5)
+
+    def safe_model_dump(self) -> dict:
+        """
+        Convert settings to a dictionary, excluding sensitive fields.
+        """
+        return self.model_dump(exclude={"DATASOURCE_DB_PASSWORD", "TASK_API_PASSWORD"})
+
+
+@overload
+def get_settings(daemon: Literal[True]) -> DaemonSettings: ...
+@overload
+def get_settings(daemon: Literal[False] = False) -> Settings: ...
+def get_settings(daemon: bool = False) -> Settings | DaemonSettings:
+    """Get application settings, either base or daemon-specific.
+
+    Args:
+        daemon: If True, returns DaemonSettings with additional daemon-specific config.
+               If False, returns base Settings.
+
+    Returns:
+        Settings or DaemonSettings object containing the application configuration
+    """
+    return _cached_get_settings(daemon)
+
+
+@cache
+def _cached_get_settings(daemon: bool) -> Settings | DaemonSettings:
+    """Cached helper function for loading application settings.
+
+    This function uses @cache decorator to memoize settings and avoid reloading
+    from environment variables on subsequent calls.
+
+    Args:
+        daemon: If True, loads DaemonSettings with additional daemon-specific config.
+               If False, loads base Settings.
+
+    Returns:
+        Settings or DaemonSettings object containing the cached application configuration
+    """
+    return DaemonSettings() if daemon else Settings()  # type: ignore

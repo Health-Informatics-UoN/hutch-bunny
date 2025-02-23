@@ -1,16 +1,18 @@
 import time
-import hutch_bunny.core.settings as settings
+from hutch_bunny.core.settings import get_settings, DaemonSettings
 from hutch_bunny.core.execute_query import execute_query
 from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.task_api_client import TaskApiClient
 from hutch_bunny.core.results_modifiers import results_modifiers
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.setting_database import setting_database
+from importlib.metadata import version
 
 
 def main() -> None:
-    settings.log_settings()
-
+    logger.info(f"Starting Bunny version {version('hutch_bunny')} ")
+    settings: DaemonSettings = get_settings(daemon=True)
+    logger.debug("Settings: %s", settings.safe_model_dump())
     # Setting database connection
     db_manager = setting_database(logger=logger)
     # Task Api Client class init.

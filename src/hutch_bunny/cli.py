@@ -10,7 +10,8 @@ from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.parser import parser
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.setting_database import setting_database
-import hutch_bunny.core.settings as settings
+from hutch_bunny.core.settings import get_settings, Settings
+from importlib.metadata import version
 
 
 def save_to_output(result: RquestResult, destination: str) -> None:
@@ -35,7 +36,9 @@ def save_to_output(result: RquestResult, destination: str) -> None:
 
 
 def main() -> None:
-    settings.log_settings()
+    logger.info(f"Starting Bunny version: {version('hutch_bunny')}")
+    settings: Settings = get_settings()
+    logger.debug("Settings: %s", settings.safe_model_dump())
     # Setting database connection
     db_manager = setting_database(logger=logger)
     # Bunny passed args.
