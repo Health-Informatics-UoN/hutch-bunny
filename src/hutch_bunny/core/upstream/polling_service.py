@@ -74,12 +74,12 @@ class PollingService:
                     task_data = response.json()
                     self.task_handler(task_data)
 
-                    backoff_time = self.settings.INITIAL_BACKOFF
                 elif response.status_code == 204:
                     self.logger.debug("No task found. Looking for task...")
-                    backoff_time = self.settings.INITIAL_BACKOFF
                 else:
                     self.logger.info(f"Got http status code: {response.status_code}")
+
+                backoff_time = self.settings.INITIAL_BACKOFF
             except requests.exceptions.RequestException as e:
                 self.logger.error(f"Network error occurred: {e}")
                 # Exponential backoff
