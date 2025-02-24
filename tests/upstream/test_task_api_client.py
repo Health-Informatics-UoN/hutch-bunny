@@ -2,15 +2,15 @@ import pytest
 from unittest.mock import patch, Mock
 from requests.models import Response
 from requests.exceptions import RequestException
+from hutch_bunny.core.settings import get_settings
 from src.hutch_bunny.core.upstream.task_api_client import TaskApiClient, SupportedMethod
 from requests.auth import HTTPBasicAuth
 
 
 @pytest.fixture
 def task_api_client():
-    return TaskApiClient(
-        base_url="http://example.com", username="user", password="password"
-    )
+    settings = get_settings(daemon=True)
+    return TaskApiClient(settings)
 
 
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
@@ -20,6 +20,7 @@ def test_request_success(mock_request, task_api_client):
     mock_response.status_code = 200
     mock_response.text = "Success"
     mock_request.return_value = mock_response
+    settings = get_settings(daemon=True)
 
     # Act
     response = task_api_client.request(SupportedMethod.GET, "http://example.com/test")
@@ -29,7 +30,7 @@ def test_request_success(mock_request, task_api_client):
         method="get",
         url="http://example.com/test",
         json=None,
-        auth=HTTPBasicAuth(task_api_client.username, task_api_client.password),
+        auth=HTTPBasicAuth(settings.TASK_API_USERNAME, settings.TASK_API_PASSWORD),
     )
     assert response.status_code == 200
     assert response.text == "Success"
@@ -41,6 +42,7 @@ def test_post_request(mock_request, task_api_client):
     mock_response = Mock(spec=Response)
     mock_response.status_code = 201
     mock_request.return_value = mock_response
+    settings = get_settings(daemon=True)
 
     # Act
     response = task_api_client.post(endpoint="test", data={"key": "value"})
@@ -48,9 +50,9 @@ def test_post_request(mock_request, task_api_client):
     # Assert
     mock_request.assert_called_once_with(
         method="post",
-        url="http://example.com/test",
+        url=f"{settings.TASK_API_BASE_URL}/test",
         json={"key": "value"},
-        auth=HTTPBasicAuth(task_api_client.username, task_api_client.password),
+        auth=HTTPBasicAuth(settings.TASK_API_USERNAME, settings.TASK_API_PASSWORD),
         headers={"Content-Type": "application/json"},
     )
     assert response.status_code == 201
@@ -62,16 +64,16 @@ def test_get_request(mock_request, task_api_client):
     mock_response = Mock(spec=Response)
     mock_response.status_code = 200
     mock_request.return_value = mock_response
-
+    settings = get_settings(daemon=True)
     # Act
     response = task_api_client.get(endpoint="test")
 
     # Assert
     mock_request.assert_called_once_with(
         method="get",
-        url="http://example.com/test",
+        url=f"{settings.TASK_API_BASE_URL}/test",
         json=None,
-        auth=HTTPBasicAuth(task_api_client.username, task_api_client.password),
+        auth=HTTPBasicAuth(settings.TASK_API_USERNAME, settings.TASK_API_PASSWORD),
     )
     assert response.status_code == 200
 
@@ -86,6 +88,7 @@ def test_send_results(mock_request, task_api_client):
     mock_result.uuid = "1234"
     mock_result.collection_id = "5678"
     mock_result.to_dict.return_value = {"key": "value"}
+    settings = get_settings(daemon=True)
 
     # Act
     task_api_client.send_results(mock_result)
@@ -93,9 +96,9 @@ def test_send_results(mock_request, task_api_client):
     # Assert
     mock_request.assert_called_with(
         method="post",
-        url="http://example.com/task/result/1234/5678",
+        url=f"{settings.TASK_API_BASE_URL}/task/result/1234/5678",
         json={"key": "value"},
-        auth=HTTPBasicAuth(task_api_client.username, task_api_client.password),
+        auth=HTTPBasicAuth(settings.TASK_API_USERNAME, settings.TASK_API_PASSWORD),
         headers={"Content-Type": "application/json"},
     )
 
