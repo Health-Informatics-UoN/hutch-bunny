@@ -1,14 +1,12 @@
 import json
 
-from hutch_bunny.core.obfuscation import low_number_suppression
 from hutch_bunny.core.results_modifiers import (
     get_results_modifiers_from_str,
-    results_modifiers,
 )
 from hutch_bunny.core.execute_query import execute_query
 from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.parser import parser
-from hutch_bunny.core.logger import logger
+from hutch_bunny.core.logger import configure_logger, logger
 from hutch_bunny.core.setting_database import setting_database
 from hutch_bunny.core.settings import get_settings, Settings
 from importlib.metadata import version
@@ -36,11 +34,12 @@ def save_to_output(result: RquestResult, destination: str) -> None:
 
 
 def main() -> None:
-    logger.info(f"Starting Bunny version: {version('hutch_bunny')}")
     settings: Settings = get_settings()
+    configure_logger(settings)
+    logger.info(f"Starting Bunny version: {version('hutch_bunny')}")
     logger.debug("Settings: %s", settings.safe_model_dump())
     # Setting database connection
-    db_manager = setting_database(logger=logger)
+    db_manager = setting_database()
     # Bunny passed args.
     args = parser.parse_args()
 
@@ -51,9 +50,7 @@ def main() -> None:
         args.results_modifiers
     )
 
-    result = execute_query(
-        query_dict, results_modifier, logger=logger, db_manager=db_manager
-    )
+    result = execute_query(query_dict, results_modifier, db_manager=db_manager)
     logger.debug(f"Results: {result.to_dict()}")
     save_to_output(result, args.output)
     logger.info(f"Saved results to {args.output}")

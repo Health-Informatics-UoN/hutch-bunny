@@ -1,14 +1,12 @@
+from hutch_bunny.core.logger import logger
 import time
 from requests.models import Response
 from enum import Enum
 import requests
 from requests.auth import HTTPBasicAuth
 from hutch_bunny.core.rquest_dto.result import RquestResult
-from hutch_bunny.core.settings import get_settings, DaemonSettings
+from hutch_bunny.core.settings import DaemonSettings
 from typing import Optional
-from hutch_bunny.core.logger import logger
-
-settings: DaemonSettings = get_settings(daemon=True)
 
 
 class SupportedMethod(Enum):
@@ -22,13 +20,11 @@ class SupportedMethod(Enum):
 class TaskApiClient:
     def __init__(
         self,
-        base_url: Optional[str] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        settings: DaemonSettings,
     ):
-        self.base_url = base_url or settings.TASK_API_BASE_URL
-        self.username = username or settings.TASK_API_USERNAME
-        self.password = password or settings.TASK_API_PASSWORD
+        self.base_url = settings.TASK_API_BASE_URL
+        self.username = settings.TASK_API_USERNAME
+        self.password = settings.TASK_API_PASSWORD
 
     def request(
         self, method: SupportedMethod, url: str, data: Optional[dict] = None, **kwargs
