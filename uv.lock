@@ -1,5 +1,4 @@
 version = 1
-revision = 1
 requires-python = ">=3.13"
 
 [[package]]
@@ -82,7 +81,7 @@ wheels = [
 
 [[package]]
 name = "hutch-bunny"
-version = "1.0.0a4"
+version = "1.0.0a6"
 source = { editable = "." }
 dependencies = [
     { name = "numpy" },
