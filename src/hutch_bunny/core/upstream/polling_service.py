@@ -48,9 +48,26 @@ class PollingService:
             else f"task/nextjob/{self.settings.COLLECTION_ID}"
         )
 
-    def poll_for_tasks(self, max_iterations=None):
+    def poll_for_tasks(self, max_iterations: int | None = None) -> None:
         """
-        Polls the task API for tasks and processes them.
+        Poll the API for tasks, handle the task, and continue to poll, until the maximum number of iterations is reached.
+
+        If `max_iterations` is not provided, the polling will continue indefinitely.
+        `max_iterations` is used in testing to limit the number of iterations.
+
+        It handles network errors by catching
+        requests.exceptions.RequestException. In the event of a network error,
+        it will log the error and implement an exponential backoff strategy
+        before retrying the request. The backoff time starts at
+        `INITIAL_BACKOFF` and is capped at `MAX_BACKOFF`. These values are
+        defined in the `DaemonSettings`.
+
+
+        Args:
+            max_iterations: Optional[int] = None: The maximum number of iterations to poll for tasks.
+
+        Raises:
+            requests.exceptions.RequestException: If a network error occurs.
 
         Returns:
             None
@@ -66,22 +83,22 @@ class PollingService:
                 break
             try:
                 response = self.client.get(endpoint=self.polling_endpoint)
+                response.raise_for_status()
+
                 if response.status_code == 200:
                     self.logger.info("Task received. Resolving...")
                     self.logger.debug(f"Task: {response.json()}")
                     task_data = response.json()
                     self.task_handler(task_data)
 
-                    backoff_time = self.settings.INITIAL_BACKOFF
                 elif response.status_code == 204:
                     self.logger.debug("No task found. Looking for task...")
-                elif response.status_code == 401:
-                    self.logger.info("Failed to authenticate with task server.")
                 else:
                     self.logger.info(f"Got http status code: {response.status_code}")
+
+                backoff_time = self.settings.INITIAL_BACKOFF
             except requests.exceptions.RequestException as e:
                 self.logger.error(f"Network error occurred: {e}")
-
                 # Exponential backoff
                 time.sleep(backoff_time)
                 backoff_time = min(backoff_time * 2, max_backoff_time)
