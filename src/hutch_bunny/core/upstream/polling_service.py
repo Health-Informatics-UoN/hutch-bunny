@@ -5,6 +5,7 @@ import requests
 from hutch_bunny.core.settings import DaemonSettings
 from hutch_bunny.core.upstream.task_api_client import TaskApiClient
 
+
 class PollingService:
     """
     Polls the task API for tasks and processes them.
