@@ -33,7 +33,6 @@ def mock_task_handler():
     return Mock()
 
 
-
 def test_poll_for_tasks_success(
     mock_logger, mock_settings, mock_client, mock_task_handler
 ):
@@ -41,9 +40,7 @@ def test_poll_for_tasks_success(
     mock_client.get.return_value.status_code = 200
     mock_client.get.return_value.json.return_value = {"task": "data"}
 
-    polling_service = PollingService(
-        mock_client, mock_task_handler, mock_settings
-    )
+    polling_service = PollingService(mock_client, mock_task_handler, mock_settings)
 
     # Act
     with patch("time.sleep", return_value=None):  # To speed up the test
@@ -60,9 +57,7 @@ def test_poll_for_tasks_no_task(
     # Arrange
     mock_client.get.return_value.status_code = 204
 
-    polling_service = PollingService(
-        mock_client, mock_task_handler, mock_settings
-    )
+    polling_service = PollingService(mock_client, mock_task_handler, mock_settings)
 
     # Act
     with patch("time.sleep", return_value=None):  # To speed up the test
@@ -73,12 +68,11 @@ def test_poll_for_tasks_no_task(
     mock_task_handler.assert_not_called()
 
 
-def test_construct_polling_endpoint_with_type(mock_settings, mock_client, mock_task_handler
+def test_construct_polling_endpoint_with_type(
+    mock_settings, mock_client, mock_task_handler
 ):
     # Arrange
-    polling_service = PollingService(
-        mock_client, mock_task_handler, mock_settings
-    )
+    polling_service = PollingService(mock_client, mock_task_handler, mock_settings)
 
     # Act
     endpoint = polling_service._construct_polling_endpoint()
@@ -95,9 +89,7 @@ def test_construct_polling_endpoint_without_type(
     mock_settings.COLLECTION_ID = "test_collection"
     mock_settings.TASK_API_TYPE = None
 
-    polling_service = PollingService(
-        mock_client, mock_task_handler, mock_settings
-    )
+    polling_service = PollingService(mock_client, mock_task_handler, mock_settings)
 
     # Act
     endpoint = polling_service._construct_polling_endpoint()
@@ -112,7 +104,9 @@ def test_unauthorized_status_code(
 ):
     # Arrange
     mock_client.get.return_value.status_code = 401
-    mock_client.get.return_value.raise_for_status.side_effect = requests.exceptions.RequestException()
+    mock_client.get.return_value.raise_for_status.side_effect = (
+        requests.exceptions.RequestException()
+    )
 
     polling_service = PollingService(mock_client, mock_task_handler, mock_settings)
 
@@ -129,9 +123,7 @@ def test_other_status_code(
 ):
     # Arrange
     mock_client.get.return_value.status_code = 500
-    polling_service = PollingService(
-        mock_client, mock_task_handler, mock_settings
-    )
+    polling_service = PollingService(mock_client, mock_task_handler, mock_settings)
 
     # Act
     polling_service.poll_for_tasks(max_iterations=1)
@@ -146,9 +138,7 @@ def test_network_error(
 ):
     # Arrange
     mock_client.get.side_effect = requests.exceptions.RequestException("Network error")
-    polling_service = PollingService(
-        mock_client, mock_task_handler, mock_settings
-    )
+    polling_service = PollingService(mock_client, mock_task_handler, mock_settings)
 
     # Act
     polling_service.poll_for_tasks(max_iterations=1)

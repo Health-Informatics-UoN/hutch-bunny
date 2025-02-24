@@ -22,9 +22,7 @@ def mock_task_api_client():
     return Mock()
 
 
-def test_handle_task_success(
-    mock_db_manager, mock_settings, mock_task_api_client
-):
+def test_handle_task_success(mock_db_manager, mock_settings, mock_task_api_client):
     # Arrange
     task_data = {"query": "SELECT * FROM table"}
     mock_result = RquestResult(
@@ -41,9 +39,7 @@ def test_handle_task_success(
         return_value=mock_result,
     ) as mock_execute_query:
         # Act
-        handle_task(
-            task_data, mock_db_manager, mock_settings, mock_task_api_client
-        )
+        handle_task(task_data, mock_db_manager, mock_settings, mock_task_api_client)
 
         # Assert
         mock_execute_query.assert_called_once_with(
