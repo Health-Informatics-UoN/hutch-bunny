@@ -1,4 +1,4 @@
-from logging import Logger
+from hutch_bunny.core.logger import logger
 from os import environ
 from hutch_bunny.core.db_manager import SyncDBManager, TrinoDBManager
 
@@ -24,7 +24,7 @@ def expand_short_drivers(drivername: str):
     return drivername
 
 
-def setting_database(logger: Logger) -> SyncDBManager | TrinoDBManager:
+def setting_database() -> SyncDBManager | TrinoDBManager:
     logger.info("Connecting to database...")
 
     # Trino has some different settings / defaults comapred with SQLAlchemy

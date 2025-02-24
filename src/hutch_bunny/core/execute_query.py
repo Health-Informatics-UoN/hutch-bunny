@@ -1,17 +1,13 @@
-from typing import Dict, List
-from logging import Logger
+from typing import Dict
+from hutch_bunny.core.logger import logger
 from hutch_bunny.core.solvers import query_solvers
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
-from hutch_bunny.core.obfuscation import (
-    apply_filters,
-)
 from hutch_bunny.core.rquest_dto.result import RquestResult
 
 
 def execute_query(
     query_dict: Dict,
     results_modifier: list[dict],
-    logger: Logger,
     db_manager,
 ) -> RquestResult:
     """

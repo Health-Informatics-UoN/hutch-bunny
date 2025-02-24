@@ -1,4 +1,3 @@
-from logging import Logger
 from hutch_bunny.core.db_manager import BaseDBManager
 from hutch_bunny.core.settings import DaemonSettings
 from hutch_bunny.core.execute_query import execute_query
@@ -10,7 +9,6 @@ def handle_task(
     task_data: dict,
     db_manager: BaseDBManager,
     settings: DaemonSettings,
-    logger: Logger,
     task_api_client: TaskApiClient,
 ) -> None:
     """
@@ -20,7 +18,6 @@ def handle_task(
         task_data (dict): The task data to execute the query on.
         db_manager (BaseDBManager): The database manager to use to execute the query.
         settings (DaemonSettings): The settings to use to execute the query.
-        logger (Logger): The logger to use to log messages.
         task_api_client (TaskApiClient): The task API client to use to send the results.
 
     Returns:
@@ -35,7 +32,6 @@ def handle_task(
     result = execute_query(
         task_data,
         result_modifier,
-        logger=logger,
         db_manager=db_manager,
     )
     task_api_client.send_results(result)
