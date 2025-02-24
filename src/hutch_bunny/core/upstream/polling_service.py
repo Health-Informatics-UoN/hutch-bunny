@@ -5,6 +5,7 @@ import requests
 from hutch_bunny.core.settings import DaemonSettings
 from hutch_bunny.core.upstream.task_api_client import TaskApiClient
 
+
 class PollingService:
     """
     Polls the task API for tasks and processes them.
@@ -48,9 +49,26 @@ class PollingService:
             else f"task/nextjob/{self.settings.COLLECTION_ID}"
         )
 
-    def poll_for_tasks(self, max_iterations=None):
+    def poll_for_tasks(self, max_iterations: int | None = None) -> None:
         """
-        Polls the task API for tasks and processes them.
+        Poll the API for tasks, handle the task, and continue to poll, until the maximum number of iterations is reached.
+
+        If `max_iterations` is not provided, the polling will continue indefinitely.
+        `max_iterations` is used in testing to limit the number of iterations.
+
+        It handles network errors by catching
+        requests.exceptions.RequestException. In the event of a network error,
+        it will log the error and implement an exponential backoff strategy
+        before retrying the request. The backoff time starts at
+        `INITIAL_BACKOFF` and is capped at `MAX_BACKOFF`. These values are
+        defined in the `DaemonSettings`.
+
+
+        Args:
+            max_iterations: Optional[int] = None: The maximum number of iterations to poll for tasks.
+
+        Raises:
+            requests.exceptions.RequestException: If a network error occurs.
 
         Returns:
             None
