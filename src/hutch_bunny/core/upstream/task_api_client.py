@@ -1,14 +1,12 @@
+from logging import Logger
 import time
 from requests.models import Response
 from enum import Enum
 import requests
 from requests.auth import HTTPBasicAuth
 from hutch_bunny.core.rquest_dto.result import RquestResult
-from hutch_bunny.core.settings import get_settings, DaemonSettings
+from hutch_bunny.core.settings import DaemonSettings
 from typing import Optional
-from hutch_bunny.core.logger import logger
-
-settings: DaemonSettings = get_settings(daemon=True)
 
 
 class SupportedMethod(Enum):
@@ -22,13 +20,13 @@ class SupportedMethod(Enum):
 class TaskApiClient:
     def __init__(
         self,
-        base_url: Optional[str] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        settings: DaemonSettings,
+        logger: Logger,
     ):
-        self.base_url = base_url or settings.TASK_API_BASE_URL
-        self.username = username or settings.TASK_API_USERNAME
-        self.password = password or settings.TASK_API_PASSWORD
+        self.base_url = settings.TASK_API_BASE_URL
+        self.username = settings.TASK_API_USERNAME
+        self.password = settings.TASK_API_PASSWORD
+        self.logger = logger
 
     def request(
         self, method: SupportedMethod, url: str, data: Optional[dict] = None, **kwargs
@@ -45,7 +43,7 @@ class TaskApiClient:
         Returns:
             Response: The response object returned by the requests library.
         """
-        logger.debug(
+        self.logger.debug(
             "Sending %s request to %s with data %s and kwargs %s"
             % (method.value, url, data, kwargs)
         )
@@ -53,8 +51,8 @@ class TaskApiClient:
         response = requests.request(
             method=method.value, url=url, json=data, auth=basicAuth, **kwargs
         )
-        logger.debug("Response Status: %s", response.status_code)
-        logger.debug("Response Text: %s", response.text)
+        self.logger.debug("Response Status: %s", response.status_code)
+        self.logger.debug("Response Text: %s", response.text)
         return response
 
     def post(
@@ -109,15 +107,15 @@ class TaskApiClient:
                     200 <= response.status_code < 300
                     or 400 <= response.status_code < 500
                 ):
-                    logger.info("Task resolved.")
-                    logger.debug(f"Response status: {response.status_code}")
-                    logger.debug(f"Response: {response.text}")
+                    self.logger.info("Task resolved.")
+                    self.logger.debug(f"Response status: {response.status_code}")
+                    self.logger.debug(f"Response: {response.text}")
                     break
                 else:
-                    logger.warning(
+                    self.logger.warning(
                         f"Failed to post to {return_endpoint} at {time.time()}. Trying again..."
                     )
                     time.sleep(5)
             except requests.exceptions.RequestException as e:
-                logger.error(f"Network error occurred while posting results: {e}")
+                self.logger.error(f"Network error occurred while posting results: {e}")
                 time.sleep(5)
