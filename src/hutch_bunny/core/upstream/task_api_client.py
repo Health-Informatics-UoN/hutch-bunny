@@ -93,15 +93,14 @@ class TaskApiClient:
         url = f"{self.base_url}/{endpoint}"
         return self.request(SupportedMethod.GET, url, **kwargs)
 
-    def send_results(self, result: RquestResult, retry_count: int = 4, retry_delay: int = 5):
+    def send_results(self, result: RquestResult, retry_count: int = 4, retry_delay: int = 5) -> None:
         """
         Sends a POST request to the specified endpoint with data and additional parameters.
 
         Args:
-            endpoint (str): The endpoint to which the POST request is sent.
-            data (dict): The data to send in the body of the request.
-            retry_count (int): The number of times to retry the request.
-            retry_delay (int): The delay between retries.
+            result (RquestResult): The result object containing data to send.
+            retry_count (int): The number of times to retry the request. Defaults to 4.
+            retry_delay (int): The delay between retries in seconds. Defaults to 5.
         """
         return_endpoint = f"task/result/{result.uuid}/{result.collection_id}"
         for _ in range(retry_count):
