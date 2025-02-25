@@ -89,7 +89,9 @@ class TaskApiClient:
         url = f"{self.base_url}/{endpoint}"
         return self.request(SupportedMethod.GET, url, **kwargs)
 
-    def send_results(self, result: RquestResult, retry_count: int = 4, retry_delay: int = 5) -> None:
+    def send_results(
+        self, result: RquestResult, retry_count: int = 4, retry_delay: int = 5
+    ) -> None:
         """
         Sends a POST request to the specified endpoint with data and additional parameters.
 

@@ -1,6 +1,6 @@
 import base64
 import os
-import logging
+from hutch_bunny.core.logger import logger
 from typing import Tuple
 import pandas as pd
 
@@ -117,8 +117,6 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         biobanks: list = []
         omop_desc: list = []
 
-        logger = logging.getLogger(settings.LOGGER_NAME)
-
         with self.db_manager.engine.connect() as con:
             for domain_id in self.allowed_domains_map:
                 logger.debug(domain_id)
@@ -131,7 +129,8 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
                 if rounding > 0:
                     stmnt = (
                         select(
-                            func.round((func.count(table.person_id) / rounding)) * rounding,
+                            func.round((func.count(table.person_id) / rounding))
+                            * rounding,
                             Concept.concept_id,
                             Concept.concept_name,
                         )
@@ -327,7 +326,6 @@ def solve_availability(
     Returns:
         RquestResult: Result object for the query
     """
-    logger = logging.getLogger(settings.LOGGER_NAME)
     solver = AvailabilitySolver(db_manager, query)
     try:
         count_ = solver.solve_query(results_modifier)
@@ -379,7 +377,6 @@ def solve_distribution(
     Returns:
         DistributionResult: Result object for the query
     """
-    logger = logging.getLogger(settings.LOGGER_NAME)
     solver = _get_distribution_solver(db_manager, query)
     try:
         res, count = solver.solve_query(results_modifier)

@@ -1,4 +1,3 @@
-import logging
 import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -19,6 +18,7 @@ from sqlalchemy.dialects import postgresql
 from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery
 from sqlalchemy.engine import Engine
+from hutch_bunny.core.logger import logger
 
 from hutch_bunny.core.settings import get_settings
 from hutch_bunny.core.rquest_dto.rule import Rule
@@ -116,8 +116,6 @@ class AvailabilitySolver:
             (item["nearest"] for item in results_modifier if item["id"] == "Rounding"),
             10,
         )
-
-        logger = logging.getLogger(settings.LOGGER_NAME)
 
         with self.db_manager.engine.connect() as con:
             # this is used to store the query for each group, one entry per group
