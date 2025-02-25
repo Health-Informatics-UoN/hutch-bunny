@@ -26,7 +26,7 @@ class TaskApiClient:
         self.username = settings.TASK_API_USERNAME
         self.password = settings.TASK_API_PASSWORD
 
-    def request(
+    def _request(
         self, method: SupportedMethod, url: str, data: Optional[dict] = None, **kwargs
     ) -> Response:
         """
@@ -68,7 +68,7 @@ class TaskApiClient:
             Response: The response object returned by the requests library.
         """
         url = f"{self.base_url}/{endpoint}"
-        return self.request(
+        return self._request(
             SupportedMethod.POST,
             url,
             data,
@@ -87,7 +87,7 @@ class TaskApiClient:
             Response: The response object returned by the requests library.
         """
         url = f"{self.base_url}/{endpoint}"
-        return self.request(SupportedMethod.GET, url, **kwargs)
+        return self._request(SupportedMethod.GET, url, **kwargs)
 
     def send_results(
         self, result: RquestResult, retry_count: int = 4, retry_delay: int = 5

@@ -30,7 +30,7 @@ def test_request_success(mock_request, mock_settings, task_api_client):
     mock_request.return_value = mock_response
 
     # Act
-    response = task_api_client.request(SupportedMethod.GET, "http://example.com/test")
+    response = task_api_client._request(SupportedMethod.GET, "http://example.com/test")
 
     # Assert
     mock_request.assert_called_once_with(
@@ -122,7 +122,7 @@ def test_request_network_error(mock_request, mock_settings, task_api_client):
 
     # Act & Assert
     with pytest.raises(RequestException, match="Network error"):
-        task_api_client.request(
+        task_api_client._request(
             SupportedMethod.GET, f"{mock_settings.TASK_API_BASE_URL}/test"
         )
 
@@ -135,7 +135,7 @@ def test_request_unauthorized(mock_request, mock_settings, task_api_client):
     mock_request.return_value = mock_response
 
     # Act
-    response = task_api_client.request(
+    response = task_api_client._request(
         SupportedMethod.GET, f"{mock_settings.TASK_API_BASE_URL}/test"
     )
 
