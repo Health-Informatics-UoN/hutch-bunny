@@ -12,7 +12,6 @@ import hutch_bunny.core.setting_database as db_settings
 
 settings = get_settings()
 
-
 @pytest.fixture
 def db_manager():
     datasource_db_port = os.getenv("DATASOURCE_DB_PORT")
@@ -22,7 +21,9 @@ def db_manager():
         host=settings.DATASOURCE_DB_HOST,
         port=(int(datasource_db_port) if datasource_db_port is not None else None),
         database=settings.DATASOURCE_DB_DATABASE,
-        drivername=db_settings.expand_short_drivers(settings.DEFAULT_DB_DRIVER),
+        drivername=db_settings.expand_short_drivers(
+            settings.DEFAULT_DB_DRIVER
+        ),
         schema=settings.DATASOURCE_DB_SCHEMA,
     )
 
