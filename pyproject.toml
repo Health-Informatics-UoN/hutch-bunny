@@ -45,3 +45,9 @@ dev = [
     "coverage>=7.6.12",
     "pytest-cov>=6.0.0",
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests (DB, API, etc.)"
+]

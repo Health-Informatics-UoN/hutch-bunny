@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import patch, Mock
 from requests.models import Response
 from requests.exceptions import RequestException
-from hutch_bunny.core.settings import get_settings
 from src.hutch_bunny.core.upstream.task_api_client import TaskApiClient, SupportedMethod
 from requests.auth import HTTPBasicAuth
 
@@ -21,6 +20,7 @@ def task_api_client(mock_settings):
     return TaskApiClient(mock_settings)
 
 
+@pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_request_success(mock_request, mock_settings, task_api_client):
     # Arrange
@@ -45,6 +45,7 @@ def test_request_success(mock_request, mock_settings, task_api_client):
     assert response.text == "Success"
 
 
+@pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_post_request(mock_request, mock_settings, task_api_client):
     # Arrange
@@ -68,6 +69,7 @@ def test_post_request(mock_request, mock_settings, task_api_client):
     assert response.status_code == 201
 
 
+@pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_get_request(mock_request, mock_settings, task_api_client):
     # Arrange
@@ -89,6 +91,7 @@ def test_get_request(mock_request, mock_settings, task_api_client):
     assert response.status_code == 200
 
 
+@pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_send_results(mock_request, mock_settings, task_api_client):
     # Arrange
@@ -115,6 +118,7 @@ def test_send_results(mock_request, mock_settings, task_api_client):
     )
 
 
+@pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_request_network_error(mock_request, mock_settings, task_api_client):
     # Arrange
@@ -127,6 +131,7 @@ def test_request_network_error(mock_request, mock_settings, task_api_client):
         )
 
 
+@pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_request_unauthorized(mock_request, mock_settings, task_api_client):
     # Arrange
@@ -143,6 +148,7 @@ def test_request_unauthorized(mock_request, mock_settings, task_api_client):
     assert response.status_code == 401
 
 
+@pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_send_results_retry_logic(mock_request, mock_settings, task_api_client):
     # Arrange
@@ -161,6 +167,7 @@ def test_send_results_retry_logic(mock_request, mock_settings, task_api_client):
     assert mock_request.call_count == 4
 
 
+@pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 @patch("src.hutch_bunny.core.upstream.task_api_client.logger")
 def test_send_results_network_error(

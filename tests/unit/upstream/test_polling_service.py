@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import Mock, patch
 from hutch_bunny.core.upstream.polling_service import PollingService
 from hutch_bunny.core.upstream.task_api_client import TaskApiClient
-from logging import Logger
 import requests
 
 
@@ -33,6 +32,7 @@ def mock_task_handler():
     return Mock()
 
 
+@pytest.mark.unit
 def test_poll_for_tasks_success(
     mock_logger, mock_settings, mock_client, mock_task_handler
 ):
@@ -51,6 +51,7 @@ def test_poll_for_tasks_success(
     mock_task_handler.assert_called_once_with({"task": "data"})
 
 
+@pytest.mark.unit
 def test_poll_for_tasks_no_task(
     mock_logger, mock_settings, mock_client, mock_task_handler
 ):
@@ -68,6 +69,7 @@ def test_poll_for_tasks_no_task(
     mock_task_handler.assert_not_called()
 
 
+@pytest.mark.unit
 def test_construct_polling_endpoint_with_type(
     mock_settings, mock_client, mock_task_handler
 ):
@@ -81,6 +83,7 @@ def test_construct_polling_endpoint_with_type(
     assert endpoint == "task/nextjob/test_collection.test_type"
 
 
+@pytest.mark.unit
 def test_construct_polling_endpoint_without_type(
     mock_settings, mock_client, mock_task_handler
 ):
@@ -98,6 +101,7 @@ def test_construct_polling_endpoint_without_type(
     assert endpoint == "task/nextjob/test_collection"
 
 
+@pytest.mark.unit
 @patch("time.sleep", return_value=None)
 def test_unauthorized_status_code(
     mock_sleep, mock_logger, mock_settings, mock_client, mock_task_handler
@@ -117,6 +121,7 @@ def test_unauthorized_status_code(
     mock_logger.error.assert_called_with("Network error occurred: ")
 
 
+@pytest.mark.unit
 @patch("time.sleep", return_value=None)
 def test_other_status_code(
     mock_sleep, mock_logger, mock_settings, mock_client, mock_task_handler
@@ -132,6 +137,7 @@ def test_other_status_code(
     mock_logger.info.assert_called_with("Got http status code: 500")
 
 
+@pytest.mark.unit
 @patch("time.sleep", return_value=None)
 def test_network_error(
     mock_sleep, mock_logger, mock_settings, mock_client, mock_task_handler

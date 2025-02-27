@@ -28,10 +28,12 @@ def availability_result(db_manager, availability_query_onerule_equals):
     )
 
 
+@pytest.mark.integration
 def test_solve_availability_returns_result(availability_result):
     assert isinstance(availability_result, RquestResult)
 
 
+@pytest.mark.integration
 def test_solve_availability_fields_match_query(
     availability_result, availability_example
 ):
@@ -40,9 +42,11 @@ def test_solve_availability_fields_match_query(
     assert availability_result.protocol_version == availability_example.protocol_version
 
 
+@pytest.mark.integration
 def test_solve_availability_is_ok(availability_result):
     assert availability_result.status == "ok"
 
 
+@pytest.mark.integration
 def test_solve_availability_count_matches(availability_result, availability_example):
     assert availability_result.count == availability_example.count

@@ -1,6 +1,6 @@
 {
   "task_id" : "job-2025-02-14-09:02:10-RQ-b27f39b1-a1db-4b94-abc8-e36e6ba5cdec",
-  "project" : "RQ-b27f39b1-a1db-4b94-abc8-e36e6ba5cdec",
+  "project" : "project_id",
   "owner" : "user1",
   "cohort" : {
     "groups" : [ {
@@ -21,8 +21,8 @@
     } ],
     "groups_oper" : "OR"
   },
-  "collection" : "RQ-CC-034170a5-5e8e-441a-9475-41f1eb2b1334",
+  "collection": "collection_id",
   "protocol_version" : "v2",
-  "char_salt" : "e3c3b4e0-1dc4-4746-b312-1da96ce804e8",
-  "uuid" : "a561e6f6-1d59-4e7b-af89-812db7fba064"
+  "char_salt" : "salt",
+  "uuid" : "unique_id"
 }
