@@ -49,5 +49,6 @@ dev = [
 [tool.pytest.ini_options]
 markers = [
     "unit: Unit tests",
-    "integration: Integration tests (DB, API, etc.)"
+    "integration: Integration tests (DB, API, etc.)",
+    "end_to_end: End-to-end tests (CLI, Daemon)",
 ]

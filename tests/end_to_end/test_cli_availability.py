@@ -60,7 +60,7 @@ test_cases = [
 ]  # type: ignore
 
 
-@pytest.mark.integration
+@pytest.mark.end_to_end
 @pytest.mark.parametrize("json_file_path, modifiers, expected_count", test_cases)
 def test_cli_availability(json_file_path, modifiers, expected_count):
     """
