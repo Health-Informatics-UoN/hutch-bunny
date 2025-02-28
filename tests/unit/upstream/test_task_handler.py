@@ -22,6 +22,7 @@ def mock_task_api_client():
     return Mock()
 
 
+@pytest.mark.unit
 def test_handle_task_success(mock_db_manager, mock_settings, mock_task_api_client):
     # Arrange
     task_data = {"query": "SELECT * FROM table"}
