@@ -85,7 +85,7 @@ class AvailabilitySolver:
         }
         return concept_dict
 
-    def _solve_rules(self, results_modifier: list[dict]) -> int | float:
+    def _solve_rules(self, results_modifier: list[dict]) -> int:
         """Function for taking the JSON query from RQUEST and creating the required query to run against the OMOP database.
 
         RQUEST API spec can have multiple groups in each query, and then a condition between the groups.
