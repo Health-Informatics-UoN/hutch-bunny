@@ -62,7 +62,21 @@ test_cases = [
 
 @pytest.mark.integration
 @pytest.mark.parametrize("json_file_path, modifiers, expected_count", test_cases)
-def test_availability(json_file_path, modifiers, expected_count):
+def test_cli_availability(json_file_path, modifiers, expected_count):
+    """
+    Test the CLI availability command.
+
+    This test will run the CLI availability command with the given JSON file and modifiers,
+    and assert the output is as expected.
+
+    Args:
+        json_file_path (str): The path to the JSON file containing the query.
+        modifiers (str): The modifiers to apply to the query.
+        expected_count (int): The expected count of results.
+
+    Returns:
+        None
+    """
     # Arrange
     output_file_path = "tests/queries/availability/output.json"
 
