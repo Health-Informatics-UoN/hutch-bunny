@@ -14,6 +14,11 @@ test_cases = [
     ),
     (
         "tests/queries/availability/availability.json",
+        '[{"id": "Low Number Suppression", "threshold": 0}, {"id": "Rounding", "nearest": 0}]',
+        44,
+    ),
+    (
+        "tests/queries/availability/availability.json",
         '[{"id": "Low Number Suppression", "threshold": 30}]',
         40,
     ),
