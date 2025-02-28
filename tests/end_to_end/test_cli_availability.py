@@ -19,7 +19,7 @@ test_cases = [
     ),
     pytest.param(
         "tests/queries/availability/availability.json",
-        '[{"id": "Low Number Suppression", "threshold": 20}]',
+        '[{"id": "Low Number Suppression", "threshold": 40}]',
         0,
         # marks=pytest.mark.xfail(reason="Known issue with LNS threshold logic"),
     ),
