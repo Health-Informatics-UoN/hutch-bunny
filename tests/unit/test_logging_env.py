@@ -1,27 +1,27 @@
 import pytest
 import os
 from importlib import reload
+import logging
 
 import hutch_bunny.core.logger
 import hutch_bunny.core.settings
 
 
-def test_set_level():
+def test_configure_logger():
     # Test INFO level
     os.environ["BUNNY_LOGGER_LEVEL"] = "INFO"
     reload(hutch_bunny.core.settings)
     settings = hutch_bunny.core.settings.get_settings()
-    assert settings.LOGGER_LEVEL == "INFO"
-    reload(hutch_bunny.core.logger)
-    assert hutch_bunny.core.logger.logger.level == 20
+    hutch_bunny.core.logger.configure_logger(settings)
+    logger = logging.getLogger("hutch_bunny")
+    assert logger.level == logging.INFO
 
     # Test DEBUG level
-    os.environ["BUNNY_LOGGER_LEVEL"] = "DEBUG" 
+    os.environ["BUNNY_LOGGER_LEVEL"] = "DEBUG"
     reload(hutch_bunny.core.settings)
     settings = hutch_bunny.core.settings.get_settings()
-    assert settings.LOGGER_LEVEL == "DEBUG"
-    reload(hutch_bunny.core.logger)
-    assert hutch_bunny.core.logger.logger.level == 10
+    hutch_bunny.core.logger.configure_logger(settings)
+    assert logger.level == logging.DEBUG
 
     # Test invalid level raises validation error
     os.environ["BUNNY_LOGGER_LEVEL"] = "FLOPPSY"

@@ -32,7 +32,7 @@ class Settings(BaseSettings):
         description="The level of the logger. Must be one of: DEBUG, INFO, WARNING, ERROR, CRITICAL",
         default="INFO",
         alias="BUNNY_LOGGER_LEVEL",
-        pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$"
+        pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$",
     )
     MSG_FORMAT: str = "%(levelname)s - %(asctime)s - %(message)s"
     DATE_FORMAT: str = "%d-%b-%y %H:%M:%S"
@@ -77,6 +77,10 @@ class DaemonSettings(Settings):
     )
     COLLECTION_ID: str = Field(description="The collection ID")
     POLLING_INTERVAL: int = Field(description="The polling interval", default=5)
+    INITIAL_BACKOFF: int = Field(
+        description="The initial backoff in seconds", default=5
+    )
+    MAX_BACKOFF: int = Field(description="The maximum backoff in seconds", default=60)
 
     def safe_model_dump(self) -> dict:
         """

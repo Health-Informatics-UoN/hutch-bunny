@@ -14,6 +14,11 @@ jobs:
       DATASOURCE_DB_SCHEMA: omop
       DATASOURCE_DB_PORT: 5432
       DATASOURCE_DB_HOST: localhost
+      TASK_API_TYPE: a
+      COLLECTION_ID: test_collection
+      TASK_API_BASE_URL: http://localhost:8000
+      TASK_API_USERNAME: test_user
+      TASK_API_PASSWORD: test_password
 
     services:
       postgres:
@@ -56,7 +61,10 @@ jobs:
         run: uv sync --frozen --dev
 
       - name: Run tests
-        run: uv run pytest tests --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov=hutch_bunny tests | tee pytest-coverage.txt
+        run: |
+          set -e
+          uv run pytest tests --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov=hutch_bunny tests | tee pytest-coverage.txt
+          test ${PIPESTATUS[0]} -eq 0
 
       - name: Pytest coverage comment
         uses: MishaKav/pytest-coverage-comment@81882822c5b22af01f91bd3eacb1cefb6ad73dc2

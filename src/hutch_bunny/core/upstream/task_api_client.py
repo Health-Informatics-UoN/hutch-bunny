@@ -1,12 +1,12 @@
+from hutch_bunny.core.logger import logger
+import time
 from requests.models import Response
 from enum import Enum
 import requests
 from requests.auth import HTTPBasicAuth
-from hutch_bunny.core.settings import get_settings, DaemonSettings
+from hutch_bunny.core.rquest_dto.result import RquestResult
+from hutch_bunny.core.settings import DaemonSettings
 from typing import Optional
-from hutch_bunny.core.logger import logger
-
-settings: DaemonSettings = get_settings(daemon=True)
 
 
 class SupportedMethod(Enum):
@@ -20,15 +20,13 @@ class SupportedMethod(Enum):
 class TaskApiClient:
     def __init__(
         self,
-        base_url: Optional[str] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        settings: DaemonSettings,
     ):
-        self.base_url = base_url or settings.TASK_API_BASE_URL
-        self.username = username or settings.TASK_API_USERNAME
-        self.password = password or settings.TASK_API_PASSWORD
+        self.base_url = settings.TASK_API_BASE_URL
+        self.username = settings.TASK_API_USERNAME
+        self.password = settings.TASK_API_PASSWORD
 
-    def request(
+    def _request(
         self, method: SupportedMethod, url: str, data: Optional[dict] = None, **kwargs
     ) -> Response:
         """
@@ -70,7 +68,7 @@ class TaskApiClient:
             Response: The response object returned by the requests library.
         """
         url = f"{self.base_url}/{endpoint}"
-        return self.request(
+        return self._request(
             SupportedMethod.POST,
             url,
             data,
@@ -89,4 +87,36 @@ class TaskApiClient:
             Response: The response object returned by the requests library.
         """
         url = f"{self.base_url}/{endpoint}"
-        return self.request(SupportedMethod.GET, url, **kwargs)
+        return self._request(SupportedMethod.GET, url, **kwargs)
+
+    def send_results(
+        self, result: RquestResult, retry_count: int = 4, retry_delay: int = 5
+    ) -> None:
+        """
+        Sends a POST request to the specified endpoint with data and additional parameters.
+
+        Args:
+            result (RquestResult): The result object containing data to send.
+            retry_count (int): The number of times to retry the request. Defaults to 4.
+            retry_delay (int): The delay between retries in seconds. Defaults to 5.
+        """
+        return_endpoint = f"task/result/{result.uuid}/{result.collection_id}"
+        for _ in range(retry_count):
+            try:
+                response = self.post(endpoint=return_endpoint, data=result.to_dict())
+                if (
+                    200 <= response.status_code < 300
+                    or 400 <= response.status_code < 500
+                ):
+                    logger.info("Task resolved.")
+                    logger.debug(f"Response status: {response.status_code}")
+                    logger.debug(f"Response: {response.text}")
+                    break
+                else:
+                    logger.warning(
+                        f"Failed to post to {return_endpoint} at {time.time()}. Trying again..."
+                    )
+                    time.sleep(retry_delay)
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Network error occurred while posting results: {e}")
+                time.sleep(retry_delay)

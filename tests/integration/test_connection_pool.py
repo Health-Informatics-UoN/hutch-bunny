@@ -2,8 +2,10 @@ from hutch_bunny.core.solvers.query_solvers import (
     solve_availability,
     solve_distribution,
 )
+import pytest
 
 
+@pytest.mark.integration
 def test_pool_clean_up_availability(
     db_manager,
     availability_query_onerule_equals,
@@ -48,6 +50,7 @@ def test_pool_clean_up_availability(
     assert starting_checked_out_connections == ending_checked_out_connections
 
 
+@pytest.mark.integration
 def test_pool_clean_up_distribution(db_manager, distribution_query):
     starting_checked_out_connections = db_manager.engine.pool.checkedout()
     solve_distribution(

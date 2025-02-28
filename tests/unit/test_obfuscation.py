@@ -4,8 +4,10 @@ from hutch_bunny.core.obfuscation import (
     rounding,
 )
 from copy import deepcopy
+import pytest
 
 
+@pytest.mark.unit
 def test_low_number_suppression():
     # Test that the threshold is applied
     assert low_number_suppression(99, threshold=100) == 0
@@ -19,6 +21,7 @@ def test_low_number_suppression():
     assert low_number_suppression(1, threshold=-5) == 1
 
 
+@pytest.mark.unit
 def test_rounding():
     # Test default nearest
     assert rounding(9) == 10
@@ -35,18 +38,21 @@ def test_rounding():
     assert rounding(123, nearest=0) == 123
 
 
+@pytest.mark.unit
 def test_apply_filters_rounding():
     # Test rounding only
     filters = [{"id": "Rounding", "nearest": 100}]
     assert apply_filters(123, filters=filters) == 100
 
 
+@pytest.mark.unit
 def test_apply_filters_low_number_suppression():
     # Test low number suppression only
     filters = [{"id": "Low Number Suppression", "threshold": 100}]
     assert apply_filters(123, filters=filters) == 123
 
 
+@pytest.mark.unit
 def test_apply_filters_combined():
     # Test both filters
     filters = [
@@ -56,6 +62,7 @@ def test_apply_filters_combined():
     assert apply_filters(123, filters=filters) == 100
 
 
+@pytest.mark.unit
 def test_apply_filters_combined_leak():
     # Test that putting the rounding filter first can leak the low number suppression filter
     filters = [
@@ -65,11 +72,13 @@ def test_apply_filters_combined_leak():
     assert apply_filters(60, filters=filters) == 100
 
 
+@pytest.mark.unit
 def test_apply_filters_combined_empty_filter():
     # Test that an empty filter list returns the original value
     assert apply_filters(9, []) == 9
 
 
+@pytest.mark.unit
 def test_apply_filters_preserves_original_filters():
     # Test that the original filters list is not modified
     original_filters = [
