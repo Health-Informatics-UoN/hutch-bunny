@@ -17,26 +17,36 @@ test_cases = [
         '[{"id": "Low Number Suppression", "threshold": 30}]',
         40,
     ),
-    pytest.param(
+    (
         "tests/queries/availability/availability.json",
         '[{"id": "Low Number Suppression", "threshold": 40}]',
         0,
-        # marks=pytest.mark.xfail(reason="Known issue with LNS threshold logic"),
     ),
-    ("tests/queries/availability/availability.json", '[{"id": "Low Number Suppression", "threshold": 20}, {"id": "Rounding", "nearest": 10}]', 40),
-    ("tests/queries/availability/availability.json", '[{"id": "Rounding", "nearest": 100}]', 0),
-    ("tests/queries/availability/availability.json", '[{"id": "Rounding", "nearest": 10}]', 40),
+    (
+        "tests/queries/availability/availability.json",
+        '[{"id": "Low Number Suppression", "threshold": 20}, {"id": "Rounding", "nearest": 10}]',
+        40,
+    ),
+    (
+        "tests/queries/availability/availability.json",
+        '[{"id": "Rounding", "nearest": 100}]',
+        0,
+    ),
+    (
+        "tests/queries/availability/availability.json",
+        '[{"id": "Rounding", "nearest": 10}]',
+        40,
+    ),
     ("tests/queries/availability/basic_gender_or.json", "[]", 100),
     (
         "tests/queries/availability/basic_gender_or.json",
         '[{"id": "Rounding", "nearest": 0}]',
         99,
     ),
-    pytest.param(
+    (
         "tests/queries/availability/multiple_in_group_and.json",
         "[]",
         0,
-        # marks=pytest.mark.xfail(reason="Grouping behavior not handled correctly"),
     ),
     ("tests/queries/availability/multiple_in_group_or.json", "[]", 60),
     (
@@ -56,7 +66,6 @@ test_cases = [
         '[{"id": "Rounding", "nearest": 0}]',
         55,
     ),
-
 ]  # type: ignore
 
 
