@@ -10,6 +10,7 @@ authors = [
   { name = "Tri Thien Nguyen", email = "thien.nguyen1@nottingham.ac.uk" },
   { name = "James Mitchell-White", email = "james.mitchell-white1@nottingham.ac.uk" },
   { name = "Anwar Gaungoo", email = "anwar.gaungoo@nottingham.ac.uk" },
+  { name = "Vasiliki Panagi", email = "vasiliki.panagi@nottingham.ac.uk" },
 ]
 maintainers = [
   { name = "Jon Couldridge", email = "jonathan.couldridge@nottingham.ac.uk" },

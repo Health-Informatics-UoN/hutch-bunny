@@ -13,15 +13,6 @@ class Settings(BaseSettings):
     DATASOURCE_USE_TRINO: bool = Field(
         description="Whether to use Trino as the datasource", default=False
     )
-    DEFAULT_POSTGRES_DRIVER: str = Field(
-        description="The default postgres driver", default="postgresql+psycopg"
-    )
-    DEFAULT_MSSQL_DRIVER: str = Field(
-        description="The default mssql driver", default="mssql+pymssql"
-    )
-    DEFAULT_DB_DRIVER: str = Field(
-        description="The default database driver", default="postgresql+psycopg"
-    )
     LOW_NUMBER_SUPPRESSION_THRESHOLD: int = Field(
         description="The threshold for low numbers", default=5
     )
@@ -37,6 +28,11 @@ class Settings(BaseSettings):
     MSG_FORMAT: str = "%(levelname)s - %(asctime)s - %(message)s"
     DATE_FORMAT: str = "%d-%b-%y %H:%M:%S"
 
+    DATASOURCE_DB_DRIVERNAME: str = Field(
+        description="The driver to use for the datasource database, one of: postgresql, mssql",
+        default="postgresql",
+        pattern="^(postgresql|mssql)$"
+    )
     DATASOURCE_DB_USERNAME: str = Field(
         description="The username for the datasource database", default="trino-user"
     )
@@ -45,7 +41,7 @@ class Settings(BaseSettings):
     )
     DATASOURCE_DB_HOST: str = Field(description="The host for the datasource database")
     DATASOURCE_DB_PORT: int = Field(
-        description="The port for the datasource database", default=8080
+        description="The port for the datasource database"
     )
     DATASOURCE_DB_SCHEMA: str = Field(
         description="The schema for the datasource database"

@@ -1,5 +1,4 @@
 from hutch_bunny.core.logger import logger
-from os import environ
 from hutch_bunny.core.db_manager import SyncDBManager, TrinoDBManager
 
 from hutch_bunny.core.settings import get_settings
@@ -7,29 +6,37 @@ from hutch_bunny.core.settings import get_settings
 settings = get_settings()
 
 
+# These are db specific constants, not intended for users to override,
+# here to avoid magic strings and provide clarity / ease of change in future.
+DEFAULT_TRINO_PORT = 8080
+POSTGRES_SHORT_NAME = "postgresql"
+MSSQL_SHORT_NAME = "mssql"
+DEFAULT_POSTGRES_DRIVER = f"{POSTGRES_SHORT_NAME}+psycopg"
+DEFAULT_MSSQL_DRIVER = f"{MSSQL_SHORT_NAME}+pymssql"
+
 def expand_short_drivers(drivername: str):
     """
     Expand unqualified "short" db driver names when necessary so we can override sqlalchemy
     e.g. when using psycopg3, expand `postgresql` explicitly rather than use sqlalchemy's default of psycopg2
     """
 
-    if drivername == "postgresql":
-        return settings.DEFAULT_POSTGRES_DRIVER
+    if drivername == POSTGRES_SHORT_NAME:
+        return DEFAULT_POSTGRES_DRIVER
 
-    if drivername == "mssql":
-        return settings.DEFAULT_MSSQL_DRIVER
+    if drivername == MSSQL_SHORT_NAME:
+        return DEFAULT_MSSQL_DRIVER
 
     # Add other explicit driver qualification as needed ...
 
     return drivername
 
 
-def setting_database() -> SyncDBManager | TrinoDBManager:
+def get_db_manager() -> SyncDBManager | TrinoDBManager:
     logger.info("Connecting to database...")
 
-    # Trino has some different settings / defaults comapred with SQLAlchemy
+    # Trino has some different settings / defaults compared with SQLAlchemy
     if settings.DATASOURCE_USE_TRINO:
-        datasource_db_port = environ.get("DATASOURCE_DB_PORT", 8080)
+        datasource_db_port = settings.DATASOURCE_DB_PORT or DEFAULT_TRINO_PORT
         try:
             return TrinoDBManager(
                 username=settings.DATASOURCE_DB_USERNAME,
@@ -44,7 +51,7 @@ def setting_database() -> SyncDBManager | TrinoDBManager:
             exit()
     else:
         datasource_db_port = settings.DATASOURCE_DB_PORT
-        datasource_db_drivername = expand_short_drivers(settings.DEFAULT_DB_DRIVER)
+        datasource_db_drivername = expand_short_drivers(settings.DATASOURCE_DB_DRIVERNAME)
 
         try:
             return SyncDBManager(

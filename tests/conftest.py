@@ -7,7 +7,7 @@ from hutch_bunny.core.rquest_dto.rule import Rule
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.solvers.query_solvers import AvailabilityQuery, DistributionQuery
 from hutch_bunny.core.settings import get_settings
-import hutch_bunny.core.setting_database as db_settings
+import hutch_bunny.core.db as db
 
 
 settings = get_settings()
@@ -21,8 +21,8 @@ def db_manager():
         host=settings.DATASOURCE_DB_HOST,
         port=(int(datasource_db_port) if datasource_db_port is not None else None),
         database=settings.DATASOURCE_DB_DATABASE,
-        drivername=db_settings.expand_short_drivers(
-            settings.DEFAULT_DB_DRIVER
+        drivername=db.expand_short_drivers(
+            settings.DATASOURCE_DB_DRIVERNAME
         ),
         schema=settings.DATASOURCE_DB_SCHEMA,
     )
