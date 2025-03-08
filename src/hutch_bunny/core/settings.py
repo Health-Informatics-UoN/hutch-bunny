@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     DATASOURCE_DB_DRIVERNAME: str = Field(
         description="The driver to use for the datasource database, one of: postgresql, mssql",
         default="postgresql",
-        pattern="^(postgresql|mssql)$"
+        pattern="^(postgresql|mssql)$",
     )
     DATASOURCE_DB_USERNAME: str = Field(
         description="The username for the datasource database", default="trino-user"
@@ -40,9 +40,7 @@ class Settings(BaseSettings):
         description="The password for the datasource database"
     )
     DATASOURCE_DB_HOST: str = Field(description="The host for the datasource database")
-    DATASOURCE_DB_PORT: int = Field(
-        description="The port for the datasource database"
-    )
+    DATASOURCE_DB_PORT: int = Field(description="The port for the datasource database")
     DATASOURCE_DB_SCHEMA: str = Field(
         description="The schema for the datasource database"
     )
