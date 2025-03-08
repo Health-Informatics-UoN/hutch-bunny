@@ -18,4 +18,29 @@ jobs:
       
       - name: Run Ruff
         uses: astral-sh/ruff-action@39f75e526a505e26a302f8796977b50c13720edf # v3.2.1
+      
+  mypy:
+    name: Run Mypy
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.16"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: uv sync
+        run: uv sync --frozen --dev
+
+      - name: Run Mypy
+        run: uv run mypy .
 
