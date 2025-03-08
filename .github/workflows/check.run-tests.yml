@@ -7,6 +7,9 @@ jobs:
   run-tests:
     name: Run Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     env:
       DATASOURCE_DB_USERNAME: postgres
       DATASOURCE_DB_PASSWORD: postgres

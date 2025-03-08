@@ -5,6 +5,9 @@ on:
 
 jobs:
   build:
+    name: Build Container
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
