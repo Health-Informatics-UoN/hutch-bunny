@@ -54,3 +54,6 @@ markers = [
     "integration: Integration tests (DB, API, etc.)",
     "end_to_end: End-to-end tests (CLI, Daemon)",
 ]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
