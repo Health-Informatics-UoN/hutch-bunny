@@ -14,6 +14,7 @@ MSSQL_SHORT_NAME = "mssql"
 DEFAULT_POSTGRES_DRIVER = f"{POSTGRES_SHORT_NAME}+psycopg"
 DEFAULT_MSSQL_DRIVER = f"{MSSQL_SHORT_NAME}+pymssql"
 
+
 def expand_short_drivers(drivername: str):
     """
     Expand unqualified "short" db driver names when necessary so we can override sqlalchemy
@@ -51,7 +52,9 @@ def get_db_manager() -> SyncDBManager | TrinoDBManager:
             exit()
     else:
         datasource_db_port = settings.DATASOURCE_DB_PORT
-        datasource_db_drivername = expand_short_drivers(settings.DATASOURCE_DB_DRIVERNAME)
+        datasource_db_drivername = expand_short_drivers(
+            settings.DATASOURCE_DB_DRIVERNAME
+        )
 
         try:
             return SyncDBManager(

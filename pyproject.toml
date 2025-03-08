@@ -45,6 +45,7 @@ dev = [
     "types-requests>=2.32.0.20241016",
     "coverage>=7.6.12",
     "pytest-cov>=6.0.0",
+    "pre-commit>=4.1.0",
 ]
 
 [tool.pytest.ini_options]
@@ -53,3 +54,47 @@ markers = [
     "integration: Integration tests (DB, API, etc.)",
     "end_to_end: End-to-end tests (CLI, Daemon)",
 ]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+
+# Prevent ANY implicit `Any` types  
+disallow_any_generics = true
+disallow_any_explicit = true
+disallow_any_unimported = true
+disallow_any_expr = true
+disallow_any_decorated = true
+
+# Ensure everything is typed properly  
+disallow_untyped_defs = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_untyped_globals = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+
+# Enforce subclassing & generics rules  
+disallow_subclassing_any = true
+
+# Prevent implicit behaviors  
+implicit_reexport = false
+strict_equality = true
+no_implicit_optional = true
+
+# Maximize warnings & errors  
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = true
+warn_unreachable = true
+warn_redundant_casts = true
+
+# Ensure explicit enum values  
+strict_concatenate = true
+
+# Miscellaneous  
+show_error_codes = true
+pretty = true
