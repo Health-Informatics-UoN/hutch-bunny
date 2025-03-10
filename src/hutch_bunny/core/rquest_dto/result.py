@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List
 from hutch_bunny.core.rquest_dto.base_dto import BaseDto
 from hutch_bunny.core.rquest_dto.file import File
 
