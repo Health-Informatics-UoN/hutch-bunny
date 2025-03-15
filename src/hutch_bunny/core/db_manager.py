@@ -3,9 +3,7 @@ from typing import Any, Optional
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.engine import URL as SQLAURL
 from trino.sqlalchemy import URL as TrinoURL  # TODO: how to do as optional?
-from dotenv import load_dotenv
-
-load_dotenv()
+from hutch_bunny.core.logger import logger
 
 
 class BaseDBManager:
@@ -116,6 +114,76 @@ class SyncDBManager(BaseDBManager):
             )
 
         self.inspector = inspect(self.engine)
+
+        self._check_tables_exist()
+        self._check_indexes_exist()
+
+    def _check_tables_exist(self) -> None:
+        """
+        Check if all required tables exist in the database.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            RuntimeError: Raised when the tables are missing.
+        """
+        required_tables = {
+            "concept",
+            "person",
+            "measurement",
+            "condition_occurrence",
+            "observation",
+            "drug_exposure",
+        }
+        existing_tables = set(self.inspector.get_table_names(schema=self.schema))
+        missing_tables = required_tables - existing_tables
+
+        if missing_tables:
+            raise RuntimeError(
+                f"Missing tables in the database: {', '.join(missing_tables)}"
+            )
+
+    def _check_indexes_exist(self) -> None:
+        """
+        Check if all required indexes exist in the database.
+        Warning is logged if any indexes are missing.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
+        # Based on query data so far, these are the most common indexes.
+        required_indexes = {
+            "person": ["idx_person_id"],
+            "concept": ["idx_concept_concept_id"],
+            "condition_occurrence": ["idx_condition_concept_id_1"],
+            "observation": ["idx_observation_concept_id_1"],
+            "measurement": ["idx_measurement_concept_id_1"],
+        }
+        missing_indexes = {}
+        for table, expected_indexes in required_indexes.items():
+            existing_indexes = {
+                idx["name"]
+                for idx in self.inspector.get_indexes(table, schema=self.schema)
+            }
+            missing = set(expected_indexes) - existing_indexes
+            if missing:
+                missing_indexes[table] = missing
+
+        if missing_indexes:
+            logger.warning(
+                (
+                    "Missing indexes in the database: "
+                    f"{', '.join(missing_indexes)}. "
+                    "Queries will be slower and we recommend adding these indexes."
+                )
+            )
 
     def execute_and_fetch(self, stmnt: Any) -> list:
         with self.engine.begin() as conn:
