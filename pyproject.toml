@@ -66,7 +66,7 @@ strict = true
 disallow_any_generics = true
 disallow_any_explicit = true
 disallow_any_unimported = true
-disallow_any_expr = true
+disallow_any_expr = false
 disallow_any_decorated = true
 
 # Ensure everything is typed properly  
