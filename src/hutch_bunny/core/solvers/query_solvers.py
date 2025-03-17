@@ -154,6 +154,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
                 res = pd.read_sql(stmnt, con)
 
                 counts.extend(res.iloc[:, 0])
+
                 concepts.extend(res.iloc[:, 1])
                 omop_desc.extend(res.iloc[:, 2])
                 # add the same category and collection if, for the number of results received
@@ -162,6 +163,8 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
 
         for i in range(len(counts)):
             counts[i] = apply_filters(counts[i], results_modifier)
+
+        counts = list(map(int, counts))
 
         df["COUNT"] = counts
         # todo: dont think concepts contains anything?
