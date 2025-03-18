@@ -34,6 +34,34 @@ test_cases = [
             "38003563": 58,
         }
     ),
+    DistributionTestCase(
+        json_file_path="tests/queries/distribution/distribution.json",
+        modifiers='[{"id": "Rounding", "nearest": 100}]',
+        expected_values={
+            "8507": 0,
+            "8532": 100,
+            "38003564": 0,
+            "38003563": 100,
+        }
+    ),
+    DistributionTestCase(
+        json_file_path="tests/queries/distribution/distribution.json",
+        modifiers='[{"id": "Rounding", "nearest": 10}, {"id": "Low Number Suppression", "threshold": 10}]',
+        expected_values={
+            "8507": 40, 
+            "8532": 60, 
+            "38003564": 40, 
+            "38003563": 60, 
+        }
+    ),
+    DistributionTestCase(
+        json_file_path="tests/queries/distribution/distribution.json",
+        modifiers='[{"id": "Rounding", "nearest": 10}, {"id": "Low Number Suppression", "threshold": 50}]',
+        expected_values={
+            "8532": 60, 
+            "38003563": 60, 
+        }
+    ),
 ]
 
 @pytest.mark.end_to_end
