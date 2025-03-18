@@ -4,18 +4,44 @@ import os
 import json
 import sys
 import base64
+from dataclasses import dataclass
+from typing import Dict
 
-# TODO: Fix tests that are failing
+@dataclass
+class DistributionTestCase:
+    json_file_path: str
+    modifiers: str
+    expected_count: int
+    expected_values: Dict[str, int]  # Map of OMOP codes to their expected counts
+
 test_cases = [
-    ("tests/queries/distribution/distribution.json", "[]", 4),
-]  # type: ignore
-
+    DistributionTestCase(
+        json_file_path="tests/queries/distribution/distribution.json",
+        modifiers="[]",
+        expected_count=4,
+        expected_values={
+            "8507": 40,  # MALE
+            "8532": 60,  # FEMALE
+            "38003564": 40,  # Not Hispanic
+            "38003563": 60,  # Hispanic
+        }
+    ),
+    DistributionTestCase(
+        json_file_path="tests/queries/distribution/distribution.json",
+        modifiers='[{"id": "Rounding", "nearest": 0}]',
+        expected_count=4,
+        expected_values={
+            "8507": 44,
+            "8532": 55,
+            "38003564": 41,
+            "38003563": 58,
+        }
+    ),
+]
 
 @pytest.mark.end_to_end
-@pytest.mark.parametrize("json_file_path, modifiers, expected_count", test_cases)
-def test_cli_distribution(
-    json_file_path: str, modifiers: str, expected_count: int
-) -> None:
+@pytest.mark.parametrize("test_case", test_cases)
+def test_cli_distribution(test_case: DistributionTestCase) -> None:
     """
     Test the CLI distribution command.
 
@@ -23,35 +49,13 @@ def test_cli_distribution(
     and assert the output is as expected.
 
     Args:
-        json_file_path (str): The path to the JSON file containing the query.
-        modifiers (str): The modifiers to apply to the query.
-        expected_count (int): The expected count of results.
+        test_case (DistributionTestCase): The test case containing the JSON file path, modifiers, and expected counts.
 
     Returns:
         None
     """
     # Arrange
     output_file_path = "tests/queries/distribution/output.json"
-
-    # Distribution file output
-    file_data = "BIOBANK	CODE	COUNT	DESCRIPTION	MIN	Q1	MEDIAN	MEAN	Q3	MAX	ALTERNATIVES	DATASET	OMOP	OMOP_DESCR	CATEGORY"
-    file_data += "\ncollection_id	OMOP:38003564	40										38003564	Not Hispanic or Latino	Ethnicity"
-    file_data += "\ncollection_id	OMOP:38003563	60										38003563	Hispanic or Latino	Ethnicity"
-    file_data += "\ncollection_id	OMOP:8507	40										8507	MALE	Gender"
-    file_data += "\ncollection_id	OMOP:8532	60										8532	FEMALE	Gender"
-    file_data_b64 = base64.b64encode(file_data.encode("utf-8")).decode("utf-8")
-    file_size = len(file_data_b64) / 1000
-
-    # Assert output file content
-    file = {
-        "file_name": "code.distribution",
-        "file_data": file_data_b64,
-        "file_description": "Result of code.distribution analysis",
-        "file_size": file_size,
-        "file_type": "BCOS",
-        "file_sensitive": True,
-        "file_reference": "",
-    }
 
     # Act
     result = subprocess.run(
@@ -60,9 +64,9 @@ def test_cli_distribution(
             "-m",
             "hutch_bunny.cli",
             "--body",
-            json_file_path,
+            test_case.json_file_path,
             "--modifiers",
-            modifiers,
+            test_case.modifiers,
             "--output",
             output_file_path,
         ],
@@ -94,12 +98,26 @@ def test_cli_distribution(
         assert output_data["status"] == "ok"
         assert output_data["protocolVersion"] == "v2"
         assert output_data["uuid"] == "unique_id"
-        assert output_data["queryResult"]["count"] == expected_count
+        assert output_data["queryResult"]["count"] == test_case.expected_count
         assert output_data["queryResult"]["datasetCount"] == 1
-        assert output_data["queryResult"]["files"] == [file]
         assert output_data["message"] == ""
         assert output_data["collection_id"] == "collection_id"
 
+        file_data = base64.b64decode(output_data["queryResult"]["files"][0]["file_data"]).decode("utf-8")
+        lines = file_data.split("\n")
+        assert len(lines) == test_case.expected_count + 1
+        assert lines[0] == "BIOBANK	CODE	COUNT	DESCRIPTION	MIN	Q1	MEDIAN	MEAN	Q3	MAX	ALTERNATIVES	DATASET	OMOP	OMOP_DESCR	CATEGORY"
+        assert lines[1] == f"collection_id	OMOP:38003564	{test_case.expected_values['38003564']}										38003564	Not Hispanic or Latino	Ethnicity"
+        assert lines[2] == f"collection_id	OMOP:38003563	{test_case.expected_values['38003563']}										38003563	Hispanic or Latino	Ethnicity"
+        assert lines[3] == f"collection_id	OMOP:8507	{test_case.expected_values['8507']}										8507	MALE	Gender"
+        assert lines[4] == f"collection_id	OMOP:8532	{test_case.expected_values['8532']}										8532	FEMALE	Gender"
+
+        # Verify counts
+        for line in lines[1:]:  # Skip header
+            fields = line.split("\t")
+            omop_code = fields[12]  # OMOP column
+            count = int(fields[2])  # COUNT column
+            assert count == test_case.expected_values[omop_code]
 
     # Clean up
     os.remove(output_file_path)
