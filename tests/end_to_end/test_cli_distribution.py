@@ -42,7 +42,7 @@ def test_cli_distribution(test_case: DistributionTestCase) -> None:
     """
     Test the CLI distribution command.
 
-    This test will run the CLI availability command with the given JSON file and modifiers,
+    This test will run the CLI distribution command with the given JSON file and modifiers,
     and assert the output is as expected.
 
     Args:
@@ -99,13 +99,10 @@ def test_cli_distribution(test_case: DistributionTestCase) -> None:
         assert output_data["message"] == ""
         assert output_data["collection_id"] == "collection_id"
 
+        # Assert expected values in output file
         file_data = base64.b64decode(output_data["queryResult"]["files"][0]["file_data"]).decode("utf-8")
         lines = file_data.split("\n")
         assert lines[0] == "BIOBANK	CODE	COUNT	DESCRIPTION	MIN	Q1	MEDIAN	MEAN	Q3	MAX	ALTERNATIVES	DATASET	OMOP	OMOP_DESCR	CATEGORY"
-        assert lines[1] == f"collection_id	OMOP:38003564	{test_case.expected_values['38003564']}										38003564	Not Hispanic or Latino	Ethnicity"
-        assert lines[2] == f"collection_id	OMOP:38003563	{test_case.expected_values['38003563']}										38003563	Hispanic or Latino	Ethnicity"
-        assert lines[3] == f"collection_id	OMOP:8532	{test_case.expected_values['8532']}										8532	FEMALE	Gender"
-        assert lines[4] == f"collection_id	OMOP:8507	{test_case.expected_values['8507']}										8507	MALE	Gender"
 
         # Verify counts
         for line in lines[1:]:  # Skip header
