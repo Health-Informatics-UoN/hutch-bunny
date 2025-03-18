@@ -11,12 +11,14 @@ from typing import Dict
 class DistributionTestCase:
     json_file_path: str
     modifiers: str
+    expected_count: int # Number of lines in the output file
     expected_values: Dict[str, int]  # Map of OMOP codes to their expected counts
 
 test_cases = [
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers="[]",
+        expected_count=4,
         expected_values={
             "8507": 40,  # MALE
             "8532": 60,  # FEMALE
@@ -27,6 +29,7 @@ test_cases = [
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers='[{"id": "Rounding", "nearest": 0}]',
+        expected_count=4,
         expected_values={
             "8507": 44,
             "8532": 55,
@@ -37,6 +40,7 @@ test_cases = [
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers='[{"id": "Rounding", "nearest": 100}]',
+        expected_count=4,
         expected_values={
             "8507": 0,
             "8532": 100,
@@ -47,6 +51,7 @@ test_cases = [
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers='[{"id": "Rounding", "nearest": 10}, {"id": "Low Number Suppression", "threshold": 10}]',
+        expected_count=4,
         expected_values={
             "8507": 40, 
             "8532": 60, 
@@ -57,6 +62,7 @@ test_cases = [
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers='[{"id": "Rounding", "nearest": 10}, {"id": "Low Number Suppression", "threshold": 50}]',
+        expected_count=2,
         expected_values={
             "8532": 60, 
             "38003563": 60, 
@@ -123,6 +129,7 @@ def test_cli_distribution(test_case: DistributionTestCase) -> None:
         assert output_data["status"] == "ok"
         assert output_data["protocolVersion"] == "v2"
         assert output_data["uuid"] == "unique_id"
+        assert output_data["queryResult"]["count"] == test_case.expected_count
         assert output_data["queryResult"]["datasetCount"] == 1
         assert output_data["message"] == ""
         assert output_data["collection_id"] == "collection_id"
