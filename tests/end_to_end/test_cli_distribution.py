@@ -144,6 +144,9 @@ def test_cli_distribution(test_case: DistributionTestCase) -> None:
             fields = line.split("\t")
             omop_code = fields[12]  # OMOP column
 
+            # Assert nan is not in line
+            assert 'nan' not in line, f"Expected no 'nan' values, but got: {line}"
+
             # Validate count is an integer
             count_str = fields[2]  # COUNT column as string
             assert count_str.isdigit(), f"Expected an integer count, but got: {count_str}"
