@@ -14,7 +14,7 @@ jobs:
       DATASOURCE_DB_USERNAME: postgres
       DATASOURCE_DB_PASSWORD: postgres
       DATASOURCE_DB_DATABASE: hutch-omop
-      DATASOURCE_DB_SCHEMA: public
+      DATASOURCE_DB_SCHEMA: omop
       DATASOURCE_DB_PORT: 5432
       DATASOURCE_DB_HOST: localhost
       TASK_API_TYPE: a
@@ -38,7 +38,7 @@ jobs:
           - 5432:5432
 
       omop-lite:
-        image: ghcr.io/health-informatics-uon/omop-lite
+        image: ghcr.io/health-informatics-uon/omop-lite:v0.0.7
         env:
           DB_HOST: postgres
           DB_PASSWORD: postgres
