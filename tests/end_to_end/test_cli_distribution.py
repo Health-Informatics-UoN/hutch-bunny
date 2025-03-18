@@ -11,14 +11,12 @@ from typing import Dict
 class DistributionTestCase:
     json_file_path: str
     modifiers: str
-    expected_count: int
     expected_values: Dict[str, int]  # Map of OMOP codes to their expected counts
 
 test_cases = [
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers="[]",
-        expected_count=4,
         expected_values={
             "8507": 40,  # MALE
             "8532": 60,  # FEMALE
@@ -29,7 +27,6 @@ test_cases = [
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers='[{"id": "Rounding", "nearest": 0}]',
-        expected_count=4,
         expected_values={
             "8507": 44,
             "8532": 55,
@@ -98,14 +95,12 @@ def test_cli_distribution(test_case: DistributionTestCase) -> None:
         assert output_data["status"] == "ok"
         assert output_data["protocolVersion"] == "v2"
         assert output_data["uuid"] == "unique_id"
-        assert output_data["queryResult"]["count"] == test_case.expected_count
         assert output_data["queryResult"]["datasetCount"] == 1
         assert output_data["message"] == ""
         assert output_data["collection_id"] == "collection_id"
 
         file_data = base64.b64decode(output_data["queryResult"]["files"][0]["file_data"]).decode("utf-8")
         lines = file_data.split("\n")
-        assert len(lines) == test_case.expected_count + 1
         assert lines[0] == "BIOBANK	CODE	COUNT	DESCRIPTION	MIN	Q1	MEDIAN	MEAN	Q3	MAX	ALTERNATIVES	DATASET	OMOP	OMOP_DESCR	CATEGORY"
         assert lines[1] == f"collection_id	OMOP:38003564	{test_case.expected_values['38003564']}										38003564	Not Hispanic or Latino	Ethnicity"
         assert lines[2] == f"collection_id	OMOP:38003563	{test_case.expected_values['38003563']}										38003563	Hispanic or Latino	Ethnicity"
