@@ -33,6 +33,26 @@ def test_cli_distribution(
     # Arrange
     output_file_path = "tests/queries/distribution/output.json"
 
+    # Distribution file output
+    file_data = "BIOBANK	CODE	COUNT	DESCRIPTION	MIN	Q1	MEDIAN	MEAN	Q3	MAX	ALTERNATIVES	DATASET	OMOP	OMOP_DESCR	CATEGORY"
+    file_data += "\ncollection_id	OMOP:38003564	40										38003564	Not Hispanic or Latino	Ethnicity"
+    file_data += "\ncollection_id	OMOP:38003563	60										38003563	Hispanic or Latino	Ethnicity"
+    file_data += "\ncollection_id	OMOP:8507	40										8507	MALE	Gender"
+    file_data += "\ncollection_id	OMOP:8532	60										8532	FEMALE	Gender"
+    file_data_b64 = base64.b64encode(file_data.encode("utf-8")).decode("utf-8")
+    file_size = len(file_data_b64) / 1000
+
+    # Assert output file content
+    file = {
+        "file_name": "code.distribution",
+        "file_data": file_data_b64,
+        "file_description": "Result of code.distribution analysis",
+        "file_size": file_size,
+        "file_type": "BCOS",
+        "file_sensitive": True,
+        "file_reference": "",
+    }
+
     # Act
     result = subprocess.run(
         [
@@ -55,17 +75,6 @@ def test_cli_distribution(
 
     # Assert output file
     assert os.path.exists(output_file_path), "Output file was not created."
-
-    # Assert output file content
-    file = {
-        "file_name": "code.distribution",
-        "file_data": "QklPQkFOSwlDT0RFCUNPVU5UCURFU0NSSVBUSU9OCU1JTglRMQlNRURJQU4JTUVBTglRMwlNQVgJQUxURVJOQVRJVkVTCURBVEFTRVQJT01PUAlPTU9QX0RFU0NSCUNBVEVHT1JZCmNvbGxlY3Rpb25faWQJT01PUDozODAwMzU2NAk0MAkJCQkJCQkJCQkzODAwMzU2NAlOb3QgSGlzcGFuaWMgb3IgTGF0aW5vCUV0aG5pY2l0eQpjb2xsZWN0aW9uX2lkCU9NT1A6MzgwMDM1NjMJNjAJCQkJCQkJCQkJMzgwMDM1NjMJSGlzcGFuaWMgb3IgTGF0aW5vCUV0aG5pY2l0eQpjb2xsZWN0aW9uX2lkCU9NT1A6ODUwNwk0MAkJCQkJCQkJCQk4NTA3CU1BTEUJR2VuZGVyCmNvbGxlY3Rpb25faWQJT01PUDo4NTMyCTYwCQkJCQkJCQkJCTg1MzIJRkVNQUxFCUdlbmRlcg==",
-        "file_description": "Result of code.distribution analysis",
-        "file_size": 0.496,
-        "file_type": "BCOS",
-        "file_sensitive": True,
-        "file_reference": "",
-    }
 
     with open(output_file_path, "r") as f:
         output_data = json.load(f)
