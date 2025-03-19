@@ -38,7 +38,7 @@ jobs:
           - 5432:5432
 
       omop-lite:
-        image: ghcr.io/health-informatics-uon/omop-lite
+        image: ghcr.io/health-informatics-uon/omop-lite:v0.0.7
         env:
           DB_HOST: postgres
           DB_PASSWORD: postgres

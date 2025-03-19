@@ -4,7 +4,6 @@ import os
 import json
 import sys
 
-# TODO: Fix tests that are failing
 test_cases = [
     ("tests/queries/availability/availability.json", "[]", 40),
     (
@@ -71,12 +70,14 @@ test_cases = [
         '[{"id": "Rounding", "nearest": 0}]',
         55,
     ),
-]  # type: ignore
+]
 
 
 @pytest.mark.end_to_end
 @pytest.mark.parametrize("json_file_path, modifiers, expected_count", test_cases)
-def test_cli_availability(json_file_path, modifiers, expected_count):
+def test_cli_availability(
+    json_file_path: str, modifiers: str, expected_count: int
+) -> None:
     """
     Test the CLI availability command.
 
