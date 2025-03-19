@@ -75,7 +75,9 @@ test_cases = [
 
 @pytest.mark.end_to_end
 @pytest.mark.parametrize("json_file_path, modifiers, expected_count", test_cases)
-def test_cli_availability(json_file_path: str, modifiers: str, expected_count: int) -> None:
+def test_cli_availability(
+    json_file_path: str, modifiers: str, expected_count: int
+) -> None:
     """
     Test the CLI availability command.
 

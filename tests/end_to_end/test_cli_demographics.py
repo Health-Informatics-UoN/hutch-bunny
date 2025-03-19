@@ -5,7 +5,6 @@ import json
 import sys
 import base64
 from dataclasses import dataclass
-from typing import Dict
 
 
 @dataclass
@@ -13,73 +12,62 @@ class DistributionTestCase:
     json_file_path: str
     modifiers: str
     expected_count: int  # Number of lines in the output file
-    expected_values: Dict[str, int]  # Map of OMOP codes to their expected counts
+    expected_gender_count: int
+    expected_male: int
+    expected_female: int
 
 
 test_cases = [
     DistributionTestCase(
-        json_file_path="tests/queries/distribution/distribution.json",
+        json_file_path="tests/queries/distribution/demographics.json",
         modifiers="[]",
-        expected_count=4,
-        expected_values={
-            "8507": 40,  # MALE
-            "8532": 60,  # FEMALE
-            "38003564": 40,  # Not Hispanic
-            "38003563": 60,  # Hispanic
-        },
+        expected_count=1,
+        expected_gender_count=100,
+        expected_male=40,
+        expected_female=60,
     ),
     DistributionTestCase(
-        json_file_path="tests/queries/distribution/distribution.json",
+        json_file_path="tests/queries/distribution/demographics.json",
         modifiers='[{"id": "Rounding", "nearest": 0}]',
-        expected_count=4,
-        expected_values={
-            "8507": 44,
-            "8532": 55,
-            "38003564": 41,
-            "38003563": 58,
-        },
+        expected_count=1,
+        expected_gender_count=99,
+        expected_male=44,
+        expected_female=55,
     ),
     DistributionTestCase(
-        json_file_path="tests/queries/distribution/distribution.json",
+        json_file_path="tests/queries/distribution/demographics.json",
         modifiers='[{"id": "Rounding", "nearest": 100}]',
-        expected_count=4,
-        expected_values={
-            "8507": 0,
-            "8532": 100,
-            "38003564": 0,
-            "38003563": 100,
-        },
+        expected_count=1,
+        expected_gender_count=100,
+        expected_male=0,
+        expected_female=100,
     ),
     DistributionTestCase(
-        json_file_path="tests/queries/distribution/distribution.json",
+        json_file_path="tests/queries/distribution/demographics.json",
         modifiers='[{"id": "Rounding", "nearest": 10}, {"id": "Low Number Suppression", "threshold": 10}]',
-        expected_count=4,
-        expected_values={
-            "8507": 40,
-            "8532": 60,
-            "38003564": 40,
-            "38003563": 60,
-        },
+        expected_count=1,
+        expected_gender_count=100,
+        expected_male=40,
+        expected_female=60,
     ),
     DistributionTestCase(
-        json_file_path="tests/queries/distribution/distribution.json",
+        json_file_path="tests/queries/distribution/demographics.json",
         modifiers='[{"id": "Rounding", "nearest": 10}, {"id": "Low Number Suppression", "threshold": 50}]',
-        expected_count=2,
-        expected_values={
-            "8532": 60,
-            "38003563": 60,
-        },
+        expected_count=1,
+        expected_gender_count=60,
+        expected_male=0,
+        expected_female=60,
     ),
 ]
 
 
 @pytest.mark.end_to_end
 @pytest.mark.parametrize("test_case", test_cases)
-def test_cli_distribution(test_case: DistributionTestCase) -> None:
+def test_cli_demographics(test_case: DistributionTestCase) -> None:
     """
-    Test the CLI distribution command.
+    Test the CLI demographics command.
 
-    This test will run the CLI distribution command with the given JSON file and modifiers,
+    This test will run the CLI demographics command with the given JSON file and modifiers,
     and assert the output is as expected.
 
     Args:
@@ -144,24 +132,16 @@ def test_cli_distribution(test_case: DistributionTestCase) -> None:
         lines = file_data.split("\n")
         assert (
             lines[0]
-            == "BIOBANK	CODE	COUNT	DESCRIPTION	MIN	Q1	MEDIAN	MEAN	Q3	MAX	ALTERNATIVES	DATASET	OMOP	OMOP_DESCR	CATEGORY"
+            == "BIOBANK	CODE	DESCRIPTION	COUNT	MIN	Q1	MEDIAN	MEAN	Q3	MAX	ALTERNATIVES	DATASET	OMOP	OMOP_DESCR	CATEGORY"
         )
 
-        # Verify counts
-        for line in lines[1:]:  # Skip header
-            fields = line.split("\t")
-            omop_code = fields[12]  # OMOP column
-
-            # Assert nan is not in line
-            assert "nan" not in line, f"Expected no 'nan' values, but got: {line}"
-
-            # Validate count is an integer
-            count_str = fields[2]  # COUNT column as string
-            assert count_str.isdigit(), (
-                f"Expected an integer count, but got: {count_str}"
-            )
-            count = int(count_str)  # Convert to int after validation
-            assert count == test_case.expected_values[omop_code]
+        # Assert the gender count and gender distribution
+        fields = lines[1].split("\t")
+        assert int(fields[3]) == test_case.expected_gender_count
+        assert (
+            fields[10]
+            == f"^MALE|{test_case.expected_male}^FEMALE|{test_case.expected_female}^"
+        )
 
     # Clean up
     os.remove(output_file_path)
