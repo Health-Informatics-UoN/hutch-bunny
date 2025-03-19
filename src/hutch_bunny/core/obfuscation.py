@@ -42,7 +42,7 @@ def rounding(value: int | float, nearest: int = 10) -> int | float:
     return nearest * round(value / nearest)
 
 
-def apply_filters(value: int | float, filters: list) -> int | float:
+def apply_filters(value: int | float, filters: list) -> int:
     """Iterate over a list of filters and apply them to the supplied value.
 
     Makes a deep copy of the filters list to avoid mutating the original list.
@@ -63,4 +63,4 @@ def apply_filters(value: int | float, filters: list) -> int | float:
             result = action(result, **f)
             if result == 0:
                 break  # don't apply any more filters
-    return result
+    return int(result)

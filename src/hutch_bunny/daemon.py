@@ -1,7 +1,7 @@
 from hutch_bunny.core.settings import get_settings, DaemonSettings
 from hutch_bunny.core.upstream.task_api_client import TaskApiClient
 from hutch_bunny.core.logger import configure_logger, logger
-from hutch_bunny.core.setting_database import setting_database
+from hutch_bunny.core.db import get_db_manager
 from hutch_bunny.core.upstream.polling_service import PollingService
 from importlib.metadata import version
 from hutch_bunny.core.upstream.task_handler import handle_task
@@ -17,7 +17,7 @@ def main() -> None:
     logger.debug("Settings: %s", settings.safe_model_dump())
 
     # Setting database connection
-    db_manager = setting_database()
+    db_manager = get_db_manager()
 
     client = TaskApiClient(settings=settings)
     polling_service = PollingService(

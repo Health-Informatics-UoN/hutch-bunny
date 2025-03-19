@@ -19,7 +19,7 @@
       "module": "hutch_bunny.cli",
       "args": [
         "--body",
-        "tests/queries/availability.json",
+        "tests/queries/availability/availability.json",
       ],
       "justMyCode": true,
       "console": "integratedTerminal"
@@ -31,7 +31,7 @@
       "module": "hutch_bunny.cli",
       "args": [
         "--body",
-        "tests/queries/distribution.json",
+        "tests/queries/distribution/distribution.json",
       ],
       "justMyCode": true,
       "console": "integratedTerminal"

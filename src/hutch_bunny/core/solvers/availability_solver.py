@@ -284,7 +284,7 @@ class AvailabilitySolver:
             if self.query.cohort.groups_operator == "OR":
                 if rounding > 0:
                     full_query_all_groups = select(
-                        func.round((func.count() / rounding)) * rounding
+                        func.round((func.count() / rounding), 0) * rounding
                     ).where(or_(*all_groups_queries))
                 else:
                     full_query_all_groups = select(func.count()).where(
@@ -293,7 +293,7 @@ class AvailabilitySolver:
             else:
                 if rounding > 0:
                     full_query_all_groups = select(
-                        func.round((func.count() / rounding)) * rounding
+                        func.round((func.count() / rounding), 0) * rounding
                     ).where(*all_groups_queries)
                 else:
                     full_query_all_groups = select(func.count()).where(

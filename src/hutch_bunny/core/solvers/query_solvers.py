@@ -129,7 +129,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
                 if rounding > 0:
                     stmnt = (
                         select(
-                            func.round((func.count(table.person_id) / rounding))
+                            func.round((func.count(table.person_id) / rounding), 0)
                             * rounding,
                             Concept.concept_id,
                             Concept.concept_name,
@@ -154,6 +154,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
                 res = pd.read_sql(stmnt, con)
 
                 counts.extend(res.iloc[:, 0])
+
                 concepts.extend(res.iloc[:, 1])
                 omop_desc.extend(res.iloc[:, 2])
                 # add the same category and collection if, for the number of results received
@@ -162,6 +163,8 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
 
         for i in range(len(counts)):
             counts[i] = apply_filters(counts[i], results_modifier)
+
+        counts = list(map(int, counts))
 
         df["COUNT"] = counts
         # todo: dont think concepts contains anything?
@@ -245,7 +248,7 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         # People count statement
         if rounding > 0:
             stmnt = select(
-                func.round((func.count() / rounding)) * rounding,
+                func.round((func.count() / rounding), 0) * rounding,
                 Person.gender_concept_id,
             ).group_by(Person.gender_concept_id)
         else:
