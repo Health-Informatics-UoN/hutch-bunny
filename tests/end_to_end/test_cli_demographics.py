@@ -1,4 +1,5 @@
 import subprocess
+from typing import Dict
 import pytest
 import os
 import json
@@ -13,8 +14,7 @@ class DistributionTestCase:
     modifiers: str
     expected_count: int  # Number of lines in the output file
     expected_gender_count: int
-    expected_male: int
-    expected_female: int
+    expected_values: Dict[str, int]
 
 
 test_cases = [
@@ -23,40 +23,42 @@ test_cases = [
         modifiers="[]",
         expected_count=1,
         expected_gender_count=100,
-        expected_male=40,
-        expected_female=60,
+        expected_values={"MALE": 40, "FEMALE": 60},
     ),
     DistributionTestCase(
         json_file_path="tests/queries/distribution/demographics.json",
         modifiers='[{"id": "Rounding", "nearest": 0}]',
         expected_count=1,
         expected_gender_count=99,
-        expected_male=44,
-        expected_female=55,
+        expected_values={"MALE": 44, "FEMALE": 55},
     ),
     DistributionTestCase(
         json_file_path="tests/queries/distribution/demographics.json",
         modifiers='[{"id": "Rounding", "nearest": 100}]',
         expected_count=1,
         expected_gender_count=100,
-        expected_male=0,
-        expected_female=100,
+        expected_values={"MALE": 0, "FEMALE": 100},
     ),
     DistributionTestCase(
         json_file_path="tests/queries/distribution/demographics.json",
         modifiers='[{"id": "Rounding", "nearest": 10}, {"id": "Low Number Suppression", "threshold": 10}]',
         expected_count=1,
         expected_gender_count=100,
-        expected_male=40,
-        expected_female=60,
+        expected_values={"MALE": 40, "FEMALE": 60},
     ),
     DistributionTestCase(
         json_file_path="tests/queries/distribution/demographics.json",
         modifiers='[{"id": "Rounding", "nearest": 10}, {"id": "Low Number Suppression", "threshold": 50}]',
         expected_count=1,
         expected_gender_count=60,
-        expected_male=0,
-        expected_female=60,
+        expected_values={"FEMALE": 60},
+    ),
+    DistributionTestCase(
+        json_file_path="tests/queries/distribution/demographics.json",
+        modifiers='[{"id": "Rounding", "nearest": 0}, {"id": "Low Number Suppression", "threshold": 0}]',
+        expected_count=1,
+        expected_gender_count=99,
+        expected_values={"MALE": 44, "FEMALE": 55},
     ),
 ]
 
@@ -136,12 +138,18 @@ def test_cli_demographics(test_case: DistributionTestCase) -> None:
         )
 
         # Assert the gender count and gender distribution
+        # Sample line:
+        # collection_id	SEX	Sex	100							^MALE|40^FEMALE|60^	person			DEMOGRAPHICS
         fields = lines[1].split("\t")
+
+        # Assert the gender count
         assert int(fields[3]) == test_case.expected_gender_count
-        assert (
-            fields[10]
-            == f"^MALE|{test_case.expected_male}^FEMALE|{test_case.expected_female}^"
-        )
+
+        # Assert the gender distribution (e.g. ^MALE|40^FEMALE|60^)
+        values = fields[10].split("^")
+        for value in values[1:2]:
+            gender, count = value.split("|")
+            assert int(count) == test_case.expected_values[gender]
 
     # Clean up
     os.remove(output_file_path)
