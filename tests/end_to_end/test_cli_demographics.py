@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class DistributionTestCase:
+class DemographicsTestCase:
     json_file_path: str
     modifiers: str
     expected_count: int  # Number of lines in the output file
@@ -18,42 +18,42 @@ class DistributionTestCase:
 
 
 test_cases = [
-    DistributionTestCase(
+    DemographicsTestCase(
         json_file_path="tests/queries/distribution/demographics.json",
         modifiers="[]",
         expected_count=1,
         expected_gender_count=100,
         expected_values={"MALE": 40, "FEMALE": 60},
     ),
-    DistributionTestCase(
+    DemographicsTestCase(
         json_file_path="tests/queries/distribution/demographics.json",
         modifiers='[{"id": "Rounding", "nearest": 0}]',
         expected_count=1,
         expected_gender_count=99,
         expected_values={"MALE": 44, "FEMALE": 55},
     ),
-    DistributionTestCase(
+    DemographicsTestCase(
         json_file_path="tests/queries/distribution/demographics.json",
         modifiers='[{"id": "Rounding", "nearest": 100}]',
         expected_count=1,
         expected_gender_count=100,
         expected_values={"MALE": 0, "FEMALE": 100},
     ),
-    DistributionTestCase(
+    DemographicsTestCase(
         json_file_path="tests/queries/distribution/demographics.json",
         modifiers='[{"id": "Rounding", "nearest": 10}, {"id": "Low Number Suppression", "threshold": 10}]',
         expected_count=1,
         expected_gender_count=100,
         expected_values={"MALE": 40, "FEMALE": 60},
     ),
-    DistributionTestCase(
+    DemographicsTestCase(
         json_file_path="tests/queries/distribution/demographics.json",
         modifiers='[{"id": "Rounding", "nearest": 10}, {"id": "Low Number Suppression", "threshold": 50}]',
         expected_count=1,
         expected_gender_count=60,
         expected_values={"FEMALE": 60},
     ),
-    DistributionTestCase(
+    DemographicsTestCase(
         json_file_path="tests/queries/distribution/demographics.json",
         modifiers='[{"id": "Rounding", "nearest": 0}, {"id": "Low Number Suppression", "threshold": 0}]',
         expected_count=1,
@@ -65,7 +65,7 @@ test_cases = [
 
 @pytest.mark.end_to_end
 @pytest.mark.parametrize("test_case", test_cases)
-def test_cli_demographics(test_case: DistributionTestCase) -> None:
+def test_cli_demographics(test_case: DemographicsTestCase) -> None:
     """
     Test the CLI demographics command.
 
