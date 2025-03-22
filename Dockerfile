@@ -21,6 +21,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ------
 FROM python:3.13-slim
 
+# Create a non-root user and group
+RUN groupadd -r app && useradd --no-log-init -r -g app app
+
 LABEL org.opencontainers.image.title=Hutch\ Bunny
 LABEL org.opencontainers.image.description=Hutch\ Bunny
 LABEL org.opencontainers.image.vendor=University\ of\ Nottingham
@@ -33,6 +36,9 @@ LABEL org.opencontainers.image.licenses=MIT
 COPY --from=builder --chown=app:app /app/.venv /app/.venv
 
 ENV PATH="/app/.venv/bin:$PATH" 
+
+# Switch to the non-root user
+USER app
 
 # Run Bunny Daemon by default; user can override and run the CLI by specifying `bunny`
 CMD ["bunny-daemon"]
