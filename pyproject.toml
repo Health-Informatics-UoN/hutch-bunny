@@ -1,6 +1,6 @@
 [project]
 name = "hutch-bunny"
-version = "1.0.0-alpha.9"
+version = "1.0.0-alpha.8"
 description = "A Cohort Discovery Task API worker"
 license = { text = "MIT License" }
 readme = "README.md"
@@ -26,7 +26,6 @@ dependencies = [
   "trino>=0.331.0", # should become optional
   "pymssql>=2.3.2", # for SQL Server
   "pydantic-settings>=2.7.1",
-  "django==2",
 ]
 
 [project.scripts]

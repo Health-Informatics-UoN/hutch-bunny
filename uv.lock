@@ -1,4 +1,5 @@
 version = 1
+revision = 1
 requires-python = ">=3.13"
 
 [[package]]
@@ -98,18 +99,6 @@ wheels = [
 ]
 
 [[package]]
-name = "django"
-version = "2.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pytz" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/87/9f/4ec8b197d83666fddd2398842024c5341ee7d40bbec6aee9705d1ad22f13/Django-2.0.tar.gz", hash = "sha256:9614851d4a7ff8cbd32b73c6076441f377c45a5bbff7e771798fb02c43c31f47", size = 7997472 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/44/98/35b935a98a17e9a188efc2d53fc51ae0c8bf498a77bc224f9321ae5d111c/Django-2.0-py3-none-any.whl", hash = "sha256:af18618ce3291be5092893d8522fe3919661bf3a1fb60e3858ae74865a4f07c2", size = 7101093 },
-]
-
-[[package]]
 name = "filelock"
 version = "3.17.0"
 source = { registry = "https://pypi.org/simple" }
@@ -120,10 +109,9 @@ wheels = [
 
 [[package]]
 name = "hutch-bunny"
-version = "1.0.0a9"
+version = "1.0.0a6"
 source = { editable = "." }
 dependencies = [
-    { name = "django" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "psycopg", extra = ["binary"] },
@@ -149,7 +137,6 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "django", specifier = "==2" },
     { name = "numpy", specifier = ">=2.2.1" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2.3" },
