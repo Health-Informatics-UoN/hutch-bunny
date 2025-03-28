@@ -50,6 +50,7 @@ def main() -> None:
         args.results_modifiers
     )
 
+
     result = execute_query(query_dict, results_modifier, db_manager=db_manager)
     logger.debug(f"Results: {result.to_dict()}")
     save_to_output(result, args.output)

@@ -2,7 +2,7 @@ import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
-from sqlalchemy import or_, func, BinaryExpression, ColumnElement, select, Select, text
+from sqlalchemy import or_, and_, func, BinaryExpression, ColumnElement, select, Select, text, exists
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
     Concept,
@@ -101,6 +101,7 @@ class AvailabilitySolver:
         returns an int for the result. Therefore, all dataframes have been removed.
 
         """
+
         # get the list of concepts to build the query constraints
         concepts: dict = self._find_concepts()
 
@@ -124,7 +125,7 @@ class AvailabilitySolver:
             # iterate through all the groups specified in the query
             for current_group in self.query.cohort.groups:
                 # this is used to store all constraints for all rules in the group, one entry per rule
-                list_for_rules: list[list[BinaryExpression[bool]]] = []
+                list_for_rules: list = []
 
                 # captures all the person constraints for the group
                 person_constraints_for_group: list[ColumnElement[bool]] = []
@@ -212,14 +213,36 @@ class AvailabilitySolver:
                         """"
                         PREPARING THE LISTS FOR LATER USE
                         """
-                        rule_constraints.append(Person.person_id.in_(self.measurement))
-                        rule_constraints.append(Person.person_id.in_(self.observation))
-                        rule_constraints.append(Person.person_id.in_(self.condition))
-                        rule_constraints.append(Person.person_id.in_(self.drug))
+                        # rule_constraints.append(Person.person_id.in_(self.measurement))
+                        # rule_constraints.append(Person.person_id.in_(self.observation))
+                        # rule_constraints.append(Person.person_id.in_(self.condition))
+                        # rule_constraints.append(Person.person_id.in_(self.drug))
+                        # Determine if `exists` should be negated
+
+                        # Check if we should use exists() or ~exists()
+                        use_exists = current_rule.operator == "="
+
+                        # List of tables and their corresponding foreign keys
+                        table_constraints = [
+                            (self.measurement, Measurement.person_id),
+                            (self.observation, Observation.person_id),
+                            (self.condition, ConditionOccurrence.person_id),
+                            (self.drug, DrugExposure.person_id)
+                        ]
+
+                        # Apply the condition to each table
+                        for table, fk in table_constraints:
+                            constraint = exists(table.where(fk == Person.person_id))
+                            rule_constraints.append(constraint if use_exists else ~constraint)
 
                         # all the constraints for this rule are added as a single list
                         # to the list which captures all rules for the group
-                        list_for_rules.append(rule_constraints)
+
+                        if (use_exists):
+                            list_for_rules.append(or_(*rule_constraints))
+                        else:
+                            list_for_rules.append(and_(*rule_constraints))
+
 
                     else:
                         """
@@ -250,8 +273,11 @@ class AvailabilitySolver:
                     # although this is an AND, we include the top level as AND, but the
                     # sub-query is OR to account for searching in the four tables
 
+
                     for current_constraint in list_for_rules:
-                        group_query = group_query.where(or_(*current_constraint))
+                        group_query = group_query.where(current_constraint)
+
+
 
                 else:
                     # this might seem odd, but to add the rules as OR, we have to add them
@@ -267,8 +293,7 @@ class AvailabilitySolver:
                     # list_for_rules contains all the group of constraints for each rule
                     # therefore, we get each group, then for each group, we get each constraint
                     for current_expression in list_for_rules:
-                        for current_constraint_from in current_expression:
-                            all_parameters.append(current_constraint_from)
+                            all_parameters.append(current_expression)
 
                     # all added as an OR
                     group_query = select(Person.person_id).where(or_(*all_parameters))
@@ -530,7 +555,7 @@ class AvailabilitySolver:
             self.condition = self.condition.where(or_(*secondary_modifier_list))
 
     def _add_standard_concept(self, current_rule: Rule):
-        if current_rule.operator == "=":
+        # if current_rule.operator == "=":
             self.condition = self.condition.where(
                 ConditionOccurrence.condition_concept_id == int(current_rule.value)
             )
@@ -543,16 +568,16 @@ class AvailabilitySolver:
             self.observation = self.observation.where(
                 Observation.observation_concept_id == int(current_rule.value)
             )
-        else:
-            self.condition = self.condition.where(
-                ConditionOccurrence.condition_concept_id != int(current_rule.value)
-            )
-            self.drug = self.drug.where(
-                DrugExposure.drug_concept_id != int(current_rule.value)
-            )
-            self.measurement = self.measurement.where(
-                Measurement.measurement_concept_id != int(current_rule.value)
-            )
-            self.observation = self.observation.where(
-                Observation.observation_concept_id != int(current_rule.value)
-            )
+        # else:
+        #     self.condition = self.condition.where(
+        #         ConditionOccurrence.condition_concept_id != int(current_rule.value)
+        #     )
+        #     self.drug = self.drug.where(
+        #         DrugExposure.drug_concept_id != int(current_rule.value)
+        #     )
+        #     self.measurement = self.measurement.where(
+        #         Measurement.measurement_concept_id != int(current_rule.value)
+        #     )
+        #     self.observation = self.observation.where(
+        #         Observation.observation_concept_id != int(current_rule.value)
+        #     )
