@@ -284,7 +284,7 @@ class AvailabilitySolver:
             if self.query.cohort.groups_operator == "OR":
                 if rounding > 0:
                     full_query_all_groups = select(
-                        func.round((func.count() / rounding)) * rounding
+                        func.round((func.count() / rounding), 0) * rounding
                     ).where(or_(*all_groups_queries))
                 else:
                     full_query_all_groups = select(func.count()).where(
@@ -293,7 +293,7 @@ class AvailabilitySolver:
             else:
                 if rounding > 0:
                     full_query_all_groups = select(
-                        func.round((func.count() / rounding)) * rounding
+                        func.round((func.count() / rounding), 0) * rounding
                     ).where(*all_groups_queries)
                 else:
                     full_query_all_groups = select(func.count()).where(
@@ -316,8 +316,9 @@ class AvailabilitySolver:
             )
 
             output = con.execute(full_query_all_groups).fetchone()
+            count = int(output[0]) if output is not None else 0
 
-        return apply_filters(int(output[0]), results_modifier)
+        return apply_filters(count, results_modifier)
 
     def _add_range_as_number(self, current_rule: Rule):
         if current_rule.min_value is not None and current_rule.max_value is not None:
