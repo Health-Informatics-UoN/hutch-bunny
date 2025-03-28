@@ -1,11 +1,59 @@
+import time
 from typing import Any, Optional
+from functools import wraps
 
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.engine import URL as SQLAURL
+from sqlalchemy.exc import OperationalError
 from trino.sqlalchemy import URL as TrinoURL  # TODO: how to do as optional?
 from dotenv import load_dotenv
+from hutch_bunny.core.logger import logger
+from hutch_bunny.core.settings import get_settings
 
+
+settings = get_settings()
 load_dotenv()
+
+
+def WakeAzureDB(
+    retries: int = 1,
+    delay: int = 30,
+    error_code: str = "40613"
+) -> Any:
+    """Decorator to retry a function on specific failure, conditionally applied.
+
+    Args:
+        retries (int): Number of retries before giving up. Only 1 retry needed
+         to wake an azure db.
+        delay (int): Delay in seconds between retries. 30 seconds gives enough
+         time for the azure db to wake up.
+        error_code (str): The error code to check for in the exception. 40613
+         is the error code for an azure db that is asleep.
+
+    Returns:
+        Callable: The wrapped function with retry logic or the original function.
+    """
+    def decorator(func):
+        if settings.DATASOURCE_DB_DRIVERNAME != "msql":
+            return func
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except OperationalError as e:
+                    if error_code in str(e):
+                        if attempt < retries:
+                            logger.warning(f"{func.__name__} failed with error {error_code}, retrying in {delay} seconds...")
+                            time.sleep(delay)
+                        else:
+                            logger.error(f"{func.__name__} failed with error {error_code} after {retries} retries.")
+                            raise e
+                    else:
+                        raise e
+        return wrapper
+    return decorator
 
 
 class BaseDBManager:
@@ -117,20 +165,21 @@ class SyncDBManager(BaseDBManager):
 
         self.inspector = inspect(self.engine)
 
+    @WakeAzureDB()
     def execute_and_fetch(self, stmnt: Any) -> list:
         with self.engine.begin() as conn:
             result = conn.execute(statement=stmnt)
             rows = result.all()
-        # Need to call `dispose` - not automatic
         self.engine.dispose()
         return rows
 
+    @WakeAzureDB()
     def execute(self, stmnt: Any) -> None:
         with self.engine.begin() as conn:
             conn.execute(statement=stmnt)
-        # Need to call `dispose` - not automatic
         self.engine.dispose()
 
+    @WakeAzureDB()
     def list_tables(self) -> list:
         return self.inspector.get_table_names(schema=self.schema)
 

@@ -1,6 +1,9 @@
 from hutch_bunny.core.logger import logger
-from hutch_bunny.core.db_manager import SyncDBManager, TrinoDBManager
-
+from hutch_bunny.core.db_manager import (
+    SyncDBManager,
+    TrinoDBManager,
+    WakeAzureDB,
+)
 from hutch_bunny.core.settings import get_settings
 
 settings = get_settings()
@@ -32,6 +35,7 @@ def expand_short_drivers(drivername: str):
     return drivername
 
 
+@WakeAzureDB()
 def get_db_manager() -> SyncDBManager | TrinoDBManager:
     logger.info("Connecting to database...")
 
