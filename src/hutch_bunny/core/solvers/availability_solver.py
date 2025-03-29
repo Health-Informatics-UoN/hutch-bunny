@@ -28,10 +28,7 @@ settings = get_settings()
 
 # Class for availability queries
 class AvailabilitySolver:
-    measurement: Select
-    drug: Select
-    condition: Select
-    observation: Select
+
 
     omop_domain_to_omop_table_map = {
         "Condition": ConditionOccurrence,
@@ -213,11 +210,6 @@ class AvailabilitySolver:
                         """"
                         PREPARING THE LISTS FOR LATER USE
                         """
-                        # rule_constraints.append(Person.person_id.in_(self.measurement))
-                        # rule_constraints.append(Person.person_id.in_(self.observation))
-                        # rule_constraints.append(Person.person_id.in_(self.condition))
-                        # rule_constraints.append(Person.person_id.in_(self.drug))
-                        # Determine if `exists` should be negated
 
                         # Check if we should use exists() or ~exists()
                         use_exists = current_rule.operator == "="
