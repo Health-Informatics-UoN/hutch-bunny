@@ -111,17 +111,33 @@ class AvailabilitySolver:
         # get the list of concepts to build the query constraints
         concepts: dict[str,str] = self._find_concepts()
 
-
         low_number: int = next(
             (
-                item["threshold"]
+                item["threshold"] if item["threshold"] is not None else 10
                 for item in results_modifier
                 if item["id"] == "Low Number Suppression"
             ),
             10,
         )
+        # low_number: int = next(
+        #     (
+        #         item["threshold"]
+        #         for item in results_modifier
+        #         if item["id"] == "Low Number Suppression"
+        #     ),
+        #     10,
+        # )
+        # rounding: int = next(
+        #     (item["nearest"] for item in results_modifier if item["id"] == "Rounding"),
+        #     10,
+        # )
+
         rounding: int = next(
-            (item["nearest"] for item in results_modifier if item["id"] == "Rounding"),
+            (
+                item["nearest"] or 10
+                for item in results_modifier
+                if item["id"] == "Rounding"
+            ),
             10,
         )
 
@@ -157,10 +173,15 @@ class AvailabilitySolver:
 
                     # if a number was supplied, it is in the format "value" : "0.0|200.0"
                     # therefore split to capture min as 0 and max as 200
-                    if current_rule.raw_range != "":
-                        current_rule.min_value, current_rule.max_value = (
-                            current_rule.raw_range.split("|")
-                        )
+                    # if current_rule.raw_range != "":
+                    #     current_rule.min_value, current_rule.max_value = (
+                    #         current_rule.raw_range.split("|")
+                    #     )
+
+                    if current_rule.raw_range and current_rule.raw_range != "":
+                        min_str, max_str = current_rule.raw_range.split("|")
+                        current_rule.min_value = float(min_str) if min_str else None
+                        current_rule.max_value = float(max_str) if max_str else None
 
                     # if the rule was not linked to a person variable
                     if current_rule.varcat != "Person":
@@ -329,7 +350,7 @@ class AvailabilitySolver:
             logger.debug(
                 str(
                     full_query_all_groups.compile(
-                        dialect=postgresql.dialect(),
+                        dialect=self.db_manager.engine.dialect,
                         compile_kwargs={"literal_binds": True},
                     )
                 )
