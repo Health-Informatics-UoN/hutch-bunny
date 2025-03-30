@@ -1,8 +1,21 @@
 import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-
+from sqlalchemy.engine import Engine
+from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy.orm.attributes import InstrumentedAttribute
+from typing import Any
 from typing import TypedDict
+from sqlalchemy import Column
+from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.sql.elements import ColumnElement
+from typing import Any, Union
+from sqlalchemy import Column, Date, DateTime
+from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.sql.elements import ColumnElement
+from typing import Union
+from sqlalchemy.sql.expression import ClauseElement
+
 
 class ResultModifier(TypedDict):
     id: str
@@ -155,9 +168,10 @@ class AvailabilitySolver:
 
                 # for each rule in a group
                 for current_rule in current_group.rules:
+                    
                     # a list for all the conditions for the rule, each rule generates searches
                     # in four tables, this field captures that
-                    rule_constraints: list[Exists] = []
+                    # rule_constraints: list[Exists] = []
 
                     # variables used to capture the relevant detail.
                     # "time" : "|1:TIME:M" in the payload means that
@@ -242,9 +256,6 @@ class AvailabilitySolver:
                         PREPARING THE LISTS FOR LATER USE
                         """
 
-                        # Check if we should use exists() or ~exists()
-                        use_exists : bool = current_rule.operator == "="
-
                         # List of tables and their corresponding foreign keys
                         table_constraints = [
                             (self.measurement, Measurement.person_id),
@@ -253,18 +264,19 @@ class AvailabilitySolver:
                             (self.drug, DrugExposure.person_id)
                         ]
 
-                        # Apply the condition to each table
+                         # Change the type hint to accept both Exists and its negation
+                        table_rule_constraints: list[ColumnElement[bool]] = []
+
                         for table, fk in table_constraints:
-                            constraint:Exists = exists(table.where(fk == Person.person_id))
-                            rule_constraints.append(constraint if use_exists else ~constraint)
+                            constraint: Exists = exists(table.where(fk == Person.person_id))
+                            table_rule_constraints.append(constraint if use_exists else ~constraint)
 
-                        # all the constraints for this rule are added as a single list
-                        # to the list which captures all rules for the group
+                        use_exists : bool = current_rule.operator == "="
+
                         if use_exists:
-                            list_for_rules.append(or_(*rule_constraints))
+                            list_for_rules.append(or_(*table_rule_constraints))
                         else:
-                            list_for_rules.append(and_(*rule_constraints))
-
+                            list_for_rules.append(and_(*table_rule_constraints))
 
                     else:
                         """
@@ -460,7 +472,7 @@ class AvailabilitySolver:
                 > int(left_value_time)
             )
 
-    def _get_year_difference(self, engine: Engine, start_date, birth_date) -> ColumnElement[int]:
+    def _get_year_difference(self, engine: Engine, start_date: ClauseElement, birth_date: ClauseElement) -> ColumnElement[int]:
         if engine.dialect.name == "postgresql":
             return func.date_part("year", start_date) - func.date_part(
                 "year", birth_date
