@@ -1,8 +1,6 @@
 import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-from sqlalchemy.engine import Engine
-from sqlalchemy.sql.elements import ColumnElement
 from typing import TypedDict
 from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy import or_, and_, func, BinaryExpression, ColumnElement, select, Select, text,  Exists
@@ -17,7 +15,6 @@ from hutch_bunny.core.entities import (
     ProcedureOccurrence,
 )
 
-from sqlalchemy.dialects import postgresql
 from typing import Tuple
 from sqlalchemy import exists
 
@@ -121,18 +118,6 @@ class AvailabilitySolver:
             ),
             10,
         )
-        # low_number: int = next(
-        #     (
-        #         item["threshold"]
-        #         for item in results_modifier
-        #         if item["id"] == "Low Number Suppression"
-        #     ),
-        #     10,
-        # )
-        # rounding: int = next(
-        #     (item["nearest"] for item in results_modifier if item["id"] == "Rounding"),
-        #     10,
-        # )
 
         rounding: int = next(
             (
@@ -564,8 +549,6 @@ class AvailabilitySolver:
     def _add_secondary_modifiers(self, current_rule: Rule) -> None:
         # Not sure where, but even when a secondary modifier is not supplied, an array
         # with a single entry is provided.
-        # todo: need to confirm if this is in the JSON from the API or our implementation
-
         secondary_modifier_list = []
 
         for type_index, typeAdd in enumerate(current_rule.secondary_modifier, start=0):
