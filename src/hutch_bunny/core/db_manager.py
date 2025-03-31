@@ -20,21 +20,22 @@ def WakeAzureDB(
     delay: int = 30,
     error_code: str = "40613"
 ) -> Any:
-    """Decorator to retry a function on specific failure, conditionally applied.
+    """Decorator to retry a function on specific Azure DB wake-up errors.
 
     Args:
-        retries (int): Number of retries before giving up. Only 1 retry needed
-         to wake an azure db.
-        delay (int): Delay in seconds between retries. 30 seconds gives enough
-         time for the azure db to wake up.
+        retries (int): Number of retries before giving up. Typically 1 retry
+         is sufficient to wake an Azure DB.
+        delay (int): Delay in seconds between retries. 30 seconds is typically
+         enough time for the Azure DB to wake up.
         error_code (str): The error code to check for in the exception. 40613
-         is the error code for an azure db that is asleep.
+         is the error code for an Azure DB that is asleep.
 
     Returns:
-        Callable: The wrapped function with retry logic or the original function.
+        Callable: The wrapped function with retry logic or the original
+         function.
     """
     def decorator(func):
-        if settings.DATASOURCE_DB_DRIVERNAME != "msql":
+        if settings.DATASOURCE_DB_DRIVERNAME != "mssql":
             return func
 
         @wraps(func)
@@ -45,7 +46,7 @@ def WakeAzureDB(
                 except OperationalError as e:
                     if error_code in str(e):
                         if attempt < retries:
-                            logger.warning(f"{func.__name__} failed with error {error_code}, retrying in {delay} seconds...")
+                            logger.info(f"{func.__name__} failed with error {error_code}, retrying in {delay} seconds...")
                             time.sleep(delay)
                         else:
                             logger.error(f"{func.__name__} failed with error {error_code} after {retries} retries.")
@@ -120,6 +121,7 @@ class BaseDBManager:
 
 
 class SyncDBManager(BaseDBManager):
+    @WakeAzureDB()
     def __init__(
         self,
         username: str,
