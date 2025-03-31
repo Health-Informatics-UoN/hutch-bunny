@@ -4,16 +4,7 @@ from dateutil.relativedelta import relativedelta
 from sqlalchemy.engine import Engine
 from sqlalchemy.sql.elements import ColumnElement
 from typing import TypedDict
-from sqlalchemy.sql.elements import ColumnElement
-from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.expression import ClauseElement
-
-
-class ResultModifier(TypedDict):
-    id: str
-    threshold: int | None
-    nearest: int | None
-
 from sqlalchemy import or_, and_, func, BinaryExpression, ColumnElement, select, Select, text,  Exists
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
@@ -37,6 +28,12 @@ from hutch_bunny.core.logger import logger
 
 from hutch_bunny.core.settings import get_settings
 from hutch_bunny.core.rquest_dto.rule import Rule
+
+
+class ResultModifier(TypedDict):
+    id: str
+    threshold: int | None
+    nearest: int | None
 
 settings = get_settings()
 
@@ -256,6 +253,8 @@ class AvailabilitySolver:
                             (self.drug, DrugExposure.person_id)
                         ]
 
+                        use_exists : bool = current_rule.operator == "="
+
                          # Change the type hint to accept both Exists and its negation
                         table_rule_constraints: list[ColumnElement[bool]] = []
 
@@ -263,7 +262,6 @@ class AvailabilitySolver:
                             constraint: Exists = exists(table.where(fk == Person.person_id))
                             table_rule_constraints.append(constraint if use_exists else ~constraint)
 
-                        use_exists : bool = current_rule.operator == "="
 
                         if use_exists:
                             list_for_rules.append(or_(*table_rule_constraints))
