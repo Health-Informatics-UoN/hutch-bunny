@@ -44,15 +44,16 @@ def WakeAzureDB(
                 try:
                     return func(*args, **kwargs)
                 except OperationalError as e:
-                    if error_code in str(e):
+                    error_msg = str(e)
+                    if error_code in error_msg:
                         if attempt < retries:
                             logger.info(f"{func.__name__} failed with error {error_code}, retrying in {delay} seconds...")
                             time.sleep(delay)
                         else:
                             logger.error(f"{func.__name__} failed with error {error_code} after {retries} retries.")
-                            raise e
+                            raise
                     else:
-                        raise e
+                        raise
         return wrapper
     return decorator
 
