@@ -1,100 +1,107 @@
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from sqlalchemy.exc import OperationalError
 from hutch_bunny.core.db_manager import WakeAzureDB
+from hutch_bunny.core.settings import Settings
+
+settings = Settings()
 
 
-# Mock functions at the top of the file
-@WakeAzureDB(retries=2, delay=1, error_code="40613")
-def mock_function_with_matching_error():
-    """A mock function that raises an error with the matching error code."""
-    raise OperationalError("(40613) Database is currently unavailable", None, None)
+def test_decorator_passes_through_for_non_mssql():
+    """Test that the decorator passes through when not using MSSQL."""
+    with patch(settings) as mock_settings:
+        mock_settings.DATASOURCE_DB_DRIVERNAME = "postgresql"
+
+        # Create a simple function to decorate
+        @WakeAzureDB()
+        def test_func():
+            return "success"
+
+        # The function should be returned as-is without wrapping
+        assert test_func() == "success"
 
 
-@WakeAzureDB(retries=2, delay=1, error_code="40613")
-def mock_function_with_non_matching_error():
-    """A mock function that raises an error with a non-matching error code."""
-    raise OperationalError("(40615) Some other error", None, None)
+def test_successful_execution_no_retry():
+    """Test successful execution without any need for retry."""
+    with patch(settings) as mock_settings:
+        mock_settings.DATASOURCE_DB_DRIVERNAME = "mssql"
+
+        mock_func = MagicMock(return_value="success")
+        decorated_func = WakeAzureDB()(mock_func)
+
+        result = decorated_func("arg1", kwarg1="kwarg1")
+
+        assert result == "success"
+        mock_func.assert_called_once_with("arg1", kwarg1="kwarg1")
 
 
-@WakeAzureDB(retries=2, delay=1, error_code="40613")
-def mock_function_success():
-    """A mock function that succeeds without errors."""
-    return "Success"
+def test_retry_on_specific_error():
+    """Test that the function retries on the specific Azure DB error."""
+    with patch(settings) as mock_settings, \
+         patch('your_module.time.sleep') as mock_sleep, \
+         patch('your_module.logger') as mock_logger:
+
+        mock_settings.DATASOURCE_DB_DRIVERNAME = "mssql"
+
+        # Mock function that fails once with the specific error, then succeeds
+        mock_func = MagicMock(side_effect=[
+            OperationalError("Error code 40613: The database is currently busy."), 
+            "success"
+        ])
+
+        decorated_func = WakeAzureDB(retries=2, delay=5, error_code="40613")(mock_func)
+
+        result = decorated_func()
+
+        assert result == "success"
+        assert mock_func.call_count == 2
+        mock_sleep.assert_called_once_with(5)
+        mock_logger.info.assert_called_once()
 
 
-@pytest.mark.unit
-class TestWakeAzureDB:
-    """Tests for the WakeAzureDB decorator."""
+def test_raises_after_max_retries():
+    """Test that the function raises after maximum retries are exhausted."""
+    with patch(settings) as mock_settings, \
+         patch('your_module.time.sleep') as mock_sleep, \
+         patch('your_module.logger') as mock_logger:
 
-    def setup_method(self):
-        """Set up common test components."""
-        self.sleep_patcher = patch("time.sleep", return_value=None)
-        self.mock_sleep = self.sleep_patcher.start()
+        mock_settings.DATASOURCE_DB_DRIVERNAME = "mssql"
 
-    def teardown_method(self):
-        """Clean up after each test."""
-        self.sleep_patcher.stop()
+        # Create an error with the specific error code
+        error = OperationalError("Error code 40613: The database is currently busy.")
 
-    def test_matching_error_retries(self):
-        """Test that the decorator retries when error code matches."""
-        # Reset call count (in case tests run in a different order)
-        self.mock_sleep.reset_mock()
+        # Mock function that always fails with the specific error
+        mock_func = MagicMock(side_effect=error)
 
-        # Should retry twice and then raise
+        decorated_func = WakeAzureDB(retries=2, delay=5, error_code="40613")(mock_func)
+
+        # The function should raise after retries are exhausted
         with pytest.raises(OperationalError) as excinfo:
-            mock_function_with_matching_error()
+            decorated_func()
 
-        # Verify error message contains the expected error code
         assert "40613" in str(excinfo.value)
+        assert mock_func.call_count == 3  # Initial call + 2 retries
+        assert mock_sleep.call_count == 2
+        assert mock_logger.info.call_count == 2
+        mock_logger.error.assert_called_once()
 
-        # Verify sleep was called twice (for retries)
-        assert self.mock_sleep.call_count == 2
-        assert self.mock_sleep.call_args_list == [call(1), call(1)]
 
-    def test_non_matching_error_no_retry(self):
-        """Test that the decorator doesn't retry for non-matching error codes."""
-        # Reset call count
-        self.mock_sleep.reset_mock()
+def test_different_error_passes_through():
+    """Test that different errors pass through without retry."""
+    with patch(settings) as mock_settings:
+        mock_settings.DATASOURCE_DB_DRIVERNAME = "mssql"
 
-        # Should raise immediately, no retries
+        # Create an error with a different error code
+        error = OperationalError("Error code 12345: Some other error.")
+
+        # Mock function that fails with a different error
+        mock_func = MagicMock(side_effect=error)
+
+        decorated_func = WakeAzureDB()(mock_func)
+
+        # The function should immediately raise with the different error
         with pytest.raises(OperationalError) as excinfo:
-            mock_function_with_non_matching_error()
+            decorated_func()
 
-        # Verify error message doesn't contain matching code
-        assert "40613" not in str(excinfo.value)
-
-        # Verify sleep was not called (no retries)
-        assert self.mock_sleep.call_count == 0
-
-    def test_successful_execution(self):
-        """Test that the decorator allows successful execution without retries."""
-        # Reset call count
-        self.mock_sleep.reset_mock()
-
-        # Should succeed without any retries
-        result = mock_function_success()
-
-        # Verify the return value
-        assert result == "Success"
-
-        # Verify sleep was not called
-        assert self.mock_sleep.call_count == 0
-
-    @patch("some_module.settings.DATASOURCE_DB_DRIVERNAME", "postgres")
-    def test_non_mssql_driver(self):
-        """Test that the decorator doesn't add retry logic for non-MSSQL drivers."""
-        # Define a test function with a non-MSSQL driver
-        @WakeAzureDB(retries=2, delay=1, error_code="40613")
-        def postgres_function():
-            raise OperationalError("(40613) Error", None, None)
-
-        # Reset call count
-        self.mock_sleep.reset_mock()
-
-        # Should raise immediately, no retries
-        with pytest.raises(OperationalError):
-            postgres_function()
-
-        # Verify sleep was not called (no retries)
-        assert self.mock_sleep.call_count == 0
+        assert "12345" in str(excinfo.value)
+        mock_func.assert_called_once()
