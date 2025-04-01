@@ -87,7 +87,7 @@ jobs:
       DATASOURCE_DB_USERNAME: sa
       DATASOURCE_DB_PASSWORD: Password123!
       DATASOURCE_DB_DATABASE: master
-      DATASOURCE_DB_SCHEMA: public
+      DATASOURCE_DB_SCHEMA: omop
       DATASOURCE_DB_PORT: 1433
       DATASOURCE_DB_HOST: localhost
       DATASOURCE_DB_DRIVERNAME: mssql
@@ -115,7 +115,9 @@ jobs:
           DB_USER: sa
           DB_PASSWORD: Password123!
           DB_PORT: 1433
+          DIALECT: mssql
           SYNTHETIC: true
+          SCHEMA_NAME: omop
 
     steps:
       - uses: actions/checkout@v4
