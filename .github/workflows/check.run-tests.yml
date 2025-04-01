@@ -85,7 +85,7 @@ jobs:
       pull-requests: write
     env:
       DATASOURCE_DB_USERNAME: sa
-      DATASOURCE_DB_PASSWORD: Password123
+      DATASOURCE_DB_PASSWORD: Password123!
       DATASOURCE_DB_DATABASE: master
       DATASOURCE_DB_SCHEMA: public
       DATASOURCE_DB_PORT: 1433
