@@ -1,7 +1,44 @@
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, Mock
 from sqlalchemy.exc import OperationalError
 from hutch_bunny.core.db_manager import WakeAzureDB
+from hutch_bunny.core.upstream.task_api_client import TaskApiClient
+
+
+@pytest.fixture
+def mock_settings():
+    mock_settings = Mock()
+    mock_settings.COLLECTION_ID = "test_collection"
+    mock_settings.TASK_API_TYPE = "test_type"
+    mock_settings.INITIAL_BACKOFF = 1
+    mock_settings.MAX_BACKOFF = 8
+    mock_settings.POLLING_INTERVAL = 0.1
+    return mock_settings
+
+
+@pytest.fixture
+def mock_client():
+    return Mock(spec=TaskApiClient)
+
+
+@pytest.fixture
+def mock_logger():
+    with patch("hutch_bunny.core.upstream.polling_service.logger") as mock_logger:
+        yield mock_logger
+
+
+@pytest.fixture
+def mock_task_handler():
+    return Mock()
+
+
+# Create a proper OperationalError for SQLAlchemy
+def create_operational_error(message):
+    # The SQLAlchemy OperationalError needs statement, params, and orig
+    statement = "SELECT 1"
+    params = {}
+    orig = Exception(message)
+    return OperationalError(statement, params, orig)
 
 
 def test_decorator_passes_through_for_non_mssql():
@@ -41,11 +78,11 @@ def test_retry_on_specific_error():
 
         mock_settings.DATASOURCE_DB_DRIVERNAME = "mssql"
 
+        # Create proper error with all required parameters
+        error = create_operational_error("Error code 40613: The database is currently busy.")
+        
         # Mock function that fails once with the specific error, then succeeds
-        mock_func = MagicMock(side_effect=[
-            OperationalError("Error code 40613: The database is currently busy."), 
-            "success"
-        ])
+        mock_func = MagicMock(side_effect=[error, "success"])
 
         decorated_func = WakeAzureDB(retries=2, delay=5, error_code="40613")(mock_func)
 
@@ -66,7 +103,7 @@ def test_raises_after_max_retries():
         mock_settings.DATASOURCE_DB_DRIVERNAME = "mssql"
 
         # Create an error with the specific error code
-        error = OperationalError("Error code 40613: The database is currently busy.")
+        error = create_operational_error("Error code 40613: The database is currently busy.")
 
         # Mock function that always fails with the specific error
         mock_func = MagicMock(side_effect=error)
@@ -90,7 +127,7 @@ def test_different_error_passes_through():
         mock_settings.DATASOURCE_DB_DRIVERNAME = "mssql"
 
         # Create an error with a different error code
-        error = OperationalError("Error code 12345: Some other error.")
+        error = create_operational_error("Error code 12345: Some other error.")
 
         # Mock function that fails with a different error
         mock_func = MagicMock(side_effect=error)
@@ -109,11 +146,11 @@ def test_preserves_function_metadata():
     """Test that the decorator preserves the original function's metadata."""
     with patch("hutch_bunny.core.db_manager.settings") as mock_settings:
         mock_settings.DATASOURCE_DB_DRIVERNAME = "mssql"
-
+        
         @WakeAzureDB()
         def test_func():
             """Test function docstring."""
             pass
-
+        
         assert test_func.__name__ == "test_func"
         assert test_func.__doc__ == "Test function docstring."
