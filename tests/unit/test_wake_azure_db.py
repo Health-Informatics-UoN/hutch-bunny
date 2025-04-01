@@ -1,57 +1,44 @@
-import time
-from unittest.mock import patch, Mock
+import pytest
+from unittest.mock import patch, MagicMock
 from sqlalchemy.exc import OperationalError
-from decorators import WakeAzureDB  # Adjust import based on actual file structure
+import time
 
-# Setting up mock components
-class MockSettings:
-    DATASOURCE_DB_DRIVERNAME = "mssql"
+# Correct import path for the decorator
+from hutch_bunny.core.db_manager import WakeAzureDB
 
-@pytest.fixture
-def mock_settings():
-    return MockSettings()
+# Mock settings to simulate the environment
+mock_settings = MagicMock()
+mock_settings.DATASOURCE_DB_DRIVERNAME = "mssql"
 
-@pytest.fixture
-def mock_logger():
-    with patch("decorators.logger") as mock_logger:
-        yield mock_logger
-
-# A sample function to apply the decorator
+# Sample function to decorate
 @WakeAzureDB(retries=2, delay=1, error_code="40613")
 def sample_function():
-    raise OperationalError("An error occurred", params=None, orig=None)
+    pass
 
-def test_retry_decorator_success(mock_settings, mock_logger):
-    # Patch the settings globally
-    with patch("decorators.settings", mock_settings):
-        # Patch time.sleep to avoid actual sleeping during tests
-        with patch("time.sleep", return_value=None):
-            with patch("decorators.sample_function", return_value="Success") as mock_func:
-                # Modify sample_function to first raise error, then succeed
-                mock_func.side_effect = [
-                    OperationalError("An error 40613 occurred", None, None),
-                    OperationalError("An error 40613 occurred", None, None),
-                    "Success"
-                ]
-                # Call the decorated function
-                result = sample_function()
+def test_no_error():
+    with patch('hutch_bunny.core.db_manager.settings', mock_settings):
+        # Test normal execution
+        sample_function()
 
-                # Assert the result
-                assert result == "Success"
-                # Assert logger calls
-                assert mock_logger.info.call_count == 2
-                assert mock_logger.error.call_count == 0
-
-def test_retry_decorator_fail(mock_settings, mock_logger):
-    # Patch the settings globally
-    with patch("decorators.settings", mock_settings):
-        # Patch time.sleep to avoid actual sleeping during tests
-        with patch("time.sleep", return_value=None):
-            with patch("decorators.sample_function", side_effect=OperationalError("An error 40613 occurred", None, None)):
-                # Check if the retry mechanism works and eventually raises an error
+def test_with_error():
+    with patch('hutch_bunny.core.db_manager.settings', mock_settings):
+        # Mock sleep to avoid actual delay
+        with patch('time.sleep', return_value=None):
+            # Simulate function failure with relevant error code
+            error = OperationalError("Dummy", "Dummy", "40613")
+            with patch('hutch_bunny.core.db_manager.sample_function', side_effect=error) as mock_func:
                 with pytest.raises(OperationalError):
                     sample_function()
-                
-                # Assert logger calls
-                assert mock_logger.info.call_count == 2
-                assert mock_logger.error.call_count == 1
+                assert mock_func.call_count == 3  # Initial call + 2 retries
+
+def test_with_different_error():
+    with patch('hutch_bunny.core.db_manager.settings', mock_settings):
+        # Test with a different error code, should not retry
+        error = OperationalError("Dummy", "Dummy", "DifferentError")
+        with patch('hutch_bunny.core.db_manager.sample_function', side_effect=error) as mock_func:
+            with pytest.raises(OperationalError):
+                sample_function()
+            assert mock_func.call_count == 1  # No retries
+
+if __name__ == "__main__":
+    pytest.main()
