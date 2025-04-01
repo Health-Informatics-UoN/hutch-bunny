@@ -90,6 +90,7 @@ jobs:
       DATASOURCE_DB_SCHEMA: public
       DATASOURCE_DB_PORT: 1433
       DATASOURCE_DB_HOST: localhost
+      DATASOURCE_DB_DRIVERNAME: mssql
       TASK_API_TYPE: a
       COLLECTION_ID: test_collection
       TASK_API_BASE_URL: http://localhost:8000
