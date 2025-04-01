@@ -2,14 +2,12 @@ import pytest
 from unittest.mock import patch, MagicMock
 from sqlalchemy.exc import OperationalError
 from hutch_bunny.core.db_manager import WakeAzureDB
-from hutch_bunny.core.settings import Settings
-
-settings = Settings()
 
 
 def test_decorator_passes_through_for_non_mssql():
     """Test that the decorator passes through when not using MSSQL."""
-    with patch(settings) as mock_settings:
+    # Use patch with the actual path to settings, not the fixture
+    with patch("hutch_bunny.core.db_manager.settings") as mock_settings:
         mock_settings.DATASOURCE_DB_DRIVERNAME = "postgresql"
 
         # Create a simple function to decorate
@@ -23,7 +21,7 @@ def test_decorator_passes_through_for_non_mssql():
 
 def test_successful_execution_no_retry():
     """Test successful execution without any need for retry."""
-    with patch(settings) as mock_settings:
+    with patch("hutch_bunny.core.db_manager.settings") as mock_settings:
         mock_settings.DATASOURCE_DB_DRIVERNAME = "mssql"
 
         mock_func = MagicMock(return_value="success")
@@ -37,9 +35,9 @@ def test_successful_execution_no_retry():
 
 def test_retry_on_specific_error():
     """Test that the function retries on the specific Azure DB error."""
-    with patch(settings) as mock_settings, \
-         patch('your_module.time.sleep') as mock_sleep, \
-         patch('your_module.logger') as mock_logger:
+    with patch("hutch_bunny.core.db_manager.settings") as mock_settings, \
+         patch('hutch_bunny.core.db_manager.time.sleep') as mock_sleep, \
+         patch('hutch_bunny.core.db_manager.logger') as mock_logger:
 
         mock_settings.DATASOURCE_DB_DRIVERNAME = "mssql"
 
@@ -61,9 +59,9 @@ def test_retry_on_specific_error():
 
 def test_raises_after_max_retries():
     """Test that the function raises after maximum retries are exhausted."""
-    with patch(settings) as mock_settings, \
-         patch('your_module.time.sleep') as mock_sleep, \
-         patch('your_module.logger') as mock_logger:
+    with patch("hutch_bunny.core.db_manager.settings") as mock_settings, \
+         patch('hutch_bunny.core.db_manager.time.sleep') as mock_sleep, \
+         patch('hutch_bunny.core.db_manager.logger') as mock_logger:
 
         mock_settings.DATASOURCE_DB_DRIVERNAME = "mssql"
 
@@ -88,7 +86,7 @@ def test_raises_after_max_retries():
 
 def test_different_error_passes_through():
     """Test that different errors pass through without retry."""
-    with patch(settings) as mock_settings:
+    with patch("hutch_bunny.core.db_manager.settings") as mock_settings:
         mock_settings.DATASOURCE_DB_DRIVERNAME = "mssql"
 
         # Create an error with a different error code
@@ -105,3 +103,17 @@ def test_different_error_passes_through():
 
         assert "12345" in str(excinfo.value)
         mock_func.assert_called_once()
+
+
+def test_preserves_function_metadata():
+    """Test that the decorator preserves the original function's metadata."""
+    with patch("hutch_bunny.core.db_manager.settings") as mock_settings:
+        mock_settings.DATASOURCE_DB_DRIVERNAME = "mssql"
+
+        @WakeAzureDB()
+        def test_func():
+            """Test function docstring."""
+            pass
+
+        assert test_func.__name__ == "test_func"
+        assert test_func.__doc__ == "Test function docstring."
