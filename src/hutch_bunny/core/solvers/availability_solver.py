@@ -106,9 +106,6 @@ class AvailabilitySolver:
         returns an int for the result. Therefore, all dataframes have been removed.
 
         """
-
-        logger.debug(results_modifier)
-
         # get the list of concepts to build the query constraints
         concepts: dict[str,str] = self._find_concepts()
 
@@ -145,9 +142,6 @@ class AvailabilitySolver:
                 # for each rule in a group
                 for current_rule in current_group.rules:
                     
-                    # a list for all the conditions for the rule, each rule generates searches
-                    # in four tables, this field captures that
-                    # rule_constraints: list[Exists] = []
 
                     # variables used to capture the relevant detail.
                     # "time" : "|1:TIME:M" in the payload means that
@@ -235,9 +229,11 @@ class AvailabilitySolver:
                             (self.drug, DrugExposure.person_id)
                         ]
 
+                        # a switch between whether the criteria are inclusion or exclusion
                         inclusion_criteria : bool = current_rule.operator == "="
 
-                         # Change the type hint to accept both Exists and its negation
+                        # a list for all the conditions for the rule, each rule generates searches
+                        # in four tables, this field captures that
                         table_rule_constraints: list[ColumnElement[bool]] = []
 
                         for table, fk in table_constraints:
@@ -558,7 +554,6 @@ class AvailabilitySolver:
             self.condition = self.condition.where(or_(*secondary_modifier_list))
 
     def _add_standard_concept(self, current_rule: Rule) -> None :
-        # if current_rule.operator == "=":
             self.condition = self.condition.where(
                 ConditionOccurrence.condition_concept_id == int(current_rule.value)
             )
