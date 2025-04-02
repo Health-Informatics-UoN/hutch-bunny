@@ -34,6 +34,7 @@ def simulated_function(should_raise: bool = False, error_code: str = "40613") ->
     return "Success"
 
 
+@pytest.mark.unit
 class TestWakeAzureDB:
     """Test suite for the WakeAzureDB decorator."""
 
