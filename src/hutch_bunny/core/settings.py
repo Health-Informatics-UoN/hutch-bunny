@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     DATASOURCE_DB_CATALOG: str = Field(
         description="The catalog for the datasource database", default="hutch"
     )
+    DATASOURCE_WAKE_DB: bool = Field(
+        description="Flag to allow waking of Azure Serverless DBs", default=False
+    )
 
     def safe_model_dump(self) -> dict:
         """
