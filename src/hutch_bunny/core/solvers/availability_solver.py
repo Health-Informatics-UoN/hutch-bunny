@@ -107,6 +107,8 @@ class AvailabilitySolver:
 
         """
 
+        logger.debug(results_modifier)
+
         # get the list of concepts to build the query constraints
         concepts: dict[str,str] = self._find_concepts()
 
@@ -121,12 +123,15 @@ class AvailabilitySolver:
 
         rounding: int = next(
             (
-                item["nearest"] or 10
+                item["nearest"] if item["nearest"] is not None else 10
                 for item in results_modifier
                 if item["id"] == "Rounding"
             ),
             10,
         )
+
+        logger.debug(rounding)
+        logger.debug(low_number)
 
         with self.db_manager.engine.connect() as con:
             # this is used to store the query for each group, one entry per group
