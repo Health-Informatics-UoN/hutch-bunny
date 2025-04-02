@@ -1,7 +1,5 @@
 import pytest
 from unittest.mock import patch, MagicMock, call
-import time
-from typing import Any, Callable, Optional
 from sqlalchemy.exc import OperationalError
 
 from hutch_bunny.core.db_manager import WakeAzureDB
@@ -19,14 +17,14 @@ def mock_settings() -> MagicMock:
 
 def simulated_function(should_raise: bool = False, error_code: str = "40613") -> str:
     """Test function that optionally raises an OperationalError.
-    
+
     Args:
         should_raise: Whether to raise an exception
         error_code: Error code to include in the exception message
-        
+
     Returns:
         A success message if no error is raised
-        
+
     Raises:
         OperationalError: If should_raise is True
     """
@@ -61,7 +59,7 @@ def test_with_error_retry_succeeds(mock_settings: MagicMock) -> None:
 
             decorated_func = WakeAzureDB(retries=2, delay=10)(test_func)
             result = decorated_func()
-            
+
             assert result == "Success after retry"
             assert call_count == 2
             mock_sleep.assert_called_once_with(10)
@@ -77,10 +75,10 @@ def test_with_error_all_retries_fail(mock_settings: MagicMock) -> None:
             decorated_func = WakeAzureDB(retries=3, delay=5)(
                 lambda: simulated_function(True, "40613")
             )
-            
+
             with pytest.raises(OperationalError) as exc_info:
                 decorated_func()
-            
+
             assert "40613" in str(exc_info.value)
             assert mock_sleep.call_count == 3
             assert mock_sleep.call_args_list == [call(5), call(5), call(5)]
@@ -95,10 +93,10 @@ def test_with_different_error(mock_settings: MagicMock) -> None:
             decorated_func = WakeAzureDB()(
                 lambda: simulated_function(True, "12345")
             )
-            
+
             with pytest.raises(OperationalError) as exc_info:
                 decorated_func()
-            
+
             assert "12345" in str(exc_info.value)
             mock_sleep.assert_not_called()
 
@@ -107,14 +105,14 @@ def test_with_different_error(mock_settings: MagicMock) -> None:
 def test_wake_db_disabled(mock_settings: MagicMock) -> None:
     """Test that when DATASOURCE_WAKE_DB is False, no retry logic is applied."""
     mock_settings.DATASOURCE_WAKE_DB = False
-    
+
     with patch('hutch_bunny.core.db_manager.settings', mock_settings):
         test_func = MagicMock(side_effect=OperationalError("Error 40613", "Dummy", "40613"))
         decorated_func = WakeAzureDB()(test_func)
-        
+
         with pytest.raises(OperationalError):
             decorated_func()
-        
+
         # Function should be called exactly once with no retries
         test_func.assert_called_once()
 
@@ -124,13 +122,13 @@ def test_non_mssql_driver(mock_settings: MagicMock) -> None:
     """Test that for non-MSSQL drivers, retry logic is not applied."""
     mock_settings.DATASOURCE_DB_DRIVERNAME = "postgresql"
     mock_settings.DATASOURCE_WAKE_DB = True
-    
+
     with patch('hutch_bunny.core.db_manager.settings', mock_settings):
         test_func = MagicMock(return_value="Success")
         decorated_func = WakeAzureDB()(test_func)
-        
+
         result = decorated_func()
-        
+
         assert result == "Success"
         test_func.assert_called_once()
 
