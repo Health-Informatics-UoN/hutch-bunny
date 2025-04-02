@@ -23,9 +23,9 @@ def WakeAzureDB(
     """Decorator to retry a function on specific Azure DB wake-up errors.
 
     Args:
-        retries (int): Number of retries before giving up. Typically 1 retry
+        retries (int): Number of retries before giving up. 1 retry
          is sufficient to wake an Azure DB.
-        delay (int): Delay in seconds between retries. 30 seconds is typically
+        delay (int): Delay in seconds between retries. 30 seconds is
          enough time for the Azure DB to wake up.
         error_code (str): The error code to check for in the exception. 40613
          is the error code for an Azure DB that is asleep.
@@ -35,7 +35,7 @@ def WakeAzureDB(
          function.
     """
     def decorator(func):
-        if settings.DATASOURCE_DB_DRIVERNAME != "mssql":
+        if settings.DATASOURCE_WAKE_DB is False and settings.DATASOURCE_DB_DRIVERNAME == "mssql":
             return func
 
         @wraps(func)
@@ -47,13 +47,12 @@ def WakeAzureDB(
                     error_msg = str(e)
                     if error_code in error_msg:
                         if attempt < retries:
-                            logger.info(f"{func.__name__} failed with error {error_code}, retrying in {delay} seconds...")
+                            logger.info(f"{func.__name__} has called a sleeping DB, retrying in {delay} seconds...")
                             time.sleep(delay)
                         else:
-                            logger.error(f"{func.__name__} failed with error {error_code} after {retries} retries.")
-                            raise
+                            raise e
                     else:
-                        raise
+                        raise e
         return wrapper
     return decorator
 
