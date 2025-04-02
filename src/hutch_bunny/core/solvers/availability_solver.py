@@ -130,9 +130,6 @@ class AvailabilitySolver:
             10,
         )
 
-        logger.debug(rounding)
-        logger.debug(low_number)
-
         with self.db_manager.engine.connect() as con:
             # this is used to store the query for each group, one entry per group
             all_groups_queries: list[BinaryExpression[bool]] = []
@@ -166,11 +163,6 @@ class AvailabilitySolver:
 
                     # if a number was supplied, it is in the format "value" : "0.0|200.0"
                     # therefore split to capture min as 0 and max as 200
-                    # if current_rule.raw_range != "":
-                    #     current_rule.min_value, current_rule.max_value = (
-                    #         current_rule.raw_range.split("|")
-                    #     )
-
                     if current_rule.raw_range and current_rule.raw_range != "":
                         min_str, max_str = current_rule.raw_range.split("|")
                         current_rule.min_value = float(min_str) if min_str else None
