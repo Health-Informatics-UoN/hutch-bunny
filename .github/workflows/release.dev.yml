@@ -5,7 +5,8 @@
 name: Publish a Dev Release
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
 
 env:
   image-name: hutch/bunny
