@@ -235,17 +235,17 @@ class AvailabilitySolver:
                             (self.drug, DrugExposure.person_id)
                         ]
 
-                        use_exists : bool = current_rule.operator == "="
+                        inclusion_criteria : bool = current_rule.operator == "="
 
                          # Change the type hint to accept both Exists and its negation
                         table_rule_constraints: list[ColumnElement[bool]] = []
 
                         for table, fk in table_constraints:
                             constraint: Exists = exists(table.where(fk == Person.person_id))
-                            table_rule_constraints.append(constraint if use_exists else ~constraint)
+                            table_rule_constraints.append(constraint if inclusion_criteria else ~constraint)
 
 
-                        if use_exists:
+                        if inclusion_criteria:
                             list_for_rules.append(or_(*table_rule_constraints))
                         else:
                             list_for_rules.append(and_(*table_rule_constraints))
