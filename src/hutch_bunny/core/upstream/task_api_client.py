@@ -25,9 +25,19 @@ class TaskApiClient:
         self.base_url = settings.TASK_API_BASE_URL
         self.username = settings.TASK_API_USERNAME
         self.password = settings.TASK_API_PASSWORD
+        self.enforce_https = settings.TASK_API_ENFORCE_HTTPS
+
+        if not self.enforce_https and not self.base_url.startswith("https://"):
+            logger.warning(
+                "HTTPS is not enforced for the task API. This is not recommended in production environments."
+            )
 
     def _request(
-        self, method: SupportedMethod, url: str, data: Optional[dict] = None, **kwargs
+        self,
+        method: SupportedMethod,
+        url: str,
+        data: Optional[dict[str, object]] = None,
+        headers: Optional[dict[str, str | bytes | None]] = None,
     ) -> Response:
         """
         Sends an HTTP request using the specified method to the given URL with optional data and additional parameters.
@@ -36,25 +46,32 @@ class TaskApiClient:
             method (SupportedMethod): The HTTP method to use for the request. Must be one of the SupportedMethod enum values.
             url (str): The URL to which the request is sent.
             data (dict, optional): The data to send in the body of the request. Defaults to None.
-            **kwargs: Additional keyword arguments to pass to the requests method. This can include parameters such as headers, params, verify, etc.
+            headers (dict, optional): The headers to send in the request. Defaults to None.
 
         Returns:
             Response: The response object returned by the requests library.
         """
         logger.debug(
-            "Sending %s request to %s with data %s and kwargs %s"
-            % (method.value, url, data, kwargs)
+            "Sending %s request to %s with data %s and headers %s"
+            % (method.value, url, data, headers)
         )
         basicAuth = HTTPBasicAuth(self.username, self.password)
         response = requests.request(
-            method=method.value, url=url, json=data, auth=basicAuth, **kwargs
+            method=method.value,
+            url=url,
+            json=data,
+            auth=basicAuth,
+            verify=self.enforce_https,
+            headers=headers,
         )
         logger.debug("Response Status: %s", response.status_code)
         logger.debug("Response Text: %s", response.text)
         return response
 
     def post(
-        self, endpoint: Optional[str] = None, data: dict = dict(), **kwargs
+        self,
+        endpoint: Optional[str] = None,
+        data: dict[str, object] = dict(),
     ) -> Response:
         """
         Sends a POST request to the specified endpoint with data and additional parameters.
@@ -62,7 +79,6 @@ class TaskApiClient:
         Args:
             endpoint (str): The endpoint to which the POST request is sent.
             data (dict): The data to send in the body of the request.
-            **kwargs: Additional keyword arguments to pass to the requests method.
 
         Returns:
             Response: The response object returned by the requests library.
@@ -75,19 +91,18 @@ class TaskApiClient:
             headers={"Content-Type": "application/json"},
         )
 
-    def get(self, endpoint: Optional[str] = None, **kwargs) -> Response:
+    def get(self, endpoint: Optional[str] = None) -> Response:
         """
         Sends a GET request to the specified endpoint with optional additional parameters.
 
         Args:
             endpoint (str): The endpoint to which the GET request is sent.
-            **kwargs: Additional keyword arguments to pass to the requests method. This can include parameters such as headers, params, verify, etc.
 
         Returns:
             Response: The response object returned by the requests library.
         """
         url = f"{self.base_url}/{endpoint}"
-        return self._request(SupportedMethod.GET, url, **kwargs)
+        return self._request(SupportedMethod.GET, url)
 
     def send_results(
         self, result: RquestResult, retry_count: int = 4, retry_delay: int = 5

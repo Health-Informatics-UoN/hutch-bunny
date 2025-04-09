@@ -4,7 +4,7 @@ from typing import Optional, Literal, overload
 from functools import cache
 
 
-class Settings(BaseSettings):
+class Settings(BaseSettings):  # type: ignore
     """
     Settings for the application
     """
@@ -54,14 +54,14 @@ class Settings(BaseSettings):
         description="Flag to allow waking of Azure Serverless DBs", default=False
     )
 
-    def safe_model_dump(self) -> dict:
+    def safe_model_dump(self) -> dict[str, object]:
         """
         Convert settings to a dictionary, excluding sensitive fields.
         """
         return self.model_dump(exclude={"DATASOURCE_DB_PASSWORD"})
 
 
-class DaemonSettings(Settings):
+class DaemonSettings(Settings):  # type: ignore
     """
     Settings for the daemon
     """
@@ -72,6 +72,9 @@ class DaemonSettings(Settings):
     TASK_API_TYPE: Optional[Literal["a", "b"]] = Field(
         description="The type of task API to use", default=None
     )
+    TASK_API_ENFORCE_HTTPS: bool = Field(
+        description="Whether to enforce HTTPS for the task API", default=True
+    )
     COLLECTION_ID: str = Field(description="The collection ID")
     POLLING_INTERVAL: int = Field(description="The polling interval", default=5)
     INITIAL_BACKOFF: int = Field(
@@ -79,7 +82,7 @@ class DaemonSettings(Settings):
     )
     MAX_BACKOFF: int = Field(description="The maximum backoff in seconds", default=60)
 
-    def safe_model_dump(self) -> dict:
+    def safe_model_dump(self) -> dict[str, object]:
         """
         Convert settings to a dictionary, excluding sensitive fields.
         """
