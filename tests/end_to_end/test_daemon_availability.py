@@ -24,10 +24,12 @@ class DaemonRunner(threading.Thread):
 
         original_poll = PollingService.poll_for_tasks
 
-        def patched_poll(self, max_iterations: int | None = None) -> None:
+        def patched_poll(
+            self: PollingService, max_iterations: int | None = None
+        ) -> None:
             return original_poll(self, max_iterations=1)
 
-        PollingService.poll_for_tasks = patched_poll
+        PollingService.poll_for_tasks = patched_poll  # type: ignore
 
         # Use the actual daemon entrypoint
         daemon_main()
@@ -38,44 +40,16 @@ def mock_daemon_settings(
     httpserver: HTTPServer,
 ) -> Generator[DaemonSettings, None, None]:
     """Create test settings for the daemon."""
-    # Store original env vars to restore later
-    original_env = {
-        key: os.environ.get(key)
-        for key in [
-            "TASK_API_BASE_URL",
-            "TASK_API_USERNAME",
-            "TASK_API_PASSWORD",
-            "COLLECTION_ID",
-            "POLLING_INTERVAL",
-            "INITIAL_BACKOFF",
-            "MAX_BACKOFF",
-            "TASK_API_TYPE",
-        ]
-    }
 
-    # Set environment variables for the test
-    os.environ["TASK_API_BASE_URL"] = httpserver.url_for("").rstrip(
-        "/"
-    )  # Set mock server URL without trailing slash
-    os.environ["TASK_API_USERNAME"] = "test_user"
-    os.environ["TASK_API_PASSWORD"] = "test_password"
+    os.environ["TASK_API_BASE_URL"] = httpserver.url_for("").rstrip("/")
     os.environ["COLLECTION_ID"] = "collection_id"
-    os.environ["POLLING_INTERVAL"] = "1"  # Fast polling for tests
-    os.environ["INITIAL_BACKOFF"] = "1"  # Fast backoff for tests
-    os.environ["MAX_BACKOFF"] = "1"  # Fast backoff for tests
-    os.environ["TASK_API_TYPE"] = "a"  # Set API type for endpoint construction
+    os.environ["TASK_API_TYPE"] = "a"
 
     yield get_settings(daemon=True)
-    # Restore original environment variables
-    for key, value in original_env.items():
-        if value is None:
-            os.environ.pop(key, None)
-        else:
-            os.environ[key] = value
 
 
 @pytest.mark.end_to_end
-def test_daemon_task_processing(
+def test_daemon_availability(
     httpserver: HTTPServer, mock_daemon_settings: DaemonSettings
 ) -> None:
     """
@@ -89,7 +63,7 @@ def test_daemon_task_processing(
         httpserver: Pytest fixture that provides a local HTTP server
         mock_daemon_settings: Custom settings for the daemon
     """
-    # Load test query from the availability test file
+    # Load test query
     with open("tests/queries/availability/availability.json", "r") as f:
         task_data = json.load(f)
 
