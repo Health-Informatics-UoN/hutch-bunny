@@ -6,7 +6,7 @@ from hutch_bunny.core.results_modifiers import results_modifiers
 
 
 def handle_task(
-    task_data: dict,
+    task_data: dict[str, object],
     db_manager: BaseDBManager,
     settings: DaemonSettings,
     task_api_client: TaskApiClient,
@@ -23,7 +23,7 @@ def handle_task(
     Returns:
         None
     """
-    result_modifier: list[dict] = results_modifiers(
+    result_modifier: list[dict[str, str | int]] = results_modifiers(
         low_number_suppression_threshold=int(
             settings.LOW_NUMBER_SUPPRESSION_THRESHOLD or 0
         ),
