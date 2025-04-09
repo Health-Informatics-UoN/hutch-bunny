@@ -4,8 +4,8 @@ on:
   pull_request:
 
 jobs:
-  run-tests:
-    name: Run Tests
+  run-tests-postgres:
+    name: Run Tests (Postgres)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -14,7 +14,7 @@ jobs:
       DATASOURCE_DB_USERNAME: postgres
       DATASOURCE_DB_PASSWORD: postgres
       DATASOURCE_DB_DATABASE: hutch-omop
-      DATASOURCE_DB_SCHEMA: omop
+      DATASOURCE_DB_SCHEMA: public
       DATASOURCE_DB_PORT: 5432
       DATASOURCE_DB_HOST: localhost
       TASK_API_TYPE: a
@@ -38,7 +38,7 @@ jobs:
           - 5432:5432
 
       omop-lite:
-        image: ghcr.io/health-informatics-uon/omop-lite:v0.0.7
+        image: ghcr.io/health-informatics-uon/omop-lite
         env:
           DB_HOST: postgres
           DB_PASSWORD: postgres
@@ -76,3 +76,68 @@ jobs:
         with:
           pytest-coverage-path: pytest-coverage.txt
           junitxml-path: pytest.xml
+  
+  run-tests-sqlserver:
+    name: Run Tests (SQL Server)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      DATASOURCE_DB_USERNAME: sa
+      DATASOURCE_DB_PASSWORD: Password123!
+      DATASOURCE_DB_DATABASE: master
+      DATASOURCE_DB_SCHEMA: omop
+      DATASOURCE_DB_PORT: 1433
+      DATASOURCE_DB_HOST: localhost
+      DATASOURCE_DB_DRIVERNAME: mssql
+      TASK_API_TYPE: a
+      COLLECTION_ID: test_collection
+      TASK_API_BASE_URL: http://localhost:8000
+      TASK_API_USERNAME: test_user
+      TASK_API_PASSWORD: test_password
+
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: Password123!
+          MSSQL_PID: Developer
+        ports:
+          - 1433:1433
+
+      omop-lite:
+        image: ghcr.io/health-informatics-uon/omop-lite
+        env:
+          DB_HOST: sqlserver
+          DB_NAME: master
+          DB_USER: sa
+          DB_PASSWORD: Password123!
+          DB_PORT: 1433
+          DIALECT: mssql
+          SYNTHETIC: true
+          SCHEMA_NAME: omop
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@f94ec6bedd8674c4426838e6b50417d36b6ab231 # v5.3.1
+        with:
+          version: "0.5.16"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      
+      - name: Setup Python
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version-file: ".python-version"
+
+      - name: uv sync
+        run: uv sync --frozen --dev
+
+      - name: Run tests
+        run: |
+          set -e
+          uv run pytest tests
