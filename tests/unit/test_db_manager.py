@@ -45,7 +45,7 @@ def test_check_tables_exist_all_tables_present(
         db_manager.engine = mock_engine
         db_manager.inspector = mock_inspector
 
-        # Verify the inspector was called with the correct schema
+        # Assert the inspector was called with the correct schema
         mock_inspector.get_table_names.assert_called_once_with(schema=None)
 
 
@@ -64,7 +64,6 @@ def test_check_tables_exist_missing_tables(
 
     # Create a SyncDBManager instance with mocked dependencies
     with patch("hutch_bunny.core.db_manager.inspect", return_value=mock_inspector):
-        # We expect a RuntimeError to be raised during initialization
         with pytest.raises(RuntimeError) as exc_info:
             SyncDBManager(
                 username="test_user",
@@ -75,7 +74,7 @@ def test_check_tables_exist_missing_tables(
                 drivername="postgresql+psycopg",
             )
 
-        # Verify the error message contains the missing tables
+        # Assert error message contains the missing tables
         assert "Missing tables in the database" in str(exc_info.value)
         assert "condition_occurrence" in str(exc_info.value)
         assert "observation" in str(exc_info.value)
@@ -111,5 +110,5 @@ def test_check_tables_exist_with_schema(
         db_manager.engine = mock_engine
         db_manager.inspector = mock_inspector
 
-        # Verify the inspector was called with the correct schema
+        # Assert the inspector was called with the correct schema
         mock_inspector.get_table_names.assert_called_once_with(schema="test_schema")
