@@ -66,3 +66,44 @@ def test_check_tables_exist_with_schema_integration(db_manager: SyncDBManager) -
     else:
         # If the db_manager doesn't have a schema, we can skip this test
         pytest.skip("No schema configured for this test")
+
+
+@pytest.mark.integration
+def test_check_indexes_exist_integration(db_manager: SyncDBManager) -> None:
+    """
+    Verify that the _check_indexes_exist method works with a real database connection.
+    """
+    # Call the method directly
+    db_manager._check_indexes_exist()
+
+    # If we get here without an exception, the test passes
+    # The method might log warnings if indexes are missing, but it shouldn't raise exceptions
+    assert True
+
+
+@pytest.mark.integration
+def test_check_indexes_exist_with_missing_indexes(db_manager: SyncDBManager) -> None:
+    """
+    Verify that the _check_indexes_exist method logs warnings when indexes are missing.
+
+    Patch the inspector's get_indexes method to return empty lists for all tables.
+    """
+    # Create a mock that returns empty lists for all tables
+    mock_inspector = MagicMock()
+    mock_inspector.get_indexes.return_value = []
+
+    with patch.object(
+        db_manager.inspector,
+        "get_indexes",
+        side_effect=mock_inspector.get_indexes,
+    ):
+        with patch("hutch_bunny.core.db_manager.logger") as mock_logger:
+            # Call the method directly
+            db_manager._check_indexes_exist()
+
+            # Verify a warning was logged
+            mock_logger.warning.assert_called_once()
+
+            # Verify the warning message contains information about missing indexes
+            warning_msg = mock_logger.warning.call_args[0][0]
+            assert "Missing indexes in the database" in warning_msg
