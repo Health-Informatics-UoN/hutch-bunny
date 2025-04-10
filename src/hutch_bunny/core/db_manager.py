@@ -5,21 +5,15 @@ from functools import wraps
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.engine import URL as SQLAURL
 from sqlalchemy.exc import OperationalError
-from trino.sqlalchemy import URL as TrinoURL  # TODO: how to do as optional?
-from dotenv import load_dotenv
+from trino.sqlalchemy import URL as TrinoURL
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.settings import get_settings
 
 
 settings = get_settings()
-load_dotenv()
 
 
-def WakeAzureDB(
-    retries: int = 1,
-    delay: int = 30,
-    error_code: str = "40613"
-) -> Any:
+def WakeAzureDB(retries: int = 1, delay: int = 30, error_code: str = "40613") -> Any:
     """Decorator to retry a function on specific Azure DB wake-up errors.
 
     Args:
@@ -34,8 +28,12 @@ def WakeAzureDB(
         Callable: The wrapped function with retry logic or the original
          function.
     """
+
     def decorator(func):
-        if settings.DATASOURCE_WAKE_DB is False and settings.DATASOURCE_DB_DRIVERNAME == "mssql":
+        if (
+            settings.DATASOURCE_WAKE_DB is False
+            and settings.DATASOURCE_DB_DRIVERNAME == "mssql"
+        ):
             return func
 
         @wraps(func)
@@ -47,13 +45,17 @@ def WakeAzureDB(
                     error_msg = str(e)
                     if error_code in error_msg:
                         if attempt < retries:
-                            logger.info(f"{func.__name__} has called a sleeping DB, retrying in {delay} seconds...")
+                            logger.info(
+                                f"{func.__name__} has called a sleeping DB, retrying in {delay} seconds..."
+                            )
                             time.sleep(delay)
                         else:
                             raise e
                     else:
                         raise e
+
         return wrapper
+
     return decorator
 
 
@@ -166,6 +168,76 @@ class SyncDBManager(BaseDBManager):
             )
 
         self.inspector = inspect(self.engine)
+
+        self._check_tables_exist()
+        self._check_indexes_exist()
+
+    def _check_tables_exist(self) -> None:
+        """
+        Check if all required tables exist in the database.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            RuntimeError: Raised when the tables are missing.
+        """
+        required_tables = {
+            "concept",
+            "person",
+            "measurement",
+            "condition_occurrence",
+            "observation",
+            "drug_exposure",
+        }
+        existing_tables = set(self.inspector.get_table_names(schema=self.schema))
+        missing_tables = required_tables - existing_tables
+
+        if missing_tables:
+            raise RuntimeError(
+                f"Missing tables in the database: {', '.join(missing_tables)}"
+            )
+
+    def _check_indexes_exist(self) -> None:
+        """
+        Check if all required indexes exist in the database.
+        Warning is logged if any indexes are missing.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
+        # Based on query data so far, these are the most common indexes.
+        required_indexes = {
+            "person": ["idx_person_id"],
+            "concept": ["idx_concept_concept_id"],
+            "condition_occurrence": ["idx_condition_concept_id_1"],
+            "observation": ["idx_observation_concept_id_1"],
+            "measurement": ["idx_measurement_concept_id_1"],
+        }
+        missing_indexes = {}
+        for table, expected_indexes in required_indexes.items():
+            existing_indexes = {
+                idx["name"]
+                for idx in self.inspector.get_indexes(table, schema=self.schema)
+            }
+            missing = set(expected_indexes) - existing_indexes
+            if missing:
+                missing_indexes[table] = missing
+
+        if missing_indexes:
+            logger.warning(
+                (
+                    "Missing indexes in the database: "
+                    f"{', '.join(missing_indexes)}. "
+                    "Queries will be slower and we recommend adding these indexes."
+                )
+            )
 
     @WakeAzureDB()
     def execute_and_fetch(self, stmnt: Any) -> list:
