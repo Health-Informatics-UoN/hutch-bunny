@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
+from pydantic import Field, field_validator, ValidationInfo
 from typing import Optional, Literal, overload
 from functools import cache
 
@@ -66,14 +66,14 @@ class DaemonSettings(Settings):  # type: ignore
     Settings for the daemon
     """
 
+    TASK_API_ENFORCE_HTTPS: bool = Field(
+        description="Whether to enforce HTTPS for the task API", default=True
+    )
     TASK_API_BASE_URL: str = Field(description="The base URL of the task API")
     TASK_API_USERNAME: str = Field(description="The username for the task API")
     TASK_API_PASSWORD: str = Field(description="The password for the task API")
     TASK_API_TYPE: Optional[Literal["a", "b"]] = Field(
         description="The type of task API to use", default=None
-    )
-    TASK_API_ENFORCE_HTTPS: bool = Field(
-        description="Whether to enforce HTTPS for the task API", default=True
     )
     COLLECTION_ID: str = Field(description="The collection ID")
     POLLING_INTERVAL: int = Field(description="The polling interval", default=5)
@@ -81,6 +81,19 @@ class DaemonSettings(Settings):  # type: ignore
         description="The initial backoff in seconds", default=5
     )
     MAX_BACKOFF: int = Field(description="The maximum backoff in seconds", default=60)
+
+    @field_validator("TASK_API_BASE_URL")
+    def validate_https_enforcement(cls, v: str, info: ValidationInfo) -> str:
+        """
+        Validates that HTTPS is used when TASK_API_ENFORCE_HTTPS is True.
+        """
+        enforce_https = info.data.get("TASK_API_ENFORCE_HTTPS", True)
+
+        if enforce_https and not v.startswith("https://"):
+            raise ValueError(
+                "HTTPS is required for the task API but not used. Set TASK_API_ENFORCE_HTTPS to false if you are using a non-HTTPS connection."
+            )
+        return v
 
     def safe_model_dump(self) -> dict[str, object]:
         """
