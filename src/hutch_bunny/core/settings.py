@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, field_validator, ValidationInfo
 from typing import Optional, Literal, overload
 from functools import cache
+from hutch_bunny.core.logger import logger
 
 
 class Settings(BaseSettings):  # type: ignore
@@ -89,10 +90,15 @@ class DaemonSettings(Settings):  # type: ignore
         """
         enforce_https = info.data.get("TASK_API_ENFORCE_HTTPS", True)
 
-        if enforce_https and not v.startswith("https://"):
-            raise ValueError(
-                "HTTPS is required for the task API but not used. Set TASK_API_ENFORCE_HTTPS to false if you are using a non-HTTPS connection."
-            )
+        if not v.startswith("https://"):
+            if enforce_https:
+                raise ValueError(
+                    "HTTPS is required for the task API but not used. Set TASK_API_ENFORCE_HTTPS to false if you are using a non-HTTPS connection."
+                )
+            else:
+                logger.warning(
+                    "HTTPS is not used for the task API. This is not recommended in production environments."
+                )
         return v
 
     def safe_model_dump(self) -> dict[str, object]:

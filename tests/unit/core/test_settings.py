@@ -1,6 +1,7 @@
 import pytest
 from pydantic import ValidationError
 from src.hutch_bunny.core.settings import DaemonSettings
+from unittest.mock import patch
 
 
 @pytest.mark.unit
@@ -30,9 +31,10 @@ def test_https_validation_enforced() -> None:
 
 
 @pytest.mark.unit
-def test_https_validation_not_enforced() -> None:
+@patch("src.hutch_bunny.core.settings.logger")
+def test_https_validation_not_enforced(mock_logger) -> None:
     """
-    Verifies that no error is raised when HTTPS is not enforced.
+    Verifies that a warning is logged when HTTPS is not enforced but not used.
     """
     # Arrange & Act
     settings = DaemonSettings(
@@ -51,12 +53,16 @@ def test_https_validation_not_enforced() -> None:
     # Assert
     assert settings.TASK_API_BASE_URL == "http://example.com"
     assert settings.TASK_API_ENFORCE_HTTPS is False
+    mock_logger.warning.assert_called_once_with(
+        "HTTPS is not used for the task API. This is not recommended in production environments."
+    )
 
 
 @pytest.mark.unit
-def test_https_validation_https_used() -> None:
+@patch("src.hutch_bunny.core.settings.logger")
+def test_https_validation_https_used(mock_logger) -> None:
     """
-    Verifies that no error is raised when HTTPS is used.
+    Verifies that no error or warning is raised when HTTPS is used.
     """
     # Arrange & Act
     settings = DaemonSettings(
@@ -75,3 +81,4 @@ def test_https_validation_https_used() -> None:
     # Assert
     assert settings.TASK_API_BASE_URL == "https://example.com"
     assert settings.TASK_API_ENFORCE_HTTPS is True
+    mock_logger.warning.assert_not_called()
