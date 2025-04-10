@@ -9,10 +9,9 @@ from requests.auth import HTTPBasicAuth
 @pytest.fixture
 def mock_settings():
     mock_settings = Mock()
-    mock_settings.TASK_API_BASE_URL = "https://example.com"
+    mock_settings.TASK_API_BASE_URL = "http://example.com"
     mock_settings.TASK_API_USERNAME = "user"
     mock_settings.TASK_API_PASSWORD = "password"
-    mock_settings.TASK_API_ENFORCE_HTTPS = True
     return mock_settings
 
 
@@ -24,9 +23,6 @@ def task_api_client(mock_settings):
 @pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_request_success(mock_request, mock_settings, task_api_client):
-    """
-    Verifies that a request is made successfully.
-    """
     # Arrange
     mock_response = Mock(spec=Response)
     mock_response.status_code = 200
@@ -34,17 +30,16 @@ def test_request_success(mock_request, mock_settings, task_api_client):
     mock_request.return_value = mock_response
 
     # Act
-    response = task_api_client._request(SupportedMethod.GET, "https://example.com/test")
+    response = task_api_client._request(SupportedMethod.GET, "http://example.com/test")
 
     # Assert
     mock_request.assert_called_once_with(
         method="get",
-        url="https://example.com/test",
+        url="http://example.com/test",
         json=None,
         auth=HTTPBasicAuth(
             mock_settings.TASK_API_USERNAME, mock_settings.TASK_API_PASSWORD
         ),
-        headers=None,
     )
     assert response.status_code == 200
     assert response.text == "Success"
@@ -53,9 +48,6 @@ def test_request_success(mock_request, mock_settings, task_api_client):
 @pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_post_request(mock_request, mock_settings, task_api_client):
-    """
-    Verifies that a POST request is made successfully.
-    """
     # Arrange
     mock_response = Mock(spec=Response)
     mock_response.status_code = 201
@@ -80,9 +72,6 @@ def test_post_request(mock_request, mock_settings, task_api_client):
 @pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_get_request(mock_request, mock_settings, task_api_client):
-    """
-    Verifies that a GET request is made successfully.
-    """
     # Arrange
     mock_response = Mock(spec=Response)
     mock_response.status_code = 200
@@ -98,7 +87,6 @@ def test_get_request(mock_request, mock_settings, task_api_client):
         auth=HTTPBasicAuth(
             mock_settings.TASK_API_USERNAME, mock_settings.TASK_API_PASSWORD
         ),
-        headers=None,
     )
     assert response.status_code == 200
 
@@ -106,9 +94,6 @@ def test_get_request(mock_request, mock_settings, task_api_client):
 @pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_send_results(mock_request, mock_settings, task_api_client):
-    """
-    Verifies that a POST request is made successfully.
-    """
     # Arrange
     mock_response = Mock(spec=Response)
     mock_response.status_code = 200
@@ -136,9 +121,6 @@ def test_send_results(mock_request, mock_settings, task_api_client):
 @pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_request_network_error(mock_request, mock_settings, task_api_client):
-    """
-    Verifies that a network error is raised when the request fails.
-    """
     # Arrange
     mock_request.side_effect = RequestException("Network error")
 
@@ -152,9 +134,6 @@ def test_request_network_error(mock_request, mock_settings, task_api_client):
 @pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_request_unauthorized(mock_request, mock_settings, task_api_client):
-    """
-    Verifies that a 401 error is returned when the request is unauthorized.
-    """
     # Arrange
     mock_response = Mock(spec=Response)
     mock_response.status_code = 401
@@ -172,9 +151,6 @@ def test_request_unauthorized(mock_request, mock_settings, task_api_client):
 @pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_send_results_retry_logic(mock_request, mock_settings, task_api_client):
-    """
-    Verifies that the send_results method retries the request when it fails.
-    """
     # Arrange
     mock_response = Mock(spec=Response)
     mock_response.status_code = 500
@@ -197,9 +173,6 @@ def test_send_results_retry_logic(mock_request, mock_settings, task_api_client):
 def test_send_results_network_error(
     mock_logger, mock_request, mock_settings, task_api_client
 ):
-    """
-    Verifies that a network error is logged when the request fails.
-    """
     # Arrange
     mock_request.side_effect = RequestException("Network error")
     mock_result = Mock()
