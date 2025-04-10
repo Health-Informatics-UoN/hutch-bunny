@@ -27,16 +27,6 @@ class TaskApiClient:
         self.password = settings.TASK_API_PASSWORD
         self.enforce_https = settings.TASK_API_ENFORCE_HTTPS
 
-        if not self.base_url.startswith("https://"):
-            if self.enforce_https:
-                raise ValueError(
-                    "HTTPS is required for the task API but not used. Set TASK_API_ENFORCE_HTTPS to false if you are using a non-HTTPS connection."
-                )
-            else:
-                logger.warning(
-                    "HTTPS is not used for the task API. This is not recommended in production environments."
-                )
-
     def _request(
         self,
         method: SupportedMethod,
