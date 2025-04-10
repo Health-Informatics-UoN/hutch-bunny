@@ -17,7 +17,7 @@ def low_number_suppression(value: int | float, threshold: int = 10) -> int | flo
         >>> low_number_suppression(200, threshold=100)
         200
     """
-    return value if value > threshold else 0
+    return value if value >= threshold else 0
 
 
 def rounding(value: int | float, nearest: int = 10) -> int | float:
