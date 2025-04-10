@@ -9,7 +9,7 @@ from requests.auth import HTTPBasicAuth
 @pytest.fixture
 def mock_settings():
     mock_settings = Mock()
-    mock_settings.TASK_API_BASE_URL = "http://example.com"
+    mock_settings.TASK_API_BASE_URL = "https://example.com"
     mock_settings.TASK_API_USERNAME = "user"
     mock_settings.TASK_API_PASSWORD = "password"
     mock_settings.TASK_API_ENFORCE_HTTPS = True
@@ -34,12 +34,12 @@ def test_request_success(mock_request, mock_settings, task_api_client):
     mock_request.return_value = mock_response
 
     # Act
-    response = task_api_client._request(SupportedMethod.GET, "http://example.com/test")
+    response = task_api_client._request(SupportedMethod.GET, "https://example.com/test")
 
     # Assert
     mock_request.assert_called_once_with(
         method="get",
-        url="http://example.com/test",
+        url="https://example.com/test",
         json=None,
         auth=HTTPBasicAuth(
             mock_settings.TASK_API_USERNAME, mock_settings.TASK_API_PASSWORD
@@ -221,14 +221,12 @@ def test_send_results_network_error(
 @patch("src.hutch_bunny.core.upstream.task_api_client.logger")
 def test_enforce_https_warning(mock_logger):
     """
-    Verifies that a warning is logged when HTTPS is enforced but not used.
+    Verifies that a warning is logged when HTTPS is not enforced.
     """
     # Arrange
     mock_settings = Mock()
     mock_settings.TASK_API_BASE_URL = "http://example.com"
-    mock_settings.TASK_API_USERNAME = "user"
-    mock_settings.TASK_API_PASSWORD = "password"
-    mock_settings.TASK_API_ENFORCE_HTTPS = True
+    mock_settings.TASK_API_ENFORCE_HTTPS = False
 
     # Act
     TaskApiClient(mock_settings)
@@ -240,16 +238,31 @@ def test_enforce_https_warning(mock_logger):
 
 
 @pytest.mark.unit
+def test_enforce_https_error():
+    """
+    Verifies that an error is raised when HTTPS is enforced but not used.
+    """
+    # Arrange
+    mock_settings = Mock()
+    mock_settings.TASK_API_BASE_URL = "http://example.com"
+    mock_settings.TASK_API_ENFORCE_HTTPS = True
+
+    # Act & Assert
+    with pytest.raises(ValueError) as excinfo:
+        TaskApiClient(mock_settings)
+
+    assert "HTTPS is required for the task API but not used" in str(excinfo.value)
+
+
+@pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.logger")
 def test_enforce_https_no_warning(mock_logger):
     """
-    Verifies that no warning is logged when HTTPS is not enforced.
+    Verifies that no warning is logged when HTTPS is used.
     """
     # Arrange
     mock_settings = Mock()
     mock_settings.TASK_API_BASE_URL = "https://example.com"
-    mock_settings.TASK_API_USERNAME = "user"
-    mock_settings.TASK_API_PASSWORD = "password"
     mock_settings.TASK_API_ENFORCE_HTTPS = True
 
     # Act
@@ -263,17 +276,17 @@ def test_enforce_https_no_warning(mock_logger):
 @patch("src.hutch_bunny.core.upstream.task_api_client.logger")
 def test_enforce_https_disabled(mock_logger):
     """
-    Verifies that no warning is logged when HTTPS is explicitly disabled.
+    Verifies that a warning is logged when HTTPS is not used and enforce_https is disabled.
     """
     # Arrange
     mock_settings = Mock()
     mock_settings.TASK_API_BASE_URL = "http://example.com"
-    mock_settings.TASK_API_USERNAME = "user"
-    mock_settings.TASK_API_PASSWORD = "password"
     mock_settings.TASK_API_ENFORCE_HTTPS = False
 
     # Act
     TaskApiClient(mock_settings)
 
     # Assert
-    mock_logger.warning.assert_not_called()
+    mock_logger.warning.assert_called_once_with(
+        "HTTPS is not used for the task API. This is not recommended in production environments."
+    )
