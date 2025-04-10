@@ -40,6 +40,7 @@ def test_request_success(mock_request, mock_settings, task_api_client):
         auth=HTTPBasicAuth(
             mock_settings.TASK_API_USERNAME, mock_settings.TASK_API_PASSWORD
         ),
+        headers=None,
     )
     assert response.status_code == 200
     assert response.text == "Success"
@@ -87,6 +88,7 @@ def test_get_request(mock_request, mock_settings, task_api_client):
         auth=HTTPBasicAuth(
             mock_settings.TASK_API_USERNAME, mock_settings.TASK_API_PASSWORD
         ),
+        headers=None,
     )
     assert response.status_code == 200
 
