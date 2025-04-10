@@ -7,9 +7,8 @@ from hutch_bunny.core.db_manager import SyncDBManager
 @pytest.mark.integration
 def test_check_tables_exist_integration(db_manager: SyncDBManager) -> None:
     """
-    This test verifies that the function correctly identifies when all required tables
-    exist in a real database. It uses the db_manager fixture which connects to a real
-    database.
+    Verifies that the function correctly identifies when all required tables
+    exist in a real database.
     """
     # The db_manager fixture already calls _check_tables_exist during initialization
     # If we get here, it means no exception was raised, which is what we want
@@ -24,7 +23,7 @@ def test_check_tables_exist_integration(db_manager: SyncDBManager) -> None:
 @pytest.mark.integration
 def test_check_tables_exist_with_missing_tables(db_manager: SyncDBManager) -> None:
     """
-    This test verifies that the function correctly raises a RuntimeError when
+    Verifies that the function correctly raises a RuntimeError when
     required tables are missing.
 
     Patch the inspector's get_table_names method to return a subset of the required tables.
@@ -71,7 +70,7 @@ def test_check_tables_exist_with_schema_integration(db_manager: SyncDBManager) -
 @pytest.mark.integration
 def test_check_indexes_exist_integration(db_manager: SyncDBManager) -> None:
     """
-    Verify that the _check_indexes_exist method works with a real database connection.
+    Verify that the _check_indexes_exist method works against the synth db.
     """
     # Call the method directly
     db_manager._check_indexes_exist()
