@@ -63,6 +63,7 @@ class DaemonRunner(threading.Thread):
 @pytest.fixture
 def mock_daemon_settings(
     httpserver: HTTPServer,
+    request: pytest.FixtureRequest,
 ) -> Generator[DaemonSettings, None, None]:
     """
     Create test settings for the daemon.
@@ -72,13 +73,24 @@ def mock_daemon_settings(
     Args:
         httpserver: Pytest fixture that provides a local HTTP server
     """
+    # Get parameters from the test if they exist
+    params = getattr(request, "param", {})
+
     # Set environment variables for the test
     os.environ["TASK_API_BASE_URL"] = httpserver.url_for("").rstrip("/")
+    os.environ["TASK_API_USERNAME"] = "test_user"
+    os.environ["TASK_API_PASSWORD"] = "test_password"
     os.environ["COLLECTION_ID"] = "collection_id"
     os.environ["POLLING_INTERVAL"] = "1"  # Fast polling for tests
     os.environ["INITIAL_BACKOFF"] = "1"  # Fast backoff for tests
     os.environ["MAX_BACKOFF"] = "1"  # Fast backoff for tests
     os.environ["TASK_API_TYPE"] = "a"  # Set API type for endpoint construction
+
+    # Set modifiers from parameters if they exist
+    if "low_number_suppression" in params:
+        os.environ["LOW_NUMBER_SUPPRESSION"] = str(params["low_number_suppression"])
+    if "rounding" in params:
+        os.environ["ROUNDING"] = str(params["rounding"])
 
     yield get_settings(daemon=True)
 
@@ -151,16 +163,34 @@ def configured_mock_server(
     yield {"results": results_received}
 
 
+# Test cases for different modifier combinations
+test_cases = [
+    ({"low_number_suppression": 0, "rounding": 0}, 44),
+    ({"low_number_suppression": 30, "rounding": 0}, 44),
+    ({"low_number_suppression": 40, "rounding": 0}, 44),
+    ({"low_number_suppression": 0, "rounding": 10}, 40),
+    ({"low_number_suppression": 0, "rounding": 100}, 0),
+    ({"low_number_suppression": 20, "rounding": 10}, 40),
+]
+
+
 @pytest.mark.end_to_end
-def test_daemon_availability(configured_mock_server: Dict[str, ResultData]) -> None:
+@pytest.mark.parametrize("mock_daemon_settings", test_cases, indirect=True)
+def test_daemon_availability(
+    configured_mock_server: Dict[str, ResultData],
+    request: pytest.FixtureRequest,
+) -> None:
     """
-    Test the daemon's ability to process a task.
+    Test the daemon's ability to process a task with different modifiers.
 
     This test verifies that the daemon can:
     1. Poll for a task
-    2. Process the task
+    2. Process the task with the specified modifiers
     3. Send results back to the server
     """
+    # Get the expected count from the test parameters
+    expected_count = request.param[1]
+
     # Start the daemon in a separate thread
     daemon_thread = DaemonRunner()
     daemon_thread.start()
@@ -183,5 +213,5 @@ def test_daemon_availability(configured_mock_server: Dict[str, ResultData]) -> N
     assert results["status"] == "ok"
     assert results["protocolVersion"] == "v2"
     assert results["uuid"] == "unique_id"
-    assert results["queryResult"]["count"] == 40
+    assert results["queryResult"]["count"] == expected_count
     assert results["collection_id"] == "collection_id"
