@@ -12,6 +12,7 @@ def mock_settings():
     mock_settings.TASK_API_BASE_URL = "http://example.com"
     mock_settings.TASK_API_USERNAME = "user"
     mock_settings.TASK_API_PASSWORD = "password"
+    mock_settings.TASK_API_ENFORCE_HTTPS = True
     return mock_settings
 
 
@@ -23,6 +24,9 @@ def task_api_client(mock_settings):
 @pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_request_success(mock_request, mock_settings, task_api_client):
+    """
+    Verifies that a request is made successfully.
+    """
     # Arrange
     mock_response = Mock(spec=Response)
     mock_response.status_code = 200
@@ -49,6 +53,9 @@ def test_request_success(mock_request, mock_settings, task_api_client):
 @pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_post_request(mock_request, mock_settings, task_api_client):
+    """
+    Verifies that a POST request is made successfully.
+    """
     # Arrange
     mock_response = Mock(spec=Response)
     mock_response.status_code = 201
@@ -73,6 +80,9 @@ def test_post_request(mock_request, mock_settings, task_api_client):
 @pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_get_request(mock_request, mock_settings, task_api_client):
+    """
+    Verifies that a GET request is made successfully.
+    """
     # Arrange
     mock_response = Mock(spec=Response)
     mock_response.status_code = 200
@@ -96,6 +106,9 @@ def test_get_request(mock_request, mock_settings, task_api_client):
 @pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_send_results(mock_request, mock_settings, task_api_client):
+    """
+    Verifies that a POST request is made successfully.
+    """
     # Arrange
     mock_response = Mock(spec=Response)
     mock_response.status_code = 200
@@ -123,6 +136,9 @@ def test_send_results(mock_request, mock_settings, task_api_client):
 @pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_request_network_error(mock_request, mock_settings, task_api_client):
+    """
+    Verifies that a network error is raised when the request fails.
+    """
     # Arrange
     mock_request.side_effect = RequestException("Network error")
 
@@ -136,6 +152,9 @@ def test_request_network_error(mock_request, mock_settings, task_api_client):
 @pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_request_unauthorized(mock_request, mock_settings, task_api_client):
+    """
+    Verifies that a 401 error is returned when the request is unauthorized.
+    """
     # Arrange
     mock_response = Mock(spec=Response)
     mock_response.status_code = 401
@@ -153,6 +172,9 @@ def test_request_unauthorized(mock_request, mock_settings, task_api_client):
 @pytest.mark.unit
 @patch("src.hutch_bunny.core.upstream.task_api_client.requests.request")
 def test_send_results_retry_logic(mock_request, mock_settings, task_api_client):
+    """
+    Verifies that the send_results method retries the request when it fails.
+    """
     # Arrange
     mock_response = Mock(spec=Response)
     mock_response.status_code = 500
@@ -175,6 +197,9 @@ def test_send_results_retry_logic(mock_request, mock_settings, task_api_client):
 def test_send_results_network_error(
     mock_logger, mock_request, mock_settings, task_api_client
 ):
+    """
+    Verifies that a network error is logged when the request fails.
+    """
     # Arrange
     mock_request.side_effect = RequestException("Network error")
     mock_result = Mock()
@@ -190,3 +215,65 @@ def test_send_results_network_error(
     mock_logger.error.assert_called_with(
         "Network error occurred while posting results: Network error"
     )
+
+
+@pytest.mark.unit
+@patch("src.hutch_bunny.core.upstream.task_api_client.logger")
+def test_enforce_https_warning(mock_logger):
+    """
+    Verifies that a warning is logged when HTTPS is enforced but not used.
+    """
+    # Arrange
+    mock_settings = Mock()
+    mock_settings.TASK_API_BASE_URL = "http://example.com"
+    mock_settings.TASK_API_USERNAME = "user"
+    mock_settings.TASK_API_PASSWORD = "password"
+    mock_settings.TASK_API_ENFORCE_HTTPS = True
+
+    # Act
+    TaskApiClient(mock_settings)
+
+    # Assert
+    mock_logger.warning.assert_called_once_with(
+        "HTTPS is not used for the task API. This is not recommended in production environments."
+    )
+
+
+@pytest.mark.unit
+@patch("src.hutch_bunny.core.upstream.task_api_client.logger")
+def test_enforce_https_no_warning(mock_logger):
+    """
+    Verifies that no warning is logged when HTTPS is not enforced.
+    """
+    # Arrange
+    mock_settings = Mock()
+    mock_settings.TASK_API_BASE_URL = "https://example.com"
+    mock_settings.TASK_API_USERNAME = "user"
+    mock_settings.TASK_API_PASSWORD = "password"
+    mock_settings.TASK_API_ENFORCE_HTTPS = True
+
+    # Act
+    TaskApiClient(mock_settings)
+
+    # Assert
+    mock_logger.warning.assert_not_called()
+
+
+@pytest.mark.unit
+@patch("src.hutch_bunny.core.upstream.task_api_client.logger")
+def test_enforce_https_disabled(mock_logger):
+    """
+    Verifies that no warning is logged when HTTPS is explicitly disabled.
+    """
+    # Arrange
+    mock_settings = Mock()
+    mock_settings.TASK_API_BASE_URL = "http://example.com"
+    mock_settings.TASK_API_USERNAME = "user"
+    mock_settings.TASK_API_PASSWORD = "password"
+    mock_settings.TASK_API_ENFORCE_HTTPS = False
+
+    # Act
+    TaskApiClient(mock_settings)
+
+    # Assert
+    mock_logger.warning.assert_not_called()
