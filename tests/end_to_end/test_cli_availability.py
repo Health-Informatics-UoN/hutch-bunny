@@ -24,7 +24,7 @@ test_cases = [
     (
         "tests/queries/availability/availability.json",
         '[{"id": "Low Number Suppression", "threshold": 40}]',
-        0,
+        40,
     ),
     (
         "tests/queries/availability/availability.json",

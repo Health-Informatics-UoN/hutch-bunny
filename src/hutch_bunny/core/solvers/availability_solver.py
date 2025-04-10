@@ -323,7 +323,7 @@ class AvailabilitySolver:
 
             if low_number > 0:
                 full_query_all_groups = full_query_all_groups.having(
-                    func.count() > low_number
+                    func.count() >= low_number
                 )
 
             # here for debug, prints the SQL statement created
