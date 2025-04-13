@@ -34,6 +34,11 @@ def execute_query(
         try:
             query = DistributionQuery.from_dict(query_dict)
 
+            # Check for ICD-MAIN queries before calling the solver
+            # So we dont return results upstream
+            if query.code.startswith("ICD-MAIN"):
+                raise NotImplementedError("ICD-MAIN queries are not yet supported.")
+
             result = query_solvers.solve_distribution(
                 results_modifier, db_manager=db_manager, query=query
             )
