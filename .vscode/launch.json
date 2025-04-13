@@ -31,7 +31,19 @@
       "module": "hutch_bunny.cli",
       "args": [
         "--body",
-        "tests/queries/distribution/distribution.json",
+        "tests/queries/distribution/demographics.json",
+      ],
+      "justMyCode": true,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Bunny CLI ICD-MAIN",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "hutch_bunny.cli",
+      "args": [
+        "--body",
+        "tests/queries/distribution/icd.json",
       ],
       "justMyCode": true,
       "console": "integratedTerminal"
