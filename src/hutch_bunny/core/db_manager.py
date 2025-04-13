@@ -1,14 +1,15 @@
 import time
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 from functools import wraps
 
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.engine import URL as SQLAURL
 from sqlalchemy.exc import OperationalError
-from trino.sqlalchemy import URL as TrinoURL
+from trino.sqlalchemy import URL as TrinoURL  # type: ignore
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.settings import get_settings
-
+from sqlalchemy.engine import Row
+from sqlalchemy.sql import Executable
 
 settings = get_settings()
 
@@ -85,7 +86,7 @@ class BaseDBManager:
         """
         raise NotImplementedError
 
-    def execute_and_fetch(self, stmnt: Any) -> list:
+    def execute_and_fetch(self, stmnt: Executable) -> Sequence[Row[Any]]:  # type: ignore
         """Execute a statement against the database and fetch the result.
 
         Args:
@@ -95,11 +96,11 @@ class BaseDBManager:
             NotImplementedError: Raised when this method has not been implemented in subclass.
 
         Returns:
-            list: The list of rows returned.
+            Sequence[Row[Any]]: The sequence of rows returned.
         """
         raise NotImplementedError
 
-    def execute(self, stmnt: Any) -> None:
+    def execute(self, stmnt: Executable) -> None:
         """Execute a statement against the database and don't fetch any results.
 
         Args:
@@ -110,14 +111,14 @@ class BaseDBManager:
         """
         raise NotImplementedError
 
-    def list_tables(self) -> list:
+    def list_tables(self) -> list[str]:
         """List the tables in the database.
 
         Raises:
             NotImplementedError: Raised when this method has not been implemented in subclass.
 
         Returns:
-            list: The list of tables in the database.
+            list[str]: The list of tables in the database.
         """
         raise NotImplementedError
 
@@ -132,20 +133,8 @@ class SyncDBManager(BaseDBManager):
         port: int,
         database: str,
         drivername: str,
-        schema: Optional[str] = None,
-        connect_args: Optional[dict] = None,
+        schema: str | None = None,
     ) -> None:
-        if not isinstance(username, str):
-            raise TypeError("`username` must be a string")
-        if not isinstance(password, str):
-            raise TypeError("`password` must be a string")
-        if not isinstance(host, str):
-            raise TypeError("`host` must be a string")
-        if not isinstance(port, int):
-            raise TypeError("`port` must be an integer")
-        if not isinstance(database, str):
-            raise TypeError("`database` must be a string")
-
         url = SQLAURL.create(
             drivername=drivername,
             username=username,
@@ -156,11 +145,7 @@ class SyncDBManager(BaseDBManager):
         )
 
         self.schema = schema if schema is not None and len(schema) > 0 else None
-
-        if connect_args is not None:
-            self.engine = create_engine(url=url, connect_args=connect_args)
-        else:
-            self.engine = create_engine(url=url)
+        self.engine = create_engine(url=url)
 
         if self.schema is not None:
             self.engine.update_execution_options(
@@ -240,7 +225,7 @@ class SyncDBManager(BaseDBManager):
             )
 
     @WakeAzureDB()
-    def execute_and_fetch(self, stmnt: Any) -> list:
+    def execute_and_fetch(self, stmnt: Executable) -> Sequence[Row[Any]]:  # type: ignore
         with self.engine.begin() as conn:
             result = conn.execute(statement=stmnt)
             rows = result.all()
@@ -248,13 +233,13 @@ class SyncDBManager(BaseDBManager):
         return rows
 
     @WakeAzureDB()
-    def execute(self, stmnt: Any) -> None:
+    def execute(self, stmnt: Executable) -> None:
         with self.engine.begin() as conn:
             conn.execute(statement=stmnt)
         self.engine.dispose()
 
     @WakeAzureDB()
-    def list_tables(self) -> list:
+    def list_tables(self) -> list[str]:
         return self.inspector.get_table_names(schema=self.schema)
 
 
@@ -282,16 +267,6 @@ class TrinoDBManager(BaseDBManager):
             schema (Union[str, None]): (optional) The schema in the database.
             catalog (str): The catalog on the Trino server.
         """
-        # check required args
-        if not isinstance(username, str):
-            raise TypeError("`username` must be a string")
-        if not isinstance(host, str):
-            raise TypeError("`host` must be a string")
-        if not isinstance(port, int):
-            raise TypeError("`port` must be an integer")
-        if not isinstance(catalog, str):
-            raise TypeError("`catalog` must be a string")
-
         url = TrinoURL(
             user=username,
             password=password,
@@ -304,16 +279,7 @@ class TrinoDBManager(BaseDBManager):
         self.engine = create_engine(url, connect_args={"http_scheme": "http"})
         self.inspector = inspect(self.engine)
 
-    def execute_and_fetch(self, stmnt: Any) -> list:
-        """Execute a SQL statement and return a list of rows containing the
-        results of the query.
-
-        Args:
-            stmnt (Any): The SQL statement to be executed.
-
-        Returns:
-            list: The results of the SQL statement.
-        """
+    def execute_and_fetch(self, stmnt: Executable) -> Sequence[Row[Any]]:  # type: ignore
         with self.engine.begin() as conn:
             result = conn.execute(statement=stmnt)
             rows = result.all()
@@ -321,22 +287,11 @@ class TrinoDBManager(BaseDBManager):
         self.engine.dispose()
         return rows
 
-    def execute(self, stmnt: Any) -> None:
-        """Execute a SQL statement. Useful for when results aren't expected back, such as
-        updating or deleting.
-
-        Args:
-            stmnt (Any): The SQL statement to be executed.
-        """
+    def execute(self, stmnt: Executable) -> None:
         with self.engine.begin() as conn:
             conn.execute(statement=stmnt)
         # Need to call `dispose` - not automatic
         self.engine.dispose()
 
-    def list_tables(self) -> list:
-        """Get a list of tables in the database.
-
-        Returns:
-            list: The tables in the database.
-        """
+    def list_tables(self) -> list[str]:
         return self.inspector.get_table_names()
