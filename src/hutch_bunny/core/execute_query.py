@@ -37,7 +37,9 @@ def execute_query(
             # Check for ICD-MAIN queries before calling the solver
             # So we dont return results upstream
             if query.code.startswith("ICD-MAIN"):
-                raise NotImplementedError("ICD-MAIN queries are not yet supported.")
+                raise NotImplementedError(
+                    "ICD-MAIN queries are not yet supported. See: https://github.com/Health-Informatics-UoN/hutch-bunny/issues/30"
+                )
 
             result = query_solvers.solve_distribution(
                 results_modifier, db_manager=db_manager, query=query
