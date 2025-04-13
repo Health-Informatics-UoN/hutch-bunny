@@ -1,13 +1,14 @@
-from hutch_bunny.core.db_manager import BaseDBManager
+from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.settings import DaemonSettings
 from hutch_bunny.core.execute_query import execute_query
 from hutch_bunny.core.upstream.task_api_client import TaskApiClient
 from hutch_bunny.core.results_modifiers import results_modifiers
+from hutch_bunny.core.logger import logger
 
 
 def handle_task(
     task_data: dict[str, object],
-    db_manager: BaseDBManager,
+    db_manager: SyncDBManager,
     settings: DaemonSettings,
     task_api_client: TaskApiClient,
 ) -> None:
@@ -29,9 +30,12 @@ def handle_task(
         ),
         rounding_target=int(settings.ROUNDING_TARGET or 0),
     )
-    result = execute_query(
-        task_data,
-        result_modifier,
-        db_manager=db_manager,
-    )
-    task_api_client.send_results(result)
+    try:
+        result = execute_query(
+            task_data,
+            result_modifier,
+            db_manager=db_manager,
+        )
+        task_api_client.send_results(result)
+    except NotImplementedError as e:
+        logger.error(f"Not implemented: {e}")
