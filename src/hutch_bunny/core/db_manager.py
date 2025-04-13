@@ -10,11 +10,17 @@ from hutch_bunny.core.logger import logger
 from hutch_bunny.core.settings import get_settings
 from sqlalchemy.engine import Row
 from sqlalchemy.sql import Executable
+from typing import Callable, ParamSpec, TypeVar
 
 settings = get_settings()
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
-def WakeAzureDB(retries: int = 1, delay: int = 30, error_code: str = "40613") -> Any:
+
+def WakeAzureDB(
+    retries: int = 1, delay: int = 30, error_code: str = "40613"
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator to retry a function on specific Azure DB wake-up errors.
 
     Args:
@@ -30,7 +36,7 @@ def WakeAzureDB(retries: int = 1, delay: int = 30, error_code: str = "40613") ->
          function.
     """
 
-    def decorator(func):
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         if (
             settings.DATASOURCE_WAKE_DB is False
             and settings.DATASOURCE_DB_DRIVERNAME == "mssql"
@@ -38,7 +44,7 @@ def WakeAzureDB(retries: int = 1, delay: int = 30, error_code: str = "40613") ->
             return func
 
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             for attempt in range(retries + 1):
                 try:
                     return func(*args, **kwargs)
@@ -54,6 +60,9 @@ def WakeAzureDB(retries: int = 1, delay: int = 30, error_code: str = "40613") ->
                             raise e
                     else:
                         raise e
+            raise RuntimeError(
+                "Unreachable code: function did not return"
+            )  # pragma: no cover
 
         return wrapper
 

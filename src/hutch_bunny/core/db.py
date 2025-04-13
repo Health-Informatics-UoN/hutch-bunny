@@ -18,7 +18,7 @@ DEFAULT_POSTGRES_DRIVER = f"{POSTGRES_SHORT_NAME}+psycopg"
 DEFAULT_MSSQL_DRIVER = f"{MSSQL_SHORT_NAME}+pymssql"
 
 
-def expand_short_drivers(drivername: str):
+def expand_short_drivers(drivername: str) -> str:
     """
     Expand unqualified "short" db driver names when necessary so we can override sqlalchemy
     e.g. when using psycopg3, expand `postgresql` explicitly rather than use sqlalchemy's default of psycopg2
