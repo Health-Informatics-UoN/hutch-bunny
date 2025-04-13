@@ -364,6 +364,7 @@ def _get_distribution_solver(
         return CodeDistributionQuerySolver(db_manager, query)
     if query.code == DistributionQueryType.DEMOGRAPHICS:
         return DemographicsDistributionQuerySolver(db_manager, query)
+    raise NotImplementedError(f"Queries with code: {query.code} are not yet supported.")
 
 
 def solve_distribution(
