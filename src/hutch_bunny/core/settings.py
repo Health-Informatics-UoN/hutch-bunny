@@ -4,7 +4,6 @@ from typing import Optional, Literal
 from hutch_bunny.core.logger import logger
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()
 
 
@@ -13,12 +12,6 @@ class Settings(BaseSettings):  # type: ignore
     Settings for the application
     """
 
-    # model_config = SettingsConfigDict(
-    #     validate_default=False,
-    #     env_file=".env",
-    #     env_file_encoding="utf-8",
-    #     extra="ignore",
-    # )
     DATASOURCE_USE_TRINO: bool = Field(
         description="Whether to use Trino as the datasource", default=False
     )
