@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 from pydantic import Field, field_validator, ValidationInfo
 from typing import Optional, Literal
 from hutch_bunny.core.logger import logger
@@ -68,12 +68,6 @@ class DaemonSettings(Settings):  # type: ignore
     Settings for the daemon
     """
 
-    model_config = SettingsConfigDict(
-        validate_default=False,
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
     TASK_API_ENFORCE_HTTPS: bool = Field(
         description="Whether to enforce HTTPS for the task API", default=True
     )
