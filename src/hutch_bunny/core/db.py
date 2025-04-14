@@ -4,9 +4,9 @@ from hutch_bunny.core.db_manager import (
     TrinoDBManager,
     WakeAzureDB,
 )
-from hutch_bunny.core.settings import get_settings
+from hutch_bunny.core.settings import Settings
 
-settings = get_settings()
+settings = Settings()
 
 
 # These are db specific constants, not intended for users to override,
