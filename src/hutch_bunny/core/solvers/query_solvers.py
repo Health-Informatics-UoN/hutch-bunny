@@ -24,11 +24,11 @@ from sqlalchemy import select
 
 from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.enums import DistributionQueryType
-from hutch_bunny.core.settings import get_settings
+from hutch_bunny.core.settings import Settings
 from hutch_bunny.core.constants import DISTRIBUTION_TYPE_FILE_NAMES_MAP
 
 
-settings = get_settings()
+settings = Settings()
 
 
 class BaseDistributionQuerySolver:

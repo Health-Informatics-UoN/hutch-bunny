@@ -1,8 +1,10 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 from pydantic import Field, field_validator, ValidationInfo
-from typing import Optional, Literal, overload
-from functools import cache
+from typing import Optional, Literal
 from hutch_bunny.core.logger import logger
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class Settings(BaseSettings):  # type: ignore
@@ -10,7 +12,6 @@ class Settings(BaseSettings):  # type: ignore
     Settings for the application
     """
 
-    model_config = SettingsConfigDict(validate_default=False)
     DATASOURCE_USE_TRINO: bool = Field(
         description="Whether to use Trino as the datasource", default=False
     )
@@ -106,37 +107,3 @@ class DaemonSettings(Settings):  # type: ignore
         Convert settings to a dictionary, excluding sensitive fields.
         """
         return self.model_dump(exclude={"DATASOURCE_DB_PASSWORD", "TASK_API_PASSWORD"})
-
-
-@overload
-def get_settings(daemon: Literal[True]) -> DaemonSettings: ...
-@overload
-def get_settings(daemon: Literal[False] = False) -> Settings: ...
-def get_settings(daemon: bool = False) -> Settings | DaemonSettings:
-    """Get application settings, either base or daemon-specific.
-
-    Args:
-        daemon: If True, returns DaemonSettings with additional daemon-specific config.
-               If False, returns base Settings.
-
-    Returns:
-        Settings or DaemonSettings object containing the application configuration
-    """
-    return _cached_get_settings(daemon)
-
-
-@cache
-def _cached_get_settings(daemon: bool) -> Settings | DaemonSettings:
-    """Cached helper function for loading application settings.
-
-    This function uses @cache decorator to memoize settings and avoid reloading
-    from environment variables on subsequent calls.
-
-    Args:
-        daemon: If True, loads DaemonSettings with additional daemon-specific config.
-               If False, loads base Settings.
-
-    Returns:
-        Settings or DaemonSettings object containing the cached application configuration
-    """
-    return DaemonSettings() if daemon else Settings()  # type: ignore

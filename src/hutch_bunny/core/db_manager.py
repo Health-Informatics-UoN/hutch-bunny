@@ -7,12 +7,12 @@ from sqlalchemy.engine import URL as SQLAURL
 from sqlalchemy.exc import OperationalError
 from trino.sqlalchemy import URL as TrinoURL  # type: ignore
 from hutch_bunny.core.logger import logger
-from hutch_bunny.core.settings import get_settings
+from hutch_bunny.core.settings import Settings
 from sqlalchemy.engine import Row
 from sqlalchemy.sql import Executable
 from typing import Callable, ParamSpec, TypeVar
 
-settings = get_settings()
+settings = Settings()
 
 P = ParamSpec("P")
 R = TypeVar("R")

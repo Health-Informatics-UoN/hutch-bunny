@@ -3,10 +3,10 @@ from hutch_bunny.core.solvers.query_solvers import DistributionQuery, solve_dist
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.rquest_dto.file import File
-from hutch_bunny.core.settings import get_settings
+from hutch_bunny.core.settings import Settings
 import hutch_bunny.core.db as db
 
-settings = get_settings()
+settings = Settings()
 
 
 @pytest.fixture
