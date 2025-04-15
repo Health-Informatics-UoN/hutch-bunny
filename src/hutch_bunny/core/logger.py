@@ -1,17 +1,6 @@
 import logging
-from typing import List, Protocol, runtime_checkable
 
 logger = logging.getLogger("hutch_bunny")
-
-
-@runtime_checkable
-class LoggerSettings(Protocol):
-    """Protocol for logger settings"""
-
-    MSG_FORMAT: str
-    DATE_FORMAT: str
-    LOGGER_LEVEL: str
-    COLLECTION_ID: str
 
 
 class RedactValueFilter(logging.Filter):
@@ -20,10 +9,10 @@ class RedactValueFilter(logging.Filter):
     """
 
     def __init__(
-        self, values_to_redact: List[str], redaction_text: str = "[REDACTED]"
+        self, values_to_redact: list[str], redaction_text: str = "[REDACTED]"
     ) -> None:
         """
-        Initialize the filter with the values to redact and the redaction text.
+        Initialise the filter with the values to redact and the redaction text.
         """
         self.values_to_redact = values_to_redact
         self.redaction_text = redaction_text
@@ -47,27 +36,25 @@ class RedactValueFilter(logging.Filter):
         return True
 
 
-def configure_logger(settings: LoggerSettings) -> None:
+def configure_logger(settings) -> None:  # type: ignore
     """
     Configure the logger with the given settings.
 
     Args:
         settings: The settings to configure the logger with.
+        # type: ignore is to prevent a circular import just for type checking.
     """
     LOG_FORMAT = logging.Formatter(settings.MSG_FORMAT, datefmt=settings.DATE_FORMAT)
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(LOG_FORMAT)
 
-    # Create a filter to redact sensitive information
-    sensitive_values = []
+    # Create a filter to redact collection_id
+    sensitive_values: list[str] = []
 
-    # Add collection_id to sensitive values if it exists
     if hasattr(settings, "COLLECTION_ID") and settings.COLLECTION_ID:
         sensitive_values.append(settings.COLLECTION_ID)
 
     sensitive_filter = RedactValueFilter(sensitive_values)
-
-    # Add the filter to the handler
     console_handler.addFilter(sensitive_filter)
 
     logger.setLevel(settings.LOGGER_LEVEL)
