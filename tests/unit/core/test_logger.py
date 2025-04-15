@@ -6,6 +6,7 @@ import os
 from importlib import reload
 
 # Import the entire modules instead of specific functions
+# To allow reload of settings for testing
 import hutch_bunny.core.logger
 import hutch_bunny.core.settings
 from hutch_bunny.core.settings import Settings, DaemonSettings
@@ -28,6 +29,14 @@ def mock_logger() -> Generator[MagicMock, None, None]:
 
 
 def test_configure_logger() -> None:
+    """Test the configure_logger function"""
+    # Test invalid level raises validation error
+    os.environ["BUNNY_LOGGER_LEVEL"] = "FLOPPSY"
+    with pytest.raises(ValueError, match="pattern"):
+        reload(hutch_bunny.core.settings)
+        settings = Settings()
+        hutch_bunny.core.logger.configure_logger(settings)
+
     # Test INFO level
     os.environ["BUNNY_LOGGER_LEVEL"] = "INFO"
     reload(hutch_bunny.core.settings)
@@ -42,13 +51,6 @@ def test_configure_logger() -> None:
     settings = Settings()
     hutch_bunny.core.logger.configure_logger(settings)
     assert logger.level == logging.DEBUG
-
-    # Test invalid level raises validation error
-    os.environ["BUNNY_LOGGER_LEVEL"] = "FLOPPSY"
-    with pytest.raises(ValueError, match="pattern"):
-        reload(hutch_bunny.core.settings)
-        settings = Settings()
-        hutch_bunny.core.logger.configure_logger(settings)
 
 
 def test_redact_filter_init() -> None:
