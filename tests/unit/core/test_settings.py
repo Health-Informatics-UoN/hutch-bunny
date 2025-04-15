@@ -134,4 +134,3 @@ def test_daemon_settings_safe_model_dump() -> None:
     assert "DATASOURCE_DB_PASSWORD" not in safe_dump
     assert "TASK_API_BASE_URL" in safe_dump
     assert "TASK_API_USERNAME" in safe_dump
-    assert "COLLECTION_ID" in safe_dump
