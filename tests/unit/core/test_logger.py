@@ -28,6 +28,22 @@ def mock_logger() -> Generator[MagicMock, None, None]:
         yield mock_logger
 
 
+@pytest.fixture
+def daemon_settings() -> DaemonSettings:
+    """Fixture to create a DaemonSettings instance with test values"""
+    return DaemonSettings(
+        COLLECTION_ID="test_collection",
+        DATASOURCE_DB_PASSWORD="db_password",
+        DATASOURCE_DB_HOST="localhost",
+        DATASOURCE_DB_PORT=5432,
+        DATASOURCE_DB_SCHEMA="public",
+        DATASOURCE_DB_DATABASE="test_db",
+        TASK_API_BASE_URL="https://example.com",
+        TASK_API_USERNAME="user",
+        TASK_API_PASSWORD="password",
+    )
+
+
 def test_configure_logger() -> None:
     """Test the configure_logger function"""
     # Test invalid level raises validation error
@@ -105,20 +121,11 @@ def test_redact_filter_no_matches(log_record: MagicMock) -> None:
     assert log_record.args == ()
 
 
-def test_configure_logger_basic(mock_logger: MagicMock) -> None:
+def test_configure_logger_basic(
+    mock_logger: MagicMock, daemon_settings: DaemonSettings
+) -> None:
     """Test basic logger configuration"""
-    settings = DaemonSettings(
-        COLLECTION_ID="test_collection",
-        DATASOURCE_DB_PASSWORD="db_password",
-        DATASOURCE_DB_HOST="localhost",
-        DATASOURCE_DB_PORT=5432,
-        DATASOURCE_DB_SCHEMA="public",
-        DATASOURCE_DB_DATABASE="test_db",
-        TASK_API_BASE_URL="https://example.com",
-        TASK_API_USERNAME="user",
-        TASK_API_PASSWORD="password",
-    )
-    hutch_bunny.core.logger.configure_logger(settings)
+    hutch_bunny.core.logger.configure_logger(daemon_settings)
 
     # Assert that the logger level was set
     assert mock_logger.setLevel.call_count == 1
