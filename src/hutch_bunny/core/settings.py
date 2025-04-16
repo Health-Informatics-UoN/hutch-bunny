@@ -106,4 +106,6 @@ class DaemonSettings(Settings):  # type: ignore
         """
         Convert settings to a dictionary, excluding sensitive fields.
         """
-        return self.model_dump(exclude={"DATASOURCE_DB_PASSWORD", "TASK_API_PASSWORD"})
+        return self.model_dump(
+            exclude={"DATASOURCE_DB_PASSWORD", "TASK_API_PASSWORD", "COLLECTION_ID"}
+        )
