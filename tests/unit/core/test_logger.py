@@ -107,8 +107,17 @@ def test_redact_filter_no_matches(log_record: MagicMock) -> None:
 
 def test_configure_logger_basic(mock_logger: MagicMock) -> None:
     """Test basic logger configuration"""
-    settings = DaemonSettings()
-    settings.COLLECTION_ID = "test_collection"
+    settings = DaemonSettings(
+        COLLECTION_ID="test_collection",
+        DATASOURCE_DB_PASSWORD="db_password",
+        DATASOURCE_DB_HOST="localhost",
+        DATASOURCE_DB_PORT=5432,
+        DATASOURCE_DB_SCHEMA="public",
+        DATASOURCE_DB_DATABASE="test_db",
+        TASK_API_BASE_URL="https://example.com",
+        TASK_API_USERNAME="user",
+        TASK_API_PASSWORD="password",
+    )
     hutch_bunny.core.logger.configure_logger(settings)
 
     # Assert that the logger level was set
