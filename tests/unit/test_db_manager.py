@@ -75,7 +75,7 @@ def test_check_tables_exist_missing_tables(
             )
 
         # Assert error message contains the missing tables
-        assert "Missing tables in the database" in str(exc_info.value)
+        assert "Missing tables or views in the database" in str(exc_info.value)
         assert "condition_occurrence" in str(exc_info.value)
         assert "observation" in str(exc_info.value)
         assert "drug_exposure" in str(exc_info.value)
