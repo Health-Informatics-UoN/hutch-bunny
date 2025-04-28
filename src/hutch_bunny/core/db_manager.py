@@ -168,7 +168,7 @@ class SyncDBManager(BaseDBManager):
 
     def _check_tables_exist(self) -> None:
         """
-        Check if all required tables exist in the database.
+        Check if all required tables or views exist in the database.
 
         Args:
             None
@@ -177,7 +177,7 @@ class SyncDBManager(BaseDBManager):
             None
 
         Raises:
-            RuntimeError: Raised when the tables are missing.
+            RuntimeError: Raised when the required tables/views are missing.
         """
         required_tables = {
             "concept",
@@ -187,12 +187,15 @@ class SyncDBManager(BaseDBManager):
             "observation",
             "drug_exposure",
         }
-        existing_tables = set(self.inspector.get_table_names(schema=self.schema))
-        missing_tables = required_tables - existing_tables
 
-        if missing_tables:
+        # Get both tables and views and combine
+        existing_tables = set(self.inspector.get_table_names(schema=self.schema))
+        existing_views = set(self.inspector.get_view_names(schema=self.schema))
+        existing_objects = existing_tables.union(existing_views)
+
+        if missing_tables := required_tables - existing_objects:
             raise RuntimeError(
-                f"Missing tables in the database: {', '.join(missing_tables)}"
+                f"Missing tables or views in the database: {', '.join(missing_tables)}"
             )
 
     def _check_indexes_exist(self) -> None:
