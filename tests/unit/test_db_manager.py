@@ -75,7 +75,7 @@ def test_check_tables_exist_missing_tables(
             )
 
         # Assert error message contains the missing tables
-        assert "Missing tables in the database" in str(exc_info.value)
+        assert "Missing tables or views in the database" in str(exc_info.value)
         assert "condition_occurrence" in str(exc_info.value)
         assert "observation" in str(exc_info.value)
         assert "drug_exposure" in str(exc_info.value)
@@ -112,6 +112,41 @@ def test_check_tables_exist_with_schema(
 
         # Assert the inspector was called with the correct schema
         mock_inspector.get_table_names.assert_called_once_with(schema="test_schema")
+
+
+@pytest.mark.unit
+def test_check_tables_exist_with_views(
+    mock_inspector: MagicMock, mock_engine: MagicMock
+) -> None:
+    """Test that views are accepted as valid alternatives to tables."""
+    # Arrange
+    mock_inspector.get_table_names.return_value = [
+        "concept",
+        "person",
+        "measurement",
+    ]
+    mock_inspector.get_view_names.return_value = [
+        "condition_occurrence",
+        "observation",
+        "drug_exposure",
+    ]
+
+    # Act
+    with patch("hutch_bunny.core.db_manager.inspect", return_value=mock_inspector):
+        db_manager = SyncDBManager(
+            username="test_user",
+            password="test_password",
+            host="test_host",
+            port=5432,
+            database="test_db",
+            drivername="postgresql+psycopg",
+        )
+        db_manager.engine = mock_engine
+        db_manager.inspector = mock_inspector
+
+        # Assert
+        mock_inspector.get_table_names.assert_called_once_with(schema=None)
+        mock_inspector.get_view_names.assert_called_once_with(schema=None)
 
 
 @pytest.mark.unit
