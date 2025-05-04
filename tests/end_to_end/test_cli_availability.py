@@ -90,6 +90,11 @@ test_cases = [
         '[{"id": "Low Number Suppression", "threshold": 0}, {"id": "Rounding", "nearest": 0}]',
         95,
     ),
+    (
+        "tests/queries/availability/secondary_modifiers.json",
+        '[{"id": "Low Number Suppression", "threshold": 0}, {"id": "Rounding", "nearest": 0}]',
+        13,
+    ),
 ]
 
 
