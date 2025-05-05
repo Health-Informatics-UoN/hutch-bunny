@@ -20,7 +20,7 @@ test_cases = [
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers="[]",
-        expected_count=7,
+        expected_count=8,
         expected_values={
             "8507": 40,  # MALE
             "8532": 60,  # FEMALE
@@ -29,12 +29,13 @@ test_cases = [
             "35626061": 10,
             "4323688": 20,
             "4266009": 10,
+            "21490742": 10,
         },
     ),
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers='[{"id": "Rounding", "nearest": 0}]',
-        expected_count=7,
+        expected_count=8,
         expected_values={
             "8507": 44,
             "8532": 55,
@@ -43,12 +44,13 @@ test_cases = [
             "35626061": 11,
             "4323688": 24,
             "4266009": 12,
+            "21490742": 12,
         },
     ),
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers='[{"id": "Rounding", "nearest": 100}]',
-        expected_count=7,
+        expected_count=8,
         expected_values={
             "8507": 0,
             "8532": 100,
@@ -57,12 +59,13 @@ test_cases = [
             "35626061": 0,
             "4323688": 0,
             "4266009": 0,
+            "21490742": 0,
         },
     ),
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers='[{"id": "Rounding", "nearest": 10}, {"id": "Low Number Suppression", "threshold": 10}]',
-        expected_count=7,
+        expected_count=8,
         expected_values={
             "8507": 40,
             "8532": 60,
@@ -71,6 +74,7 @@ test_cases = [
             "35626061": 10,
             "4323688": 20,
             "4266009": 10,
+            "21490742": 10,
         },
     ),
     DistributionTestCase(
