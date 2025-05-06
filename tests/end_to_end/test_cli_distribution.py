@@ -20,45 +20,61 @@ test_cases = [
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers="[]",
-        expected_count=4,
+        expected_count=8,
         expected_values={
             "8507": 40,  # MALE
             "8532": 60,  # FEMALE
             "38003564": 40,  # Not Hispanic
             "38003563": 60,  # Hispanic
+            "35626061": 10,
+            "4323688": 20,
+            "4266009": 10,
+            "21490742": 10,
         },
     ),
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers='[{"id": "Rounding", "nearest": 0}]',
-        expected_count=4,
+        expected_count=8,
         expected_values={
             "8507": 44,
             "8532": 55,
             "38003564": 41,
             "38003563": 58,
+            "35626061": 11,
+            "4323688": 24,
+            "4266009": 12,
+            "21490742": 12,
         },
     ),
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers='[{"id": "Rounding", "nearest": 100}]',
-        expected_count=4,
+        expected_count=8,
         expected_values={
             "8507": 0,
             "8532": 100,
             "38003564": 0,
             "38003563": 100,
+            "35626061": 0,
+            "4323688": 0,
+            "4266009": 0,
+            "21490742": 0,
         },
     ),
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers='[{"id": "Rounding", "nearest": 10}, {"id": "Low Number Suppression", "threshold": 10}]',
-        expected_count=4,
+        expected_count=8,
         expected_values={
             "8507": 40,
             "8532": 60,
             "38003564": 40,
             "38003563": 60,
+            "35626061": 10,
+            "4323688": 20,
+            "4266009": 10,
+            "21490742": 10,
         },
     ),
     DistributionTestCase(
@@ -157,9 +173,9 @@ def test_cli_distribution(test_case: DistributionTestCase) -> None:
 
             # Validate count is an integer
             count_str = fields[2]  # COUNT column as string
-            assert count_str.isdigit(), (
-                f"Expected an integer count, but got: {count_str}"
-            )
+            assert (
+                count_str.isdigit()
+            ), f"Expected an integer count, but got: {count_str}"
             count = int(count_str)  # Convert to int after validation
             assert count == test_case.expected_values[omop_code]
 

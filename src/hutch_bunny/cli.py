@@ -8,7 +8,7 @@ from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.parser import parser
 from hutch_bunny.core.logger import configure_logger, logger
 from hutch_bunny.core.db import get_db_manager
-from hutch_bunny.core.settings import get_settings, Settings
+from hutch_bunny.core.settings import Settings
 from importlib.metadata import version
 
 
@@ -34,7 +34,7 @@ def save_to_output(result: RquestResult, destination: str) -> None:
 
 
 def main() -> None:
-    settings: Settings = get_settings()
+    settings: Settings = Settings()
     configure_logger(settings)
     logger.info(f"Starting Bunny version: {version('hutch_bunny')}")
     logger.debug("Settings: %s", settings.safe_model_dump())
@@ -49,7 +49,6 @@ def main() -> None:
     results_modifier: list[dict] = get_results_modifiers_from_str(
         args.results_modifiers
     )
-
 
     result = execute_query(query_dict, results_modifier, db_manager=db_manager)
     logger.debug(f"Results: {result.to_dict()}")

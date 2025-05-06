@@ -1,9 +1,12 @@
 from hutch_bunny.core.logger import logger
-from hutch_bunny.core.db_manager import SyncDBManager, TrinoDBManager
+from hutch_bunny.core.db_manager import (
+    SyncDBManager,
+    TrinoDBManager,
+    WakeAzureDB,
+)
+from hutch_bunny.core.settings import Settings
 
-from hutch_bunny.core.settings import get_settings
-
-settings = get_settings()
+settings = Settings()
 
 
 # These are db specific constants, not intended for users to override,
@@ -15,7 +18,7 @@ DEFAULT_POSTGRES_DRIVER = f"{POSTGRES_SHORT_NAME}+psycopg"
 DEFAULT_MSSQL_DRIVER = f"{MSSQL_SHORT_NAME}+pymssql"
 
 
-def expand_short_drivers(drivername: str):
+def expand_short_drivers(drivername: str) -> str:
     """
     Expand unqualified "short" db driver names when necessary so we can override sqlalchemy
     e.g. when using psycopg3, expand `postgresql` explicitly rather than use sqlalchemy's default of psycopg2
@@ -32,6 +35,7 @@ def expand_short_drivers(drivername: str):
     return drivername
 
 
+@WakeAzureDB()
 def get_db_manager() -> SyncDBManager | TrinoDBManager:
     logger.info("Connecting to database...")
 

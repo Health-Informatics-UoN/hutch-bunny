@@ -1,11 +1,72 @@
-from typing import Any, Optional
+import time
+from typing import Any, Optional, Sequence
+from functools import wraps
 
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.engine import URL as SQLAURL
-from trino.sqlalchemy import URL as TrinoURL  # TODO: how to do as optional?
-from dotenv import load_dotenv
+from sqlalchemy.exc import OperationalError
+from trino.sqlalchemy import URL as TrinoURL  # type: ignore
+from hutch_bunny.core.logger import logger
+from hutch_bunny.core.settings import Settings
+from sqlalchemy.engine import Row
+from sqlalchemy.sql import Executable
+from typing import Callable, ParamSpec, TypeVar
 
-load_dotenv()
+settings = Settings()
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def WakeAzureDB(
+    retries: int = 1, delay: int = 30, error_code: str = "40613"
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    """Decorator to retry a function on specific Azure DB wake-up errors.
+
+    Args:
+        retries (int): Number of retries before giving up. 1 retry
+         is sufficient to wake an Azure DB.
+        delay (int): Delay in seconds between retries. 30 seconds is
+         enough time for the Azure DB to wake up.
+        error_code (str): The error code to check for in the exception. 40613
+         is the error code for an Azure DB that is asleep.
+
+    Returns:
+        Callable: The wrapped function with retry logic or the original
+         function.
+    """
+
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
+        if (
+            settings.DATASOURCE_WAKE_DB is False
+            and settings.DATASOURCE_DB_DRIVERNAME == "mssql"
+        ):
+            return func
+
+        @wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            for attempt in range(retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except OperationalError as e:
+                    error_msg = str(e)
+                    if error_code in error_msg:
+                        if attempt < retries:
+                            logger.info(
+                                f"{func.__name__} has called a sleeping DB, retrying in {delay} seconds..."
+                            )
+                            time.sleep(delay)
+                        else:
+                            raise e
+                    else:
+                        raise e
+            raise RuntimeError(
+                "Unreachable code: function did not return"
+            )  # pragma: no cover
+
+        return wrapper
+
+    return decorator
 
 
 class BaseDBManager:
@@ -34,7 +95,7 @@ class BaseDBManager:
         """
         raise NotImplementedError
 
-    def execute_and_fetch(self, stmnt: Any) -> list:
+    def execute_and_fetch(self, stmnt: Executable) -> Sequence[Row[Any]]:  # type: ignore
         """Execute a statement against the database and fetch the result.
 
         Args:
@@ -44,11 +105,11 @@ class BaseDBManager:
             NotImplementedError: Raised when this method has not been implemented in subclass.
 
         Returns:
-            list: The list of rows returned.
+            Sequence[Row[Any]]: The sequence of rows returned.
         """
         raise NotImplementedError
 
-    def execute(self, stmnt: Any) -> None:
+    def execute(self, stmnt: Executable) -> None:
         """Execute a statement against the database and don't fetch any results.
 
         Args:
@@ -59,19 +120,20 @@ class BaseDBManager:
         """
         raise NotImplementedError
 
-    def list_tables(self) -> list:
+    def list_tables(self) -> list[str]:
         """List the tables in the database.
 
         Raises:
             NotImplementedError: Raised when this method has not been implemented in subclass.
 
         Returns:
-            list: The list of tables in the database.
+            list[str]: The list of tables in the database.
         """
         raise NotImplementedError
 
 
 class SyncDBManager(BaseDBManager):
+    @WakeAzureDB()
     def __init__(
         self,
         username: str,
@@ -80,20 +142,8 @@ class SyncDBManager(BaseDBManager):
         port: int,
         database: str,
         drivername: str,
-        schema: Optional[str] = None,
-        connect_args: Optional[dict] = None,
+        schema: str | None = None,
     ) -> None:
-        if not isinstance(username, str):
-            raise TypeError("`username` must be a string")
-        if not isinstance(password, str):
-            raise TypeError("`password` must be a string")
-        if not isinstance(host, str):
-            raise TypeError("`host` must be a string")
-        if not isinstance(port, int):
-            raise TypeError("`port` must be an integer")
-        if not isinstance(database, str):
-            raise TypeError("`database` must be a string")
-
         url = SQLAURL.create(
             drivername=drivername,
             username=username,
@@ -104,11 +154,7 @@ class SyncDBManager(BaseDBManager):
         )
 
         self.schema = schema if schema is not None and len(schema) > 0 else None
-
-        if connect_args is not None:
-            self.engine = create_engine(url=url, connect_args=connect_args)
-        else:
-            self.engine = create_engine(url=url)
+        self.engine = create_engine(url=url)
 
         if self.schema is not None:
             self.engine.update_execution_options(
@@ -117,21 +163,95 @@ class SyncDBManager(BaseDBManager):
 
         self.inspector = inspect(self.engine)
 
-    def execute_and_fetch(self, stmnt: Any) -> list:
+        self._check_tables_exist()
+        self._check_indexes_exist()
+
+    def _check_tables_exist(self) -> None:
+        """
+        Check if all required tables or views exist in the database.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            RuntimeError: Raised when the required tables/views are missing.
+        """
+        required_tables = {
+            "concept",
+            "person",
+            "measurement",
+            "condition_occurrence",
+            "observation",
+            "drug_exposure",
+        }
+
+        # Get both tables and views and combine
+        existing_tables = set(self.inspector.get_table_names(schema=self.schema))
+        existing_views = set(self.inspector.get_view_names(schema=self.schema))
+        existing_objects = existing_tables.union(existing_views)
+
+        if missing_tables := required_tables - existing_objects:
+            raise RuntimeError(
+                f"Missing tables or views in the database: {', '.join(missing_tables)}"
+            )
+
+    def _check_indexes_exist(self) -> None:
+        """
+        Check if all required indexes exist in the database.
+        Warning is logged if any indexes are missing.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
+        # Based on query data so far, these are the most common indexes.
+        required_indexes = {
+            "person": ["idx_person_id"],
+            "concept": ["idx_concept_concept_id"],
+            "condition_occurrence": ["idx_condition_concept_id_1"],
+            "observation": ["idx_observation_concept_id_1"],
+            "measurement": ["idx_measurement_concept_id_1"],
+        }
+        missing_indexes = {}
+        for table, expected_indexes in required_indexes.items():
+            existing_indexes = {
+                idx["name"]
+                for idx in self.inspector.get_indexes(table, schema=self.schema)
+            }
+            missing = set(expected_indexes) - existing_indexes
+            if missing:
+                missing_indexes[table] = missing
+
+        if missing_indexes:
+            logger.warning(
+                (
+                    "Missing indexes in the database: "
+                    f"{', '.join(missing_indexes)}. "
+                    "Queries will be slower and we recommend adding these indexes."
+                )
+            )
+
+    @WakeAzureDB()
+    def execute_and_fetch(self, stmnt: Executable) -> Sequence[Row[Any]]:  # type: ignore
         with self.engine.begin() as conn:
             result = conn.execute(statement=stmnt)
             rows = result.all()
-        # Need to call `dispose` - not automatic
         self.engine.dispose()
         return rows
 
-    def execute(self, stmnt: Any) -> None:
+    @WakeAzureDB()
+    def execute(self, stmnt: Executable) -> None:
         with self.engine.begin() as conn:
             conn.execute(statement=stmnt)
-        # Need to call `dispose` - not automatic
         self.engine.dispose()
 
-    def list_tables(self) -> list:
+    @WakeAzureDB()
+    def list_tables(self) -> list[str]:
         return self.inspector.get_table_names(schema=self.schema)
 
 
@@ -159,16 +279,6 @@ class TrinoDBManager(BaseDBManager):
             schema (Union[str, None]): (optional) The schema in the database.
             catalog (str): The catalog on the Trino server.
         """
-        # check required args
-        if not isinstance(username, str):
-            raise TypeError("`username` must be a string")
-        if not isinstance(host, str):
-            raise TypeError("`host` must be a string")
-        if not isinstance(port, int):
-            raise TypeError("`port` must be an integer")
-        if not isinstance(catalog, str):
-            raise TypeError("`catalog` must be a string")
-
         url = TrinoURL(
             user=username,
             password=password,
@@ -181,16 +291,7 @@ class TrinoDBManager(BaseDBManager):
         self.engine = create_engine(url, connect_args={"http_scheme": "http"})
         self.inspector = inspect(self.engine)
 
-    def execute_and_fetch(self, stmnt: Any) -> list:
-        """Execute a SQL statement and return a list of rows containing the
-        results of the query.
-
-        Args:
-            stmnt (Any): The SQL statement to be executed.
-
-        Returns:
-            list: The results of the SQL statement.
-        """
+    def execute_and_fetch(self, stmnt: Executable) -> Sequence[Row[Any]]:  # type: ignore
         with self.engine.begin() as conn:
             result = conn.execute(statement=stmnt)
             rows = result.all()
@@ -198,22 +299,11 @@ class TrinoDBManager(BaseDBManager):
         self.engine.dispose()
         return rows
 
-    def execute(self, stmnt: Any) -> None:
-        """Execute a SQL statement. Useful for when results aren't expected back, such as
-        updating or deleting.
-
-        Args:
-            stmnt (Any): The SQL statement to be executed.
-        """
+    def execute(self, stmnt: Executable) -> None:
         with self.engine.begin() as conn:
             conn.execute(statement=stmnt)
         # Need to call `dispose` - not automatic
         self.engine.dispose()
 
-    def list_tables(self) -> list:
-        """Get a list of tables in the database.
-
-        Returns:
-            list: The tables in the database.
-        """
+    def list_tables(self) -> list[str]:
         return self.inspector.get_table_names()

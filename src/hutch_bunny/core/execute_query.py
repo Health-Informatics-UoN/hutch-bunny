@@ -1,14 +1,15 @@
-from typing import Dict
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.solvers import query_solvers
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
 from hutch_bunny.core.rquest_dto.result import RquestResult
+from hutch_bunny.core.db_manager import SyncDBManager, WakeAzureDB
 
 
+@WakeAzureDB()
 def execute_query(
-    query_dict: Dict,
-    results_modifier: list[dict],
-    db_manager,
+    query_dict: dict[str, object],
+    results_modifier: list[dict[str, str | int]],
+    db_manager: SyncDBManager,
 ) -> RquestResult:
     """
     Executes either an availability query or a distribution query, and returns results filtered by modifiers
@@ -32,6 +33,13 @@ def execute_query(
         logger.debug("Processing distribution query...")
         try:
             query = DistributionQuery.from_dict(query_dict)
+
+            # Check for ICD-MAIN queries before calling the solver
+            # So we dont return results upstream
+            if query.code.startswith("ICD-MAIN"):
+                raise NotImplementedError(
+                    "ICD-MAIN queries are not yet supported. See: https://github.com/Health-Informatics-UoN/hutch-bunny/issues/30"
+                )
 
             result = query_solvers.solve_distribution(
                 results_modifier, db_manager=db_manager, query=query
@@ -60,3 +68,4 @@ def execute_query(
             # raised if there was an issue saving the output or
             # the query json has incorrect values
             logger.error(str(ve), exc_info=True)
+    raise ValueError("Invalid query type")

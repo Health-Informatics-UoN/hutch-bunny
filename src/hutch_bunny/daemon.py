@@ -1,4 +1,4 @@
-from hutch_bunny.core.settings import get_settings, DaemonSettings
+from hutch_bunny.core.settings import DaemonSettings
 from hutch_bunny.core.upstream.task_api_client import TaskApiClient
 from hutch_bunny.core.logger import configure_logger, logger
 from hutch_bunny.core.db import get_db_manager
@@ -11,7 +11,7 @@ def main() -> None:
     """
     Main function to start the daemon process.
     """
-    settings: DaemonSettings = get_settings(daemon=True)
+    settings = DaemonSettings()
     configure_logger(settings)
     logger.info(f"Starting Bunny version {version('hutch_bunny')} ")
     logger.debug("Settings: %s", settings.safe_model_dump())

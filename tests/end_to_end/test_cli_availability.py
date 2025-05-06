@@ -24,7 +24,7 @@ test_cases = [
     (
         "tests/queries/availability/availability.json",
         '[{"id": "Low Number Suppression", "threshold": 40}]',
-        0,
+        40,
     ),
     (
         "tests/queries/availability/availability.json",
@@ -69,6 +69,31 @@ test_cases = [
         "tests/queries/availability/multiple_in_group_or_with_age2.json",
         '[{"id": "Rounding", "nearest": 0}]',
         55,
+    ),
+    (
+        "tests/queries/availability/measurement.json",
+        '[{"id": "Low Number Suppression", "threshold": 0}, {"id": "Rounding", "nearest": 0}]',
+        12,
+    ),
+    (
+        "tests/queries/availability/multiple_in_group_exclusion_time.json",
+        '[{"id": "Low Number Suppression", "threshold": 0}, {"id": "Rounding", "nearest": 0}]',
+        13,
+    ),
+    (
+        "tests/queries/availability/basic_ethnicity_or.json",
+        '[{"id": "Low Number Suppression", "threshold": 0}, {"id": "Rounding", "nearest": 0}]',
+        41,
+    ),
+    (
+        "tests/queries/availability/basic_race_or.json",
+        '[{"id": "Low Number Suppression", "threshold": 0}, {"id": "Rounding", "nearest": 0}]',
+        95,
+    ),
+    (
+        "tests/queries/availability/secondary_modifiers.json",
+        '[{"id": "Low Number Suppression", "threshold": 0}, {"id": "Rounding", "nearest": 0}]',
+        13,
     ),
 ]
 
