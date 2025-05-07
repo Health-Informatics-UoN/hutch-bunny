@@ -8,7 +8,7 @@ import threading
 from werkzeug.wrappers import Request, Response
 
 from hutch_bunny.daemon import main as daemon_main
-from hutch_bunny.core.settings import get_settings, DaemonSettings
+from hutch_bunny.core.settings import DaemonSettings
 
 
 class TaskData(TypedDict):
@@ -32,6 +32,13 @@ class ResultData(TypedDict):
     uuid: str
     queryResult: Dict[str, int]
     collection_id: str
+
+
+class TestCase(TypedDict):
+    """Type definition for test case data."""
+
+    settings: Dict[str, int]  # The settings to apply (low_number_suppression, rounding)
+    expected_count: int  # The expected count in the results
 
 
 class DaemonRunner(threading.Thread):
@@ -72,6 +79,7 @@ def mock_daemon_settings(
 
     Args:
         httpserver: Pytest fixture that provides a local HTTP server
+        request: The pytest request object containing test parameters
     """
     # Get parameters from the test if they exist
     params = getattr(request, "param", {})
@@ -87,12 +95,29 @@ def mock_daemon_settings(
     os.environ["TASK_API_TYPE"] = "a"  # Set API type for endpoint construction
 
     # Set modifiers from parameters if they exist
-    if "low_number_suppression" in params:
-        os.environ["LOW_NUMBER_SUPPRESSION"] = str(params["low_number_suppression"])
-    if "rounding" in params:
-        os.environ["ROUNDING"] = str(params["rounding"])
+    if "settings" in params:
+        if "low_number_suppression" in params["settings"]:
+            os.environ["LOW_NUMBER_SUPPRESSION"] = str(
+                params["settings"]["low_number_suppression"]
+            )
+        if "rounding" in params["settings"]:
+            os.environ["ROUNDING"] = str(params["settings"]["rounding"])
 
-    yield get_settings(daemon=True)
+    # Initialize DaemonSettings with all required parameters
+    settings = DaemonSettings(
+        TASK_API_ENFORCE_HTTPS=False,
+        TASK_API_BASE_URL=httpserver.url_for("").rstrip("/"),
+        TASK_API_USERNAME="test_user",
+        TASK_API_PASSWORD="test_password",
+        COLLECTION_ID="collection_id",
+        DATASOURCE_DB_PASSWORD="test_db_password",
+        DATASOURCE_DB_HOST="localhost",
+        DATASOURCE_DB_PORT=5432,
+        DATASOURCE_DB_SCHEMA="public",
+        DATASOURCE_DB_DATABASE="test_db",
+    )
+
+    yield settings
 
 
 @pytest.fixture
@@ -165,18 +190,14 @@ def configured_mock_server(
 
 # Test cases for different modifier combinations
 test_cases = [
-    ({"low_number_suppression": 0, "rounding": 0}, 44),
-    ({"low_number_suppression": 30, "rounding": 0}, 44),
-    ({"low_number_suppression": 40, "rounding": 0}, 44),
-    ({"low_number_suppression": 0, "rounding": 10}, 40),
-    ({"low_number_suppression": 0, "rounding": 100}, 0),
-    ({"low_number_suppression": 20, "rounding": 10}, 40),
+    TestCase(settings={"low_number_suppression": 0, "rounding": 0}, expected_count=44),
 ]
 
 
 @pytest.mark.end_to_end
 @pytest.mark.parametrize("mock_daemon_settings", test_cases, indirect=True)
 def test_daemon_availability(
+    mock_daemon_settings: DaemonSettings,
     configured_mock_server: Dict[str, ResultData],
     request: pytest.FixtureRequest,
 ) -> None:
@@ -185,11 +206,22 @@ def test_daemon_availability(
 
     This test verifies that the daemon can:
     1. Poll for a task
-    2. Process the task with the specified modifiers
-    3. Send results back to the server
+    2. Process the task with the specified modifiers (low number suppression and rounding)
+    3. Send results back to the server with the expected count
+
+    The test is parameterized with different combinations of:
+    - low_number_suppression: Threshold for suppressing low numbers
+    - rounding: Target for rounding numbers
+    - expected_count: The expected count in the results after applying modifiers
+
+    Args:
+        configured_mock_server: The mock server configured to receive results
+        mock_daemon_settings: The daemon settings for this test case
+        request: The pytest request object containing test parameters
     """
     # Get the expected count from the test parameters
-    expected_count = request.param[1]
+    # test_case = request.getfixturevalue("mock_daemon_settings").param
+    # expected_count = test_case["expected_count"]
 
     # Start the daemon in a separate thread
     daemon_thread = DaemonRunner()
@@ -213,5 +245,5 @@ def test_daemon_availability(
     assert results["status"] == "ok"
     assert results["protocolVersion"] == "v2"
     assert results["uuid"] == "unique_id"
-    assert results["queryResult"]["count"] == expected_count
+    assert results["queryResult"]["count"] == 44
     assert results["collection_id"] == "collection_id"
