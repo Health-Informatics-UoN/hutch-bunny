@@ -5,6 +5,19 @@ import json
 
 @dataclass
 class AvailabilityTestCase:
+    """Test case for availability queries.
+
+    This class represents a test case for availability queries, with support for
+    rounding and low number suppression modifiers.
+    The test case can be converted to the JSON format required by the CLI using get_modifiers_json().
+
+    Attributes:
+        json_file_path: Path to the JSON query file
+        expected_count: Expected count of results
+        rounding: Optional rounding parameter (nearest value)
+        low_number_suppression: Optional threshold for low number suppression
+    """
+
     json_file_path: str
     expected_count: int
     rounding: Optional[int] = None
