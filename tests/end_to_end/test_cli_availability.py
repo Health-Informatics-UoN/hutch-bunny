@@ -3,106 +3,15 @@ import pytest
 import os
 import json
 import sys
-
-test_cases = [
-    ("tests/queries/availability/availability.json", "[]", 40),
-    (
-        "tests/queries/availability/availability.json",
-        '[{"id": "Rounding", "nearest": 0}]',
-        44,
-    ),
-    (
-        "tests/queries/availability/availability.json",
-        '[{"id": "Low Number Suppression", "threshold": 0}, {"id": "Rounding", "nearest": 0}]',
-        44,
-    ),
-    (
-        "tests/queries/availability/availability.json",
-        '[{"id": "Low Number Suppression", "threshold": 30}]',
-        40,
-    ),
-    (
-        "tests/queries/availability/availability.json",
-        '[{"id": "Low Number Suppression", "threshold": 40}]',
-        40,
-    ),
-    (
-        "tests/queries/availability/availability.json",
-        '[{"id": "Low Number Suppression", "threshold": 20}, {"id": "Rounding", "nearest": 10}]',
-        40,
-    ),
-    (
-        "tests/queries/availability/availability.json",
-        '[{"id": "Rounding", "nearest": 100}]',
-        0,
-    ),
-    (
-        "tests/queries/availability/availability.json",
-        '[{"id": "Rounding", "nearest": 10}]',
-        40,
-    ),
-    ("tests/queries/availability/basic_gender_or.json", "[]", 100),
-    (
-        "tests/queries/availability/basic_gender_or.json",
-        '[{"id": "Rounding", "nearest": 0}]',
-        99,
-    ),
-    (
-        "tests/queries/availability/multiple_in_group_and.json",
-        "[]",
-        0,
-    ),
-    ("tests/queries/availability/multiple_in_group_or.json", "[]", 60),
-    (
-        "tests/queries/availability/multiple_in_group_or.json",
-        '[{"id": "Rounding", "nearest": 0}]',
-        55,
-    ),
-    ("tests/queries/availability/multiple_in_group_or_with_age1.json", "[]", 60),
-    (
-        "tests/queries/availability/multiple_in_group_or_with_age1.json",
-        '[{"id": "Rounding", "nearest": 0}]',
-        55,
-    ),
-    ("tests/queries/availability/multiple_in_group_or_with_age2.json", "[]", 60),
-    (
-        "tests/queries/availability/multiple_in_group_or_with_age2.json",
-        '[{"id": "Rounding", "nearest": 0}]',
-        55,
-    ),
-    (
-        "tests/queries/availability/measurement.json",
-        '[{"id": "Low Number Suppression", "threshold": 0}, {"id": "Rounding", "nearest": 0}]',
-        12,
-    ),
-    (
-        "tests/queries/availability/multiple_in_group_exclusion_time.json",
-        '[{"id": "Low Number Suppression", "threshold": 0}, {"id": "Rounding", "nearest": 0}]',
-        13,
-    ),
-    (
-        "tests/queries/availability/basic_ethnicity_or.json",
-        '[{"id": "Low Number Suppression", "threshold": 0}, {"id": "Rounding", "nearest": 0}]',
-        41,
-    ),
-    (
-        "tests/queries/availability/basic_race_or.json",
-        '[{"id": "Low Number Suppression", "threshold": 0}, {"id": "Rounding", "nearest": 0}]',
-        95,
-    ),
-    (
-        "tests/queries/availability/secondary_modifiers.json",
-        '[{"id": "Low Number Suppression", "threshold": 0}, {"id": "Rounding", "nearest": 0}]',
-        13,
-    ),
-]
+from tests.end_to_end.test_cases.availability_test_cases import (
+    test_cases,
+    AvailabilityTestCase,
+)
 
 
 @pytest.mark.end_to_end
-@pytest.mark.parametrize("json_file_path, modifiers, expected_count", test_cases)
-def test_cli_availability(
-    json_file_path: str, modifiers: str, expected_count: int
-) -> None:
+@pytest.mark.parametrize("test_case", test_cases)
+def test_cli_availability(test_case: AvailabilityTestCase) -> None:
     """
     Test the CLI availability command.
 
@@ -110,9 +19,7 @@ def test_cli_availability(
     and assert the output is as expected.
 
     Args:
-        json_file_path (str): The path to the JSON file containing the query.
-        modifiers (str): The modifiers to apply to the query.
-        expected_count (int): The expected count of results.
+        test_case: The test case containing the JSON file path, modifiers, and expected count.
 
     Returns:
         None
@@ -127,9 +34,9 @@ def test_cli_availability(
             "-m",
             "hutch_bunny.cli",
             "--body",
-            json_file_path,
+            test_case.json_file_path,
             "--modifiers",
-            modifiers,
+            test_case.get_modifiers_json(),
             "--output",
             output_file_path,
         ],
@@ -161,7 +68,7 @@ def test_cli_availability(
         assert output_data["status"] == "ok"
         assert output_data["protocolVersion"] == "v2"
         assert output_data["uuid"] == "unique_id"
-        assert output_data["queryResult"]["count"] == expected_count
+        assert output_data["queryResult"]["count"] == test_case.expected_count
         assert output_data["queryResult"]["datasetCount"] == 0
         assert output_data["queryResult"]["files"] == []
         assert output_data["message"] == ""
