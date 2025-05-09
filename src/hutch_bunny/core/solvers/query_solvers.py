@@ -6,6 +6,7 @@ import pandas as pd
 
 from sqlalchemy import distinct, func
 
+
 from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
 from hutch_bunny.core.db_manager import SyncDBManager
@@ -21,18 +22,18 @@ from hutch_bunny.core.entities import (
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
 from hutch_bunny.core.rquest_dto.file import File
 from sqlalchemy import select
+from hutch_bunny.core.solvers.availability_solver import ResultModifier
 
 from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.enums import DistributionQueryType
 from hutch_bunny.core.settings import Settings
 from hutch_bunny.core.constants import DISTRIBUTION_TYPE_FILE_NAMES_MAP
 
-
 settings = Settings()
 
 
 class BaseDistributionQuerySolver:
-    def solve_query(self, results_modifier: list) -> Tuple[str, int]:
+    def solve_query(self, results_modifier: list[ResultModifier]) -> Tuple[str, int]:
         raise NotImplementedError
 
 
@@ -82,7 +83,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         self.db_manager = db_manager
         self.query = query
 
-    def solve_query(self, results_modifier: list) -> Tuple[str, int]:
+    def solve_query(self, results_modifier: list[ResultModifier]) -> Tuple[str, int]:
         """Build table of distribution query and return as a TAB separated string
          along with the number of rows.
 
@@ -97,25 +98,29 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
         # Prepare the empty results data frame
         df = pd.DataFrame(columns=self.output_cols)
 
-        low_number = next(
+        low_number: int = next(
             (
-                item["threshold"]
+                item["threshold"] if item["threshold"] is not None else 10
                 for item in results_modifier
                 if item["id"] == "Low Number Suppression"
             ),
             10,
         )
-        rounding = next(
-            (item["nearest"] for item in results_modifier if item["id"] == "Rounding"),
+        rounding: int = next(
+            (
+                item["nearest"] if item["nearest"] is not None else 10
+                for item in results_modifier
+                if item["id"] == "Rounding"
+            ),
             10,
         )
 
         # Get the counts for each concept ID
-        counts: list = []
-        concepts: list = []
-        categories: list = []
-        biobanks: list = []
-        omop_desc: list = []
+        counts: list[int] = []
+        concepts: list[int] = []
+        categories: list[str] = []
+        biobanks: list[str] = []
+        omop_desc: list[str] = []
 
         with self.db_manager.engine.connect() as con:
             for domain_id in self.allowed_domains_map:
@@ -211,8 +216,8 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         self.db_manager = db_manager
         self.query = query
 
-    def solve_query(self, results_modifier: list[dict]) -> Tuple[str, int]:
-        """Build table of distribution query and return as a TAB separated string
+    def solve_query(self, results_modifier: list[ResultModifier]) -> Tuple[str, int]:
+        """Build table of demographics query and return as a TAB separated string
         along with the number of rows.
 
         Parameters
@@ -226,28 +231,34 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         # Prepare the empty results data frame
         df = pd.DataFrame(columns=self.output_cols)
 
-        low_number = next(
+        low_number: int = next(
             (
-                item["threshold"]
+                item["threshold"] if item["threshold"] is not None else 10
                 for item in results_modifier
                 if item["id"] == "Low Number Suppression"
             ),
             10,
         )
-        rounding = next(
-            (item["nearest"] for item in results_modifier if item["id"] == "Rounding"),
+        rounding: int = next(
+            (
+                item["nearest"] if item["nearest"] is not None else 10
+                for item in results_modifier
+                if item["id"] == "Rounding"
+            ),
             10,
         )
 
         # Get the counts for each concept ID
-        counts: list = []
-        concepts: list = []
-        categories: list = []
-        biobanks: list = []
-        datasets: list = []
-        codes: list = []
-        descriptions: list = []
-        alternatives: list = []
+
+
+        counts: list[int] = []
+        concepts: list[int] = []
+        categories: list[str] = []
+        biobanks: list[str] = []
+        datasets: list[str] = []
+        codes: list[str] = []
+        descriptions: list[str] = []
+        alternatives: list[str] = []
 
         # People count statement
         if rounding > 0:
@@ -319,7 +330,7 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
 
 
 def solve_availability(
-    results_modifier: list[dict], db_manager: SyncDBManager, query: AvailabilityQuery
+    results_modifier: list[ResultModifier], db_manager: SyncDBManager, query: AvailabilityQuery
 ) -> RquestResult:
     """Solve RQuest availability queries.
 
@@ -373,7 +384,7 @@ def _get_distribution_solver(
 
 
 def solve_distribution(
-    results_modifier: list[dict], db_manager: SyncDBManager, query: DistributionQuery
+    results_modifier: list[ResultModifier], db_manager: SyncDBManager, query: DistributionQuery
 ) -> RquestResult:
     """Solve RQuest distribution queries.
 
