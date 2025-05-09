@@ -252,16 +252,17 @@ class DemographicsDistributionQuerySolver(BaseDistributionQuerySolver):
         # People count statement
         if rounding > 0:
             stmnt = select(
-                func.round((func.count() / rounding), 0) * rounding,
+                func.round((func.count(distinct(Person.person_id)) / rounding), 0)
+                * rounding,
                 Person.gender_concept_id,
             ).group_by(Person.gender_concept_id)
         else:
             stmnt = select(
-                func.count(Person.person_id), Person.gender_concept_id
+                func.count(distinct(Person.person_id)), Person.gender_concept_id
             ).group_by(Person.gender_concept_id)
 
         if low_number > 0:
-            stmnt = stmnt.having(func.count() > low_number)
+            stmnt = stmnt.having(func.count(distinct(Person.person_id)) > low_number)
 
         concepts.append(8507)
         concepts.append(8532)
