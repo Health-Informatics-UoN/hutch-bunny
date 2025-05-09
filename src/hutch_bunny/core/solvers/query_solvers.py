@@ -4,7 +4,7 @@ from hutch_bunny.core.logger import logger
 from typing import Tuple
 import pandas as pd
 
-from sqlalchemy import func
+from sqlalchemy import distinct, func
 
 from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
@@ -129,7 +129,9 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
                 if rounding > 0:
                     stmnt = (
                         select(
-                            func.round((func.count(table.person_id) / rounding), 0)
+                            func.round(
+                                (func.count(distinct(table.person_id)) / rounding), 0
+                            )
                             * rounding,
                             Concept.concept_id,
                             Concept.concept_name,
@@ -140,7 +142,7 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
                 else:
                     stmnt = (
                         select(
-                            func.count(table.person_id),
+                            func.count(distinct(table.person_id)),
                             Concept.concept_id,
                             Concept.concept_name,
                         )
@@ -149,7 +151,9 @@ class CodeDistributionQuerySolver(BaseDistributionQuerySolver):
                     )
 
                 if low_number > 0:
-                    stmnt = stmnt.having(func.count() > low_number)
+                    stmnt = stmnt.having(
+                        func.count(distinct(table.person_id)) > low_number
+                    )
 
                 res = pd.read_sql(stmnt, con)
 
