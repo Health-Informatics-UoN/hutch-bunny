@@ -61,6 +61,7 @@ convention = "google"
 [tool.mypy]
 python_version = "3.13"
 strict = true
+plugins = ['pydantic.mypy']
 
 # Prevent ANY implicit `Any` types  
 disallow_any_generics = true
