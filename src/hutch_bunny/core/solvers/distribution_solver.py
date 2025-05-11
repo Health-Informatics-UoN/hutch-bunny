@@ -1,6 +1,6 @@
 import os
 from hutch_bunny.core.logger import logger
-from typing import Tuple
+from typing import Tuple, Type, Union
 import pandas as pd
 
 from sqlalchemy import distinct, func
@@ -20,6 +20,16 @@ from hutch_bunny.core.rquest_dto.query import DistributionQuery
 from sqlalchemy import select
 from hutch_bunny.core.solvers.availability_solver import ResultModifier
 
+# Type alias for tables that have person_id
+PersonTable = Union[
+    ConditionOccurrence,
+    Measurement,
+    Observation,
+    Person,
+    DrugExposure,
+    ProcedureOccurrence,
+]
+
 
 class CodeDistributionQuerySolver:
     """
@@ -35,7 +45,7 @@ class CodeDistributionQuerySolver:
         output_cols (list): A list of column names for the output table.
     """
 
-    allowed_domains_map = {
+    allowed_domains_map: dict[str, Type[PersonTable]] = {
         "Condition": ConditionOccurrence,
         "Ethnicity": Person,
         "Drug": DrugExposure,
