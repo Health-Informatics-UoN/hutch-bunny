@@ -4,7 +4,6 @@ import pandas as pd
 
 from sqlalchemy import distinct, func
 
-
 from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
