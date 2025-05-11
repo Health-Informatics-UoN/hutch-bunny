@@ -22,6 +22,19 @@ from hutch_bunny.core.solvers.availability_solver import ResultModifier
 
 
 class CodeDistributionQuerySolver:
+    """
+    Solve distribution queries for code queries.
+
+    Args:
+        db_manager (SyncDBManager): The database manager.
+        query (DistributionQuery): The distribution query to solve.
+
+    Attributes:
+        allowed_domains_map (dict): A dictionary mapping domain IDs to their respective SQLAlchemy models.
+        domain_concept_id_map (dict): A dictionary mapping domain IDs to their respective concept ID columns.
+        output_cols (list): A list of column names for the output table.
+    """
+
     allowed_domains_map = {
         "Condition": ConditionOccurrence,
         "Ethnicity": Person,

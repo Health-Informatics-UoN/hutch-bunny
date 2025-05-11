@@ -16,6 +16,17 @@ from hutch_bunny.core.solvers.availability_solver import ResultModifier
 
 
 class DemographicsDistributionQuerySolver:
+    """
+    Solve distribution queries for demographics queries.
+
+    Args:
+        db_manager (SyncDBManager): The database manager.
+        query (DistributionQuery): The distribution query to solve.
+
+    Attributes:
+        output_cols (list): A list of column names for the output table.
+    """
+
     output_cols = [
         "BIOBANK",
         "CODE",
