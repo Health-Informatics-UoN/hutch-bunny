@@ -173,9 +173,9 @@ def test_cli_distribution(test_case: DistributionTestCase) -> None:
 
             # Validate count is an integer
             count_str = fields[2]  # COUNT column as string
-            assert (
-                count_str.isdigit()
-            ), f"Expected an integer count, but got: {count_str}"
+            assert count_str.isdigit(), (
+                f"Expected an integer count, but got: {count_str}"
+            )
             count = int(count_str)  # Convert to int after validation
             assert count == test_case.expected_values[omop_code]
 

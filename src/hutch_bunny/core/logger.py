@@ -1,5 +1,9 @@
 import logging
 
+
+# Define logging level constants for retry
+INFO = logging.INFO
+
 logger = logging.getLogger("hutch_bunny")
 
 

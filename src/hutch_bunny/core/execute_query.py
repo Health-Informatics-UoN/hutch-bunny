@@ -2,10 +2,9 @@ from hutch_bunny.core.logger import logger
 from hutch_bunny.core.solvers import query_solvers
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
 from hutch_bunny.core.rquest_dto.result import RquestResult
-from hutch_bunny.core.db_manager import SyncDBManager, WakeAzureDB
+from hutch_bunny.core.db_manager import SyncDBManager
 
 
-@WakeAzureDB()
 def execute_query(
     query_dict: dict[str, object],
     results_modifier: list[dict[str, str | int]],

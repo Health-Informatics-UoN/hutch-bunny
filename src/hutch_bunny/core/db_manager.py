@@ -1,72 +1,17 @@
-import time
 from typing import Any, Optional, Sequence
-from functools import wraps
-
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.engine import URL as SQLAURL
-from sqlalchemy.exc import OperationalError
 from trino.sqlalchemy import URL as TrinoURL  # type: ignore
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.settings import Settings
 from sqlalchemy.engine import Row
 from sqlalchemy.sql import Executable
-from typing import Callable, ParamSpec, TypeVar
+from typing import ParamSpec, TypeVar
 
 settings = Settings()
 
 P = ParamSpec("P")
 R = TypeVar("R")
-
-
-def WakeAzureDB(
-    retries: int = 1, delay: int = 30, error_code: str = "40613"
-) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    """Decorator to retry a function on specific Azure DB wake-up errors.
-
-    Args:
-        retries (int): Number of retries before giving up. 1 retry
-         is sufficient to wake an Azure DB.
-        delay (int): Delay in seconds between retries. 30 seconds is
-         enough time for the Azure DB to wake up.
-        error_code (str): The error code to check for in the exception. 40613
-         is the error code for an Azure DB that is asleep.
-
-    Returns:
-        Callable: The wrapped function with retry logic or the original
-         function.
-    """
-
-    def decorator(func: Callable[P, R]) -> Callable[P, R]:
-        if (
-            settings.DATASOURCE_WAKE_DB is False
-            and settings.DATASOURCE_DB_DRIVERNAME == "mssql"
-        ):
-            return func
-
-        @wraps(func)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-            for attempt in range(retries + 1):
-                try:
-                    return func(*args, **kwargs)
-                except OperationalError as e:
-                    error_msg = str(e)
-                    if error_code in error_msg:
-                        if attempt < retries:
-                            logger.info(
-                                f"{func.__name__} has called a sleeping DB, retrying in {delay} seconds..."
-                            )
-                            time.sleep(delay)
-                        else:
-                            raise e
-                    else:
-                        raise e
-            raise RuntimeError(
-                "Unreachable code: function did not return"
-            )  # pragma: no cover
-
-        return wrapper
-
-    return decorator
 
 
 class BaseDBManager:
@@ -133,7 +78,6 @@ class BaseDBManager:
 
 
 class SyncDBManager(BaseDBManager):
-    @WakeAzureDB()
     def __init__(
         self,
         username: str,
@@ -236,7 +180,6 @@ class SyncDBManager(BaseDBManager):
                 )
             )
 
-    @WakeAzureDB()
     def execute_and_fetch(self, stmnt: Executable) -> Sequence[Row[Any]]:  # type: ignore
         with self.engine.begin() as conn:
             result = conn.execute(statement=stmnt)
@@ -244,13 +187,11 @@ class SyncDBManager(BaseDBManager):
         self.engine.dispose()
         return rows
 
-    @WakeAzureDB()
     def execute(self, stmnt: Executable) -> None:
         with self.engine.begin() as conn:
             conn.execute(statement=stmnt)
         self.engine.dispose()
 
-    @WakeAzureDB()
     def list_tables(self) -> list[str]:
         return self.inspector.get_table_names(schema=self.schema)
 

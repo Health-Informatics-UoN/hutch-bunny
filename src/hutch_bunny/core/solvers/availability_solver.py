@@ -24,6 +24,13 @@ from hutch_bunny.core.entities import (
     DrugExposure,
     ProcedureOccurrence,
 )
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_fixed,
+    before_sleep_log,
+    after_log,
+)
 
 from typing import Tuple
 from sqlalchemy import exists
@@ -31,7 +38,7 @@ from sqlalchemy import exists
 from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery
 from sqlalchemy.engine import Engine
-from hutch_bunny.core.logger import logger
+from hutch_bunny.core.logger import logger, INFO
 
 from hutch_bunny.core.settings import Settings
 from hutch_bunny.core.rquest_dto.rule import Rule
@@ -63,6 +70,12 @@ class AvailabilitySolver:
         self.db_manager = db_manager
         self.query = query
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(60),
+        before_sleep=before_sleep_log(logger, INFO),
+        after=after_log(logger, INFO),
+    )
     def solve_query(self, results_modifier: list[ResultModifier]) -> int:
         """
         This is the start of the process that begins to run the queries.
