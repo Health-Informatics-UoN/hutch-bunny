@@ -1,10 +1,16 @@
-from hutch_bunny.core.logger import logger
+from hutch_bunny.core.logger import logger, INFO
 from hutch_bunny.core.db_manager import (
     SyncDBManager,
     TrinoDBManager,
-    WakeAzureDB,
 )
 from hutch_bunny.core.settings import Settings
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_fixed,
+    before_sleep_log,
+    after_log,
+)
 
 settings = Settings()
 
@@ -35,7 +41,12 @@ def expand_short_drivers(drivername: str) -> str:
     return drivername
 
 
-@WakeAzureDB()
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_fixed(60),
+    before_sleep=before_sleep_log(logger, INFO),
+    after=after_log(logger, INFO),
+)
 def get_db_manager() -> SyncDBManager | TrinoDBManager:
     logger.info("Connecting to database...")
 

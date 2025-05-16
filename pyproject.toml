@@ -26,6 +26,7 @@ dependencies = [
   "trino>=0.331.0", # should become optional
   "pymssql>=2.3.2", # for SQL Server
   "pydantic-settings>=2.7.1",
+  "tenacity>=9.1.2", # for retry
 ]
 
 [project.scripts]

@@ -10,6 +10,14 @@ from hutch_bunny.core.entities import (
     Concept,
     Person,
 )
+from hutch_bunny.core.logger import logger, INFO
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_fixed,
+    before_sleep_log,
+    after_log,
+)
 from hutch_bunny.core.rquest_dto.query import DistributionQuery
 from sqlalchemy import select
 from hutch_bunny.core.solvers.availability_solver import ResultModifier
@@ -49,6 +57,12 @@ class DemographicsDistributionQuerySolver:
         self.db_manager = db_manager
         self.query = query
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(60),
+        before_sleep=before_sleep_log(logger, INFO),
+        after=after_log(logger, INFO),
+    )
     def solve_query(self, results_modifier: list[ResultModifier]) -> Tuple[str, int]:
         """Build table of demographics query and return as a TAB separated string
         along with the number of rows.
