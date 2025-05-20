@@ -16,9 +16,9 @@ class Settings(BaseSettings):  # type: ignore
         description="Whether to use Trino as the datasource", default=False
     )
     LOW_NUMBER_SUPPRESSION_THRESHOLD: int = Field(
-        description="The threshold for low numbers", default=5
+        description="The threshold for low numbers", default=10
     )
-    ROUNDING_TARGET: int = Field(description="The target for rounding", default=5)
+    ROUNDING_TARGET: int = Field(description="The target for rounding", default=10)
 
     LOGGER_NAME: str = "hutch"
     LOGGER_LEVEL: str = Field(
