@@ -172,4 +172,11 @@ test_cases = [
         low_number_suppression=0,
         expected_count=13,
     ),
+    # Age test - assert age filtering with override rounding.
+    AvailabilityTestCase(
+        json_file_path="tests/queries/availability/age.json",
+        rounding=0,
+        low_number_suppression=0,
+        expected_count=11,
+    ),
 ]
