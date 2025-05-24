@@ -26,7 +26,8 @@ class Rule:
 
         if self.type_ == "NUM":
             self.min_value, self.max_value = self._parse_numeric(self.value)
-            _, v = self.varname.split("=")
+            parts = self.varname.split("=")
+            v = parts[1] if len(parts) > 1 else None
             self.raw_range = self.value
             self.value = v
         else:
