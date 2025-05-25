@@ -540,6 +540,7 @@ class AvailabilitySolver:
         concept_domain: str | None = concepts.get(current_rule.value)
 
         if current_rule.varname == "AGE":
+            # AGE is a special case, as it is not a concept_id but a range.
             min_value = current_rule.min_value
             max_value = current_rule.max_value
 
