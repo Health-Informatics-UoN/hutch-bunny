@@ -36,6 +36,7 @@ from typing import Tuple
 from sqlalchemy import exists
 
 from hutch_bunny.core.obfuscation import apply_filters
+from hutch_bunny.core.rquest_dto.group import Group
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery
 from sqlalchemy.engine import Engine
 from hutch_bunny.core.logger import logger, INFO
@@ -85,7 +86,7 @@ class AvailabilitySolver:
         # resolve within the group
         return self._solve_rules(results_modifier)
 
-    def _find_concepts(self) -> dict[str, str]:
+    def _find_concepts(self, groups: list[Group]) -> dict[str, str]:
         """Function that takes all the concept IDs in the cohort definition, looks them up in the OMOP database
         to extract the concept_id and domain and place this within a dictionary for lookup during other query building
 
@@ -96,9 +97,11 @@ class AvailabilitySolver:
 
         """
         concept_ids = set()
-        for group in self.query.cohort.groups:
+        for group in groups:
             for rule in group.rules:
-                concept_ids.add(int(rule.value))
+                # Guard for None values (e.g. Age)
+                if rule.value:
+                    concept_ids.add(int(rule.value))
 
         concept_query = (
             # order must be .concept_id, .domain_id
@@ -130,7 +133,7 @@ class AvailabilitySolver:
 
         """
         # get the list of concepts to build the query constraints
-        concepts: dict[str, str] = self._find_concepts()
+        concepts: dict[str, str] = self._find_concepts(self.query.cohort.groups)
 
         low_number: int = next(
             (
@@ -281,16 +284,9 @@ class AvailabilitySolver:
                         """
                         PERSON TABLE RELATED RULES
                         """
-                        # this is unsupported currently
-                        if current_rule.varname == "AGE":
-                            logger.info(
-                                "An unsupported rule for AGE was detected and ignored"
-                            )
-                            # nothing is done yet, but stops this causing problems
-                        else:
-                            person_constraints_for_group = self._add_person_constraints(
-                                person_constraints_for_group, current_rule, concepts
-                            )
+                        person_constraints_for_group = self._add_person_constraints(
+                            person_constraints_for_group, current_rule, concepts
+                        )
 
                 """
                 NOTE: all rules done for a single group. Now to apply logic between the rules
@@ -542,6 +538,20 @@ class AvailabilitySolver:
         concepts: dict[str, str],
     ) -> list[ColumnElement[bool]]:
         concept_domain: str | None = concepts.get(current_rule.value)
+
+        if current_rule.varname == "AGE":
+            # AGE is a special case, as it is not a concept_id but a range.
+            min_value = current_rule.min_value
+            max_value = current_rule.max_value
+
+            if min_value is None or max_value is None:
+                return person_constraints_for_group
+
+            age = self._get_year_difference(
+                self.db_manager.engine, func.current_timestamp(), Person.birth_datetime
+            )
+            person_constraints_for_group.append(age >= min_value)
+            person_constraints_for_group.append(age <= max_value)
 
         if concept_domain == "Gender":
             if current_rule.operator == "=":

@@ -173,3 +173,22 @@ test_cases = [
         expected_count=13,
     ),
 ]
+
+# TODO: Add test cases for age - until we have improved code patterns for datetime.
+todo_test_cases = [
+    # Age - assert age filtering with default rounding.
+    AvailabilityTestCase(
+        json_file_path="tests/queries/availability/age.json",
+        rounding=10,
+        low_number_suppression=10,
+        expected_count=10,
+    ),
+    # Age - assert age filtering with override rounding.
+    AvailabilityTestCase(
+        json_file_path="tests/queries/availability/age.json",
+        rounding=0,
+        low_number_suppression=0,
+        expected_count=11,
+    ),
+]
+

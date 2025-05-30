@@ -1,6 +1,6 @@
 [project]
 name = "hutch-bunny"
-version = "1.0.0-beta.4"
+version = "1.0.0-beta.5"
 description = "A Cohort Discovery Task API worker"
 license = { text = "MIT License" }
 readme = "README.md"
@@ -47,6 +47,7 @@ dev = [
     "coverage>=7.6.12",
     "pytest-cov>=6.0.0",
     "pre-commit>=4.1.0",
+    "types-python-dateutil>=2.9.0.20250516",
 ]
 
 [tool.pytest.ini_options]
