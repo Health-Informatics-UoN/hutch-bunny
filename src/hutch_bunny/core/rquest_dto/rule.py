@@ -1,18 +1,18 @@
 import re
-from typing import Any, Tuple, Union
+from typing import Any, Tuple, List, Optional, Dict
 
 
 class Rule:
     def __init__(
         self,
-        value: Any = None,
+        value: Optional[Any] = None,
         type_: str = "",
-        time: Union[str, None] = None,
+        time: Optional[str] = None,
         varname: str = "",
         operator: str = "",
         raw_range: str = "",
-        varcat: str = None,
-        secondary_modifier: [] = None,
+        varcat: Optional[str] = None,
+        secondary_modifier: Optional[List[str]] = None,
         **kwargs,
     ) -> None:
         self.raw_range = raw_range
@@ -22,7 +22,21 @@ class Rule:
         self.varname = varname
         self.operator = operator
         self.varcat = varcat
-        self.secondary_modifier = secondary_modifier
+        self.secondary_modifier = secondary_modifier or []
+
+        # Parse time if present
+        # "time" : "|1:TIME:M" in the payload means that
+        # if the | is on the left of the value it was less than 1 month
+        # if it was "1|:TIME:M" it would mean greater than one month
+        self.time_value: Optional[str] = None
+        self.time_category: Optional[str] = None
+        self.left_value_time: Optional[str] = None
+        self.right_value_time: Optional[str] = None
+        if self.time:
+            time_value, time_category, _ = self.time.split(":")
+            self.time_value = time_value
+            self.time_category = time_category
+            self.left_value_time, self.right_value_time = time_value.split("|")
 
         if self.type_ == "NUM":
             self.min_value, self.max_value = self._parse_numeric(self.value)
@@ -31,9 +45,31 @@ class Rule:
             self.raw_range = self.value
             self.value = v
         else:
-            self.min_value, self.max_value = None, None
+            self.min_value, self.max_value = self._parse_raw_range(raw_range)
 
-    def to_dict(self) -> dict:
+    def _parse_raw_range(
+        self, raw_range: str
+    ) -> Tuple[Optional[float], Optional[float]]:
+        """Parse the raw_range string into min and max values.
+
+        Args:
+            raw_range: String in format "min|max" where min and max are optional
+
+        Returns:
+            Tuple of (min_value, max_value) where either can be None
+        """
+        if not raw_range:
+            return None, None
+
+        try:
+            min_str, max_str = raw_range.split("|")
+            min_value = float(min_str) if min_str else None
+            max_value = float(max_str) if max_str else None
+            return min_value, max_value
+        except ValueError:
+            return None, None
+
+    def to_dict(self) -> Dict[str, Any]:
         """Convert `Rule` to `dict`.
 
         Returns:
@@ -53,7 +89,7 @@ class Rule:
         return dict_
 
     @classmethod
-    def from_dict(cls, dict_: dict):
+    def from_dict(cls, dict_: Dict[str, Any]) -> "Rule":
         """Create a `Rule` from RO-Crate JSON.
 
         Args:
@@ -69,6 +105,7 @@ class Rule:
         operator = dict_.get("oper", "")
         varcat = dict_.get("varcat", "")
         secondary_modifier = dict_.get("secondary_modifier", [])
+        raw_range = dict_.get("raw_range", "")
 
         return cls(
             type_=type_,
@@ -78,11 +115,10 @@ class Rule:
             operator=operator,
             varcat=varcat,
             secondary_modifier=secondary_modifier,
+            raw_range=raw_range,
         )
 
-    def _parse_numeric(
-        self, value: str
-    ) -> Tuple[Union[float, None], Union[float, None]]:
+    def _parse_numeric(self, value: str) -> Tuple[Optional[float], Optional[float]]:
         pattern = re.compile(r"(-?\d*\.\d+|\d+|null)\.\.(-?\d*\.\d+|null)")
         # Try and parse min and max values, then return them
         if match := re.search(pattern, value):

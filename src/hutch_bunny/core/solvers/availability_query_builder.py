@@ -71,20 +71,6 @@ class AvailabilityQueryBuilder:
             query.cohort.groups
         )
 
-    def _get_low_number_threshold(self, results_modifier: list[ResultModifier]) -> int:
-        """Get the low number threshold from results modifier, defaulting to 10 if not found."""
-        for item in results_modifier:
-            if item["id"] == "Low Number Suppression":
-                return item["threshold"] if item["threshold"] is not None else 10
-        return 10
-
-    def _get_rounding_value(self, results_modifier: list[ResultModifier]) -> int:
-        """Get the rounding value from results modifier, defaulting to 10 if not found."""
-        for item in results_modifier:
-            if item["id"] == "Rounding":
-                return item["nearest"] if item["nearest"] is not None else 10
-        return 10
-
     def build_query(self, results_modifier: list[ResultModifier]) -> Select[Tuple[int]]:
         """Function for taking the JSON query from RQUEST and creating the required query to run against the OMOP database.
 
@@ -115,25 +101,6 @@ class AvailabilityQueryBuilder:
 
             # for each rule in a group
             for current_rule in current_group.rules:
-                # variables used to capture the relevant detail.
-                # "time" : "|1:TIME:M" in the payload means that
-                # if the | is on the left of the value it was less than 1 month
-                # if it was "1|:TIME:M" it would mean greater than one month
-                left_value_time: str | None = None
-                right_value_time: str | None = None
-
-                # if a time is supplied split the string out to component parts
-                if current_rule.time:
-                    time_value, time_category, _ = current_rule.time.split(":")
-                    left_value_time, right_value_time = time_value.split("|")
-
-                # if a number was supplied, it is in the format "value" : "0.0|200.0"
-                # therefore split to capture min as 0 and max as 200
-                if current_rule.raw_range and current_rule.raw_range != "":
-                    min_str, max_str = current_rule.raw_range.split("|")
-                    current_rule.min_value = float(min_str) if min_str else None
-                    current_rule.max_value = float(max_str) if max_str else None
-
                 # if the rule was not linked to a person variable
                 if current_rule.varcat != "Person":
                     # i.e. condition, observation, measurement or drug
@@ -151,9 +118,11 @@ class AvailabilityQueryBuilder:
                     # if there is an "Age" query added, this will require a join to the person table, to compare
                     # DOB with the data of event
 
-                    if time_category == "AGE":
+                    if current_rule.time_category == "AGE":
                         query_state = self._add_age_constraints(
-                            query_state, left_value_time, right_value_time
+                            query_state,
+                            current_rule.left_value_time,
+                            current_rule.right_value_time,
                         )
 
                     """"
@@ -180,14 +149,11 @@ class AvailabilityQueryBuilder:
                     RELATIVE TIME SEARCH SECTION
                     """
                     # this section deals with a relative time constraint, such as "time" : "|1:TIME:M"
-                    if (
-                        left_value_time is not None
-                        and right_value_time is not None
-                        and (left_value_time != "" or right_value_time != "")
-                        and time_category == "TIME"
-                    ):
+                    if current_rule.time_category == "TIME":
                         query_state = self._add_relative_date(
-                            query_state, left_value_time, right_value_time
+                            query_state,
+                            current_rule.left_value_time,
+                            current_rule.right_value_time,
                         )
 
                     """"
@@ -430,7 +396,10 @@ class AvailabilityQueryBuilder:
             raise NotImplementedError("Unsupported database dialect")
 
     def _add_relative_date(
-        self, query_state: QueryState, left_value_time: str, right_value_time: str
+        self,
+        query_state: QueryState,
+        left_value_time: str | None,
+        right_value_time: str | None,
     ) -> QueryState:
         time_value_supplied: str
 
@@ -576,3 +545,17 @@ class AvailabilityQueryBuilder:
                 Observation.observation_concept_id == int(current_rule.value)
             ),
         )
+
+    def _get_low_number_threshold(self, results_modifier: list[ResultModifier]) -> int:
+        """Get the low number threshold from results modifier, defaulting to 10 if not found."""
+        for item in results_modifier:
+            if item["id"] == "Low Number Suppression":
+                return item["threshold"] if item["threshold"] is not None else 10
+        return 10
+
+    def _get_rounding_value(self, results_modifier: list[ResultModifier]) -> int:
+        """Get the rounding value from results modifier, defaulting to 10 if not found."""
+        for item in results_modifier:
+            if item["id"] == "Rounding":
+                return item["nearest"] if item["nearest"] is not None else 10
+        return 10
