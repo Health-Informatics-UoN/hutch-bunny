@@ -1,4 +1,3 @@
-import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from typing import TypedDict
@@ -16,7 +15,6 @@ from sqlalchemy import (
 )
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
-    Concept,
     ConditionOccurrence,
     Measurement,
     Observation,
@@ -36,13 +34,13 @@ from typing import Tuple
 from sqlalchemy import exists
 
 from hutch_bunny.core.obfuscation import apply_filters
-from hutch_bunny.core.rquest_dto.group import Group
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery
 from sqlalchemy.engine import Engine
 from hutch_bunny.core.logger import logger, INFO
 
 from hutch_bunny.core.settings import Settings
 from hutch_bunny.core.rquest_dto.rule import Rule
+from hutch_bunny.core.services.concept_service import ConceptService
 
 
 class ResultModifier(TypedDict):
@@ -86,36 +84,6 @@ class AvailabilitySolver:
         # resolve within the group
         return self._solve_rules(results_modifier)
 
-    def _find_concepts(self, groups: list[Group]) -> dict[str, str]:
-        """Function that takes all the concept IDs in the cohort definition, looks them up in the OMOP database
-        to extract the concept_id and domain and place this within a dictionary for lookup during other query building
-
-        Although the query payload will tell you where the OMOP concept is from (based on the RQUEST OMOP version, this is
-        a safer method as we know concepts can move between tables based on a vocab.
-
-        Therefore, this helps to account for a difference between the Bunny vocab version and the RQUEST OMOP version.
-
-        """
-        concept_ids = set()
-        for group in groups:
-            for rule in group.rules:
-                # Guard for None values (e.g. Age)
-                if rule.value:
-                    concept_ids.add(int(rule.value))
-
-        concept_query = (
-            # order must be .concept_id, .domain_id
-            select(Concept.concept_id, Concept.domain_id)
-            .where(Concept.concept_id.in_(concept_ids))
-            .distinct()
-        )
-        with self.db_manager.engine.connect() as con:
-            concepts_df = pd.read_sql_query(concept_query, con=con)
-        concept_dict = {
-            str(concept_id): domain_id for concept_id, domain_id in concepts_df.values
-        }
-        return concept_dict
-
     def _solve_rules(self, results_modifier: list[ResultModifier]) -> int:
         """Function for taking the JSON query from RQUEST and creating the required query to run against the OMOP database.
 
@@ -133,7 +101,9 @@ class AvailabilitySolver:
 
         """
         # get the list of concepts to build the query constraints
-        concepts: dict[str, str] = self._find_concepts(self.query.cohort.groups)
+        concepts: dict[str, str] = ConceptService(
+            self.db_manager.engine
+        ).get_concept_domains(self.query.cohort.groups)
 
         low_number: int = next(
             (
