@@ -53,6 +53,20 @@ class AvailabilityQueryBuilder:
             query.cohort.groups
         )
 
+    def _get_low_number_threshold(self, results_modifier: list[ResultModifier]) -> int:
+        """Get the low number threshold from results modifier, defaulting to 10 if not found."""
+        for item in results_modifier:
+            if item["id"] == "Low Number Suppression":
+                return item["threshold"] if item["threshold"] is not None else 10
+        return 10
+
+    def _get_rounding_value(self, results_modifier: list[ResultModifier]) -> int:
+        """Get the rounding value from results modifier, defaulting to 10 if not found."""
+        for item in results_modifier:
+            if item["id"] == "Rounding":
+                return item["nearest"] if item["nearest"] is not None else 10
+        return 10
+
     def build_query(self, results_modifier: list[ResultModifier]) -> Select[Tuple[int]]:
         """Function for taking the JSON query from RQUEST and creating the required query to run against the OMOP database.
 
@@ -69,23 +83,6 @@ class AvailabilityQueryBuilder:
         returns an int for the result. Therefore, all dataframes have been removed.
 
         """
-        low_number: int = next(
-            (
-                item["threshold"] if item["threshold"] is not None else 10
-                for item in results_modifier
-                if item["id"] == "Low Number Suppression"
-            ),
-            10,
-        )
-
-        rounding: int = next(
-            (
-                item["nearest"] if item["nearest"] is not None else 10
-                for item in results_modifier
-                if item["id"] == "Rounding"
-            ),
-            10,
-        )
 
         # this is used to store the query for each group, one entry per group
         all_groups_queries: list[BinaryExpression[bool]] = []
@@ -254,6 +251,9 @@ class AvailabilityQueryBuilder:
         """
         ALL GROUPS COMPLETED, NOW APPLY LOGIC BETWEEN GROUPS
         """
+
+        low_number = self._get_low_number_threshold(results_modifier)
+        rounding = self._get_rounding_value(results_modifier)
 
         # construct the query based on the OR/AND logic specified between groups
         if self.query.cohort.groups_operator == "OR":
