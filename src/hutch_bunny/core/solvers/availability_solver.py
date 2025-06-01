@@ -101,9 +101,9 @@ class AvailabilitySolver:
 
         """
         # get the list of concepts to build the query constraints
-        concepts: dict[str, str] = ConceptService(
-            self.db_manager.engine
-        ).get_concept_domains(self.query.cohort.groups)
+        concepts = ConceptService(self.db_manager.engine).map_concepts_to_domains(
+            self.query.cohort.groups
+        )
 
         low_number: int = next(
             (
