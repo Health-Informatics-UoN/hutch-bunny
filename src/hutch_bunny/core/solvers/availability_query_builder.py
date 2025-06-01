@@ -26,12 +26,30 @@ from hutch_bunny.core.rquest_dto.rule import Rule
 from hutch_bunny.core.services.concept_service import ConceptService
 from sqlalchemy.engine import Engine
 from sqlalchemy import exists
+from dataclasses import dataclass
 
 
 class ResultModifier(TypedDict):
     id: str
     threshold: int | None
     nearest: int | None
+
+
+@dataclass
+class QueryState:
+    condition: Select[Tuple[int]]
+    drug: Select[Tuple[int]]
+    measurement: Select[Tuple[int]]
+    observation: Select[Tuple[int]]
+
+    @classmethod
+    def create_initial_state(cls) -> "QueryState":
+        return cls(
+            condition=select(ConditionOccurrence.person_id),
+            drug=select(DrugExposure.person_id),
+            measurement=select(Measurement.person_id),
+            observation=select(Observation.person_id),
+        )
 
 
 class AvailabilityQueryBuilder:
@@ -125,12 +143,7 @@ class AvailabilityQueryBuilder:
                     # reliable longer term.
 
                     # initial setting for the four tables
-                    self.condition: Select[Tuple[int]] = select(
-                        ConditionOccurrence.person_id
-                    )
-                    self.drug: Select[Tuple[int]] = select(DrugExposure.person_id)
-                    self.measurement: Select[Tuple[int]] = select(Measurement.person_id)
-                    self.observation: Select[Tuple[int]] = select(Observation.person_id)
+                    query_state = QueryState.create_initial_state()
 
                     """"
                     RELATIVE AGE SEARCH
@@ -138,16 +151,15 @@ class AvailabilityQueryBuilder:
                     # if there is an "Age" query added, this will require a join to the person table, to compare
                     # DOB with the data of event
 
-                    if (
-                        left_value_time is not None or right_value_time is not None
-                    ) and time_category == "AGE":
-                        self._add_age_constraints(left_value_time, right_value_time)
+                    if time_category == "AGE":
+                        query_state = self._add_age_constraints(
+                            query_state, left_value_time, right_value_time
+                        )
 
                     """"
                     STANDARD CONCEPT ID SEARCH
                     """
-
-                    self._add_standard_concept(current_rule)
+                    query_state = self._add_standard_concept(query_state, current_rule)
 
                     """"
                     SECONDARY MODIFIER
@@ -155,12 +167,14 @@ class AvailabilityQueryBuilder:
                     # secondary modifier hits another field and only on the condition_occurrence
                     # on the RQuest GUI this is a list that can be created. Assuming this is also an
                     # AND condition for at least one of the selected values to be present
-                    self._add_secondary_modifiers(current_rule)
+                    query_state = self._add_secondary_modifiers(
+                        query_state, current_rule
+                    )
 
                     """"
                     VALUES AS NUMBER
                     """
-                    self._add_range_as_number(current_rule)
+                    query_state = self._add_range_as_number(query_state, current_rule)
 
                     """"
                     RELATIVE TIME SEARCH SECTION
@@ -172,7 +186,9 @@ class AvailabilityQueryBuilder:
                         and (left_value_time != "" or right_value_time != "")
                         and time_category == "TIME"
                     ):
-                        self._add_relative_date(left_value_time, right_value_time)
+                        query_state = self._add_relative_date(
+                            query_state, left_value_time, right_value_time
+                        )
 
                     """"
                     PREPARING THE LISTS FOR LATER USE
@@ -180,10 +196,10 @@ class AvailabilityQueryBuilder:
 
                     # List of tables and their corresponding foreign keys
                     table_constraints = [
-                        (self.measurement, Measurement.person_id),
-                        (self.observation, Observation.person_id),
-                        (self.condition, ConditionOccurrence.person_id),
-                        (self.drug, DrugExposure.person_id),
+                        (query_state.measurement, Measurement.person_id),
+                        (query_state.observation, Observation.person_id),
+                        (query_state.condition, ConditionOccurrence.person_id),
+                        (query_state.drug, DrugExposure.person_id),
                     ]
 
                     # a switch between whether the criteria are inclusion or exclusion
@@ -280,33 +296,45 @@ class AvailabilityQueryBuilder:
 
         return full_query_all_groups
 
-    def _add_range_as_number(self, current_rule: Rule) -> None:
+    def _add_range_as_number(
+        self, query_state: QueryState, current_rule: Rule
+    ) -> QueryState:
         if current_rule.min_value is not None and current_rule.max_value is not None:
-            self.measurement = self.measurement.where(
-                Measurement.value_as_number.between(
-                    float(current_rule.min_value), float(current_rule.max_value)
-                )
+            return QueryState(
+                condition=query_state.condition,
+                drug=query_state.drug,
+                measurement=query_state.measurement.where(
+                    Measurement.value_as_number.between(
+                        float(current_rule.min_value), float(current_rule.max_value)
+                    )
+                ),
+                observation=query_state.observation.where(
+                    Observation.value_as_number.between(
+                        float(current_rule.min_value), float(current_rule.max_value)
+                    )
+                ),
             )
-            self.observation = self.observation.where(
-                Observation.value_as_number.between(
-                    float(current_rule.min_value), float(current_rule.max_value)
-                )
-            )
+        return query_state
 
     def _add_age_constraints(
-        self, left_value_time: str | None, right_value_time: str | None
-    ) -> None:
+        self,
+        query_state: QueryState,
+        left_value_time: str | None,
+        right_value_time: str | None,
+    ) -> QueryState:
         if left_value_time is None or right_value_time is None:
-            return
+            return query_state
 
-        self.condition = self.condition.join(
+        new_condition = query_state.condition.join(
             Person, Person.person_id == ConditionOccurrence.person_id
         )
-        self.drug = self.drug.join(Person, Person.person_id == DrugExposure.person_id)
-        self.measurement = self.measurement.join(
+        new_drug = query_state.drug.join(
+            Person, Person.person_id == DrugExposure.person_id
+        )
+        new_measurement = query_state.measurement.join(
             Person, Person.person_id == Measurement.person_id
         )
-        self.observation = self.observation.join(
+        new_observation = query_state.observation.join(
             Person, Person.person_id == Observation.person_id
         )
 
@@ -314,7 +342,7 @@ class AvailabilityQueryBuilder:
         # it indicates a less than search
 
         if left_value_time == "":
-            self.condition = self.condition.where(
+            new_condition = new_condition.where(
                 self._get_year_difference(
                     self.engine,
                     ConditionOccurrence.condition_start_datetime,
@@ -322,7 +350,7 @@ class AvailabilityQueryBuilder:
                 )
                 < int(right_value_time)
             )
-            self.drug = self.drug.where(
+            new_drug = new_drug.where(
                 self._get_year_difference(
                     self.engine,
                     DrugExposure.drug_exposure_start_date,
@@ -330,7 +358,7 @@ class AvailabilityQueryBuilder:
                 )
                 < int(right_value_time)
             )
-            self.measurement = self.measurement.where(
+            new_measurement = new_measurement.where(
                 self._get_year_difference(
                     self.engine,
                     Measurement.measurement_date,
@@ -338,7 +366,7 @@ class AvailabilityQueryBuilder:
                 )
                 < int(right_value_time)
             )
-            self.observation = self.observation.where(
+            new_observation = new_observation.where(
                 self._get_year_difference(
                     self.engine,
                     Observation.observation_date,
@@ -347,7 +375,7 @@ class AvailabilityQueryBuilder:
                 < int(right_value_time)
             )
         else:
-            self.condition = self.condition.where(
+            new_condition = new_condition.where(
                 self._get_year_difference(
                     self.engine,
                     ConditionOccurrence.condition_start_date,
@@ -355,7 +383,7 @@ class AvailabilityQueryBuilder:
                 )
                 > int(left_value_time)
             )
-            self.drug = self.drug.where(
+            new_drug = new_drug.where(
                 self._get_year_difference(
                     self.engine,
                     DrugExposure.drug_exposure_start_date,
@@ -363,7 +391,7 @@ class AvailabilityQueryBuilder:
                 )
                 > int(left_value_time)
             )
-            self.measurement = self.measurement.where(
+            new_measurement = new_measurement.where(
                 self._get_year_difference(
                     self.engine,
                     Measurement.measurement_date,
@@ -371,7 +399,7 @@ class AvailabilityQueryBuilder:
                 )
                 > int(left_value_time)
             )
-            self.observation = self.observation.where(
+            new_observation = new_observation.where(
                 self._get_year_difference(
                     self.engine,
                     Observation.observation_date,
@@ -379,6 +407,13 @@ class AvailabilityQueryBuilder:
                 )
                 > int(left_value_time)
             )
+
+        return QueryState(
+            condition=new_condition,
+            drug=new_drug,
+            measurement=new_measurement,
+            observation=new_observation,
+        )
 
     def _get_year_difference(
         self, engine: Engine, start_date: ClauseElement, birth_date: ClauseElement
@@ -394,7 +429,9 @@ class AvailabilityQueryBuilder:
         else:
             raise NotImplementedError("Unsupported database dialect")
 
-    def _add_relative_date(self, left_value_time: str, right_value_time: str) -> None:
+    def _add_relative_date(
+        self, query_state: QueryState, left_value_time: str, right_value_time: str
+    ) -> QueryState:
         time_value_supplied: str
 
         # have to toggle between left and right, given |1 means less than 1 and
@@ -417,30 +454,34 @@ class AvailabilityQueryBuilder:
         # therefore the logic is to search for a date that is after the date
         # that was a month ago.
         if left_value_time == "":
-            self.measurement = self.measurement.where(
-                Measurement.measurement_date >= relative_date
-            )
-            self.observation = self.observation.where(
-                Observation.observation_date >= relative_date
-            )
-            self.condition = self.condition.where(
-                ConditionOccurrence.condition_start_date >= relative_date
-            )
-            self.drug = self.drug.where(
-                DrugExposure.drug_exposure_start_date >= relative_date
+            return QueryState(
+                condition=query_state.condition.where(
+                    ConditionOccurrence.condition_start_date >= relative_date
+                ),
+                drug=query_state.drug.where(
+                    DrugExposure.drug_exposure_start_date >= relative_date
+                ),
+                measurement=query_state.measurement.where(
+                    Measurement.measurement_date >= relative_date
+                ),
+                observation=query_state.observation.where(
+                    Observation.observation_date >= relative_date
+                ),
             )
         else:
-            self.measurement = self.measurement.where(
-                Measurement.measurement_date <= relative_date
-            )
-            self.observation = self.observation.where(
-                Observation.observation_date <= relative_date
-            )
-            self.condition = self.condition.where(
-                ConditionOccurrence.condition_start_date <= relative_date
-            )
-            self.drug = self.drug.where(
-                DrugExposure.drug_exposure_start_date <= relative_date
+            return QueryState(
+                condition=query_state.condition.where(
+                    ConditionOccurrence.condition_start_date <= relative_date
+                ),
+                drug=query_state.drug.where(
+                    DrugExposure.drug_exposure_start_date <= relative_date
+                ),
+                measurement=query_state.measurement.where(
+                    Measurement.measurement_date <= relative_date
+                ),
+                observation=query_state.observation.where(
+                    Observation.observation_date <= relative_date
+                ),
             )
 
     def _add_person_constraints(
@@ -496,7 +537,9 @@ class AvailabilityQueryBuilder:
 
         return person_constraints_for_group
 
-    def _add_secondary_modifiers(self, current_rule: Rule) -> None:
+    def _add_secondary_modifiers(
+        self, query_state: QueryState, current_rule: Rule
+    ) -> QueryState:
         # Not sure where, but even when a secondary modifier is not supplied, an array
         # with a single entry is provided.
         secondary_modifier_list = []
@@ -508,18 +551,28 @@ class AvailabilityQueryBuilder:
                 )
 
         if len(secondary_modifier_list) > 0:
-            self.condition = self.condition.where(or_(*secondary_modifier_list))
+            return QueryState(
+                condition=query_state.condition.where(or_(*secondary_modifier_list)),
+                drug=query_state.drug,
+                measurement=query_state.measurement,
+                observation=query_state.observation,
+            )
+        return query_state
 
-    def _add_standard_concept(self, current_rule: Rule) -> None:
-        self.condition = self.condition.where(
-            ConditionOccurrence.condition_concept_id == int(current_rule.value)
-        )
-        self.drug = self.drug.where(
-            DrugExposure.drug_concept_id == int(current_rule.value)
-        )
-        self.measurement = self.measurement.where(
-            Measurement.measurement_concept_id == int(current_rule.value)
-        )
-        self.observation = self.observation.where(
-            Observation.observation_concept_id == int(current_rule.value)
+    def _add_standard_concept(
+        self, query_state: QueryState, current_rule: Rule
+    ) -> QueryState:
+        return QueryState(
+            condition=query_state.condition.where(
+                ConditionOccurrence.condition_concept_id == int(current_rule.value)
+            ),
+            drug=query_state.drug.where(
+                DrugExposure.drug_concept_id == int(current_rule.value)
+            ),
+            measurement=query_state.measurement.where(
+                Measurement.measurement_concept_id == int(current_rule.value)
+            ),
+            observation=query_state.observation.where(
+                Observation.observation_concept_id == int(current_rule.value)
+            ),
         )
