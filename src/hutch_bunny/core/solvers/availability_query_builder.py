@@ -21,6 +21,7 @@ from hutch_bunny.core.entities import (
     DrugExposure,
     ProcedureOccurrence,
 )
+from hutch_bunny.core.rquest_dto.group import Group
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery
 from hutch_bunny.core.rquest_dto.rule import Rule
 from hutch_bunny.core.services.concept_service import ConceptService
@@ -76,7 +77,7 @@ class AvailabilityQueryBuilder:
 
         RQUEST API spec can have multiple groups in each query, and then a condition between the groups.
 
-        Each group can have conditional logic AND/OR within the group
+        Each group can have conditional logic AND/OR within the groups.
 
         Each concept can either be an inclusion or exclusion criteria.
 
@@ -85,182 +86,128 @@ class AvailabilityQueryBuilder:
 
         This builds an SQL query to run as one for the whole query (was previous multiple) and it
         returns an int for the result. Therefore, all dataframes have been removed.
-
         """
+        all_groups_queries = self._build_group_queries()
+        return self._build_final_query(all_groups_queries, results_modifier)
 
-        # this is used to store the query for each group, one entry per group
+    def _build_group_queries(self) -> list[BinaryExpression[bool]]:
+        """Build queries for each group in the cohort."""
         all_groups_queries: list[BinaryExpression[bool]] = []
 
-        # iterate through all the groups specified in the query
         for current_group in self.query.cohort.groups:
-            # this is used to store all constraints for all rules in the group, one entry per rule
-            list_for_rules: list[ColumnElement[bool]] = []
-
-            # captures all the person constraints for the group
-            person_constraints_for_group: list[ColumnElement[bool]] = []
-
-            # for each rule in a group
-            for current_rule in current_group.rules:
-                # if the rule was not linked to a person variable
-                if current_rule.varcat != "Person":
-                    # i.e. condition, observation, measurement or drug
-                    # NOTE: Although the table is specified in the query, to cover for changes in vocabulary
-                    # and for differences in RQuest OMOP and local OMOP, we now search all four main tables
-                    # for the presence of the concept. This is computationally more expensive, but is more r
-                    # reliable longer term.
-
-                    # initial setting for the four tables
-                    query_state = QueryState.create_initial_state()
-
-                    """"
-                    RELATIVE AGE SEARCH
-                    """
-                    # if there is an "Age" query added, this will require a join to the person table, to compare
-                    # DOB with the data of event
-
-                    if current_rule.time_category == "AGE":
-                        query_state = self._add_age_constraints(
-                            query_state,
-                            current_rule.left_value_time,
-                            current_rule.right_value_time,
-                        )
-
-                    """"
-                    STANDARD CONCEPT ID SEARCH
-                    """
-                    query_state = self._add_standard_concept(query_state, current_rule)
-
-                    """"
-                    SECONDARY MODIFIER
-                    """
-                    # secondary modifier hits another field and only on the condition_occurrence
-                    # on the RQuest GUI this is a list that can be created. Assuming this is also an
-                    # AND condition for at least one of the selected values to be present
-                    query_state = self._add_secondary_modifiers(
-                        query_state, current_rule
-                    )
-
-                    """"
-                    VALUES AS NUMBER
-                    """
-                    query_state = self._add_range_as_number(query_state, current_rule)
-
-                    """"
-                    RELATIVE TIME SEARCH SECTION
-                    """
-                    # this section deals with a relative time constraint, such as "time" : "|1:TIME:M"
-                    if current_rule.time_category == "TIME":
-                        query_state = self._add_relative_date(
-                            query_state,
-                            current_rule.left_value_time,
-                            current_rule.right_value_time,
-                        )
-
-                    """"
-                    PREPARING THE LISTS FOR LATER USE
-                    """
-
-                    # List of tables and their corresponding foreign keys
-                    table_constraints = [
-                        (query_state.measurement, Measurement.person_id),
-                        (query_state.observation, Observation.person_id),
-                        (query_state.condition, ConditionOccurrence.person_id),
-                        (query_state.drug, DrugExposure.person_id),
-                    ]
-
-                    # a switch between whether the criteria are inclusion or exclusion
-                    inclusion_criteria: bool = current_rule.operator == "="
-
-                    # a list for all the conditions for the rule, each rule generates searches
-                    # in four tables, this field captures that
-                    table_rule_constraints: list[ColumnElement[bool]] = []
-
-                    for table, fk in table_constraints:
-                        constraint: Exists = exists(table.where(fk == Person.person_id))
-                        table_rule_constraints.append(
-                            constraint if inclusion_criteria else ~constraint
-                        )
-
-                    if inclusion_criteria:
-                        list_for_rules.append(or_(*table_rule_constraints))
-                    else:
-                        list_for_rules.append(and_(*table_rule_constraints))
-
-                else:
-                    """
-                    PERSON TABLE RELATED RULES
-                    """
-                    person_constraints_for_group = self._add_person_constraints(
-                        person_constraints_for_group, current_rule
-                    )
-
-            """
-            NOTE: all rules done for a single group. Now to apply logic between the rules
-            """
-
-            ## if the logic between the rules for each group is AND
-            if current_group.rules_operator == "AND":
-                # all person rules are added first
-                group_query: Select[Tuple[int]] = select(Person.person_id).where(
-                    *person_constraints_for_group
-                )
-
-                for current_constraint in list_for_rules:
-                    group_query = group_query.where(current_constraint)
-
-            else:
-                # this might seem odd, but to add the rules as OR, we have to add them
-                # all at once, therefore listAllParameters is to create one list with
-                # everything added. So we can then add as one operation as OR
-                all_parameters = []
-
-                # firstly add the person constrains
-                for all_constraints_for_person in person_constraints_for_group:
-                    all_parameters.append(all_constraints_for_person)
-
-                # to get all the constraints in one list, we have to unpack the top-level grouping
-                # list_for_rules contains all the group of constraints for each rule
-                # therefore, we get each group, then for each group, we get each constraint
-                for current_expression in list_for_rules:
-                    all_parameters.append(current_expression)
-
-                # all added as an OR
-                group_query = select(Person.person_id).where(or_(*all_parameters))
-
-            # store the query for the given group in the list for assembly later across all groups
+            group_query = self._build_single_group_query(current_group)
             all_groups_queries.append(Person.person_id.in_(group_query))
 
-        """
-        ALL GROUPS COMPLETED, NOW APPLY LOGIC BETWEEN GROUPS
-        """
+        return all_groups_queries
 
+    def _build_single_group_query(self, current_group: Group) -> Select[Tuple[int]]:
+        """Build a query for a single group."""
+        list_for_rules: list[ColumnElement[bool]] = []
+        person_constraints_for_group: list[ColumnElement[bool]] = []
+
+        for current_rule in current_group.rules:
+            if current_rule.varcat != "Person":
+                rule_constraints = self._build_non_person_rule_constraints(current_rule)
+                list_for_rules.extend(rule_constraints)
+            else:
+                person_constraints_for_group = self._add_person_constraints(
+                    person_constraints_for_group, current_rule
+                )
+
+        return self._combine_group_constraints(
+            current_group.rules_operator, person_constraints_for_group, list_for_rules
+        )
+
+    def _build_non_person_rule_constraints(
+        self, current_rule: Rule
+    ) -> list[ColumnElement[bool]]:
+        """Build constraints for a non-person rule."""
+        query_state = QueryState.create_initial_state()
+
+        if current_rule.time_category == "AGE":
+            query_state = self._add_age_constraints(
+                query_state,
+                current_rule.left_value_time,
+                current_rule.right_value_time,
+            )
+
+        query_state = self._add_standard_concept(query_state, current_rule)
+        query_state = self._add_secondary_modifiers(query_state, current_rule)
+        query_state = self._add_range_as_number(query_state, current_rule)
+
+        if current_rule.time_category == "TIME":
+            query_state = self._add_relative_date(
+                query_state,
+                current_rule.left_value_time,
+                current_rule.right_value_time,
+            )
+
+        return self._build_table_constraints(query_state, current_rule)
+
+    def _build_table_constraints(
+        self, query_state: QueryState, current_rule: Rule
+    ) -> list[ColumnElement[bool]]:
+        """Build constraints for each table in the query state."""
+        table_constraints = [
+            (query_state.measurement, Measurement.person_id),
+            (query_state.observation, Observation.person_id),
+            (query_state.condition, ConditionOccurrence.person_id),
+            (query_state.drug, DrugExposure.person_id),
+        ]
+
+        table_rule_constraints: list[ColumnElement[bool]] = []
+        inclusion_criteria: bool = current_rule.operator == "="
+
+        for table, fk in table_constraints:
+            constraint: Exists = exists(table.where(fk == Person.person_id))
+            table_rule_constraints.append(
+                constraint if inclusion_criteria else ~constraint
+            )
+
+        if inclusion_criteria:
+            return [or_(*table_rule_constraints)]
+        else:
+            return [and_(*table_rule_constraints)]
+
+    def _combine_group_constraints(
+        self,
+        rules_operator: str,
+        person_constraints: list[ColumnElement[bool]],
+        rule_constraints: list[ColumnElement[bool]],
+    ) -> Select[Tuple[int]]:
+        """Combine person constraints and rule constraints based on the operator."""
+        if rules_operator == "AND":
+            group_query = select(Person.person_id).where(*person_constraints)
+            for constraint in rule_constraints:
+                group_query = group_query.where(constraint)
+            return group_query
+        else:
+            all_parameters = person_constraints + rule_constraints
+            return select(Person.person_id).where(or_(*all_parameters))
+
+    def _build_final_query(
+        self,
+        all_groups_queries: list[BinaryExpression[bool]],
+        results_modifier: list[ResultModifier],
+    ) -> Select[Tuple[int]]:
+        """Build the final query with all groups and modifiers."""
         low_number = self._get_low_number_threshold(results_modifier)
         rounding = self._get_rounding_value(results_modifier)
 
-        # construct the query based on the OR/AND logic specified between groups
         if self.query.cohort.groups_operator == "OR":
-            if rounding > 0:
-                full_query_all_groups = select(
-                    func.round((func.count() / rounding), 0) * rounding
-                ).where(or_(*all_groups_queries))
-            else:
-                full_query_all_groups = select(func.count()).where(
-                    or_(*all_groups_queries)
-                )
+            base_query = select(func.count()).where(or_(*all_groups_queries))
         else:
-            if rounding > 0:
-                full_query_all_groups = select(
-                    func.round((func.count() / rounding), 0) * rounding
-                ).where(*all_groups_queries)
-            else:
-                full_query_all_groups = select(func.count()).where(*all_groups_queries)
+            base_query = select(func.count()).where(*all_groups_queries)
+
+        if rounding > 0:
+            base_query = select(
+                func.round((func.count() / rounding), 0) * rounding
+            ).where(base_query.whereclause)
 
         if low_number > 0:
-            full_query_all_groups = full_query_all_groups.having(
-                func.count() >= low_number
-            )
+            base_query = base_query.having(func.count() >= low_number)
 
-        return full_query_all_groups
+        return base_query
 
     def _add_range_as_number(
         self, query_state: QueryState, current_rule: Rule
