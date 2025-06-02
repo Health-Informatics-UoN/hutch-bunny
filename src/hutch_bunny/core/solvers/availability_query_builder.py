@@ -122,8 +122,11 @@ class AvailabilityQueryBuilder:
         self, current_rule: Rule
     ) -> list[ColumnElement[bool]]:
         """Build constraints for a non-person rule."""
+
+        # create a query state with the initial state
         query_state = QueryState.create_initial_state()
 
+        # add age constraints if the rule is an age rule
         if current_rule.time_category == "AGE":
             query_state = self._add_age_constraints(
                 query_state,
@@ -405,7 +408,7 @@ class AvailabilityQueryBuilder:
         person_constraints_for_group: list[ColumnElement[bool]],
         current_rule: Rule,
     ) -> list[ColumnElement[bool]]:
-        concept_domain: str | None = self.concepts.get(current_rule.value)
+        concept_domain = self.concepts.get(current_rule.value)
 
         if current_rule.varname == "AGE":
             # AGE is a special case, as it is not a concept_id but a range.
