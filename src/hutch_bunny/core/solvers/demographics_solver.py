@@ -110,7 +110,7 @@ class DemographicsDistributionQuerySolver:
 
         Args:
             results_modifier: List[ResultModifier]
-                A list of modifiers to be applied to the results of the query before returning them to Relay
+                A list of modifiers to be applied to the results of the query
 
         Returns:
             Tuple[int, int]: The low number and rounding values.
