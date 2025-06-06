@@ -1,8 +1,7 @@
 import os
-from typing import Tuple
-import pandas as pd
+from typing import Tuple, List
 
-from sqlalchemy import distinct, func
+from sqlalchemy import distinct, func, select
 
 from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.db_manager import SyncDBManager
@@ -19,7 +18,6 @@ from tenacity import (
     after_log,
 )
 from hutch_bunny.core.rquest_dto.query import DistributionQuery
-from sqlalchemy import select
 from hutch_bunny.core.solvers.availability_solver import ResultModifier
 
 
@@ -63,7 +61,7 @@ class DemographicsDistributionQuerySolver:
         before_sleep=before_sleep_log(logger, INFO),
         after=after_log(logger, INFO),
     )
-    def solve_query(self, results_modifier: list[ResultModifier]) -> Tuple[str, int]:
+    def solve_query(self, results_modifier: List[ResultModifier]) -> Tuple[str, int]:
         """Build table of demographics query and return as a TAB separated string
         along with the number of rows.
 
@@ -75,9 +73,7 @@ class DemographicsDistributionQuerySolver:
         Returns:
             Tuple[str, int]: The table as a string and the number of rows.
         """
-        # Prepare the empty results data frame
-        df = pd.DataFrame(columns=self.output_cols)
-
+        # Get modifier values
         low_number: int = next(
             (
                 item["threshold"] if item["threshold"] is not None else 10
@@ -95,17 +91,6 @@ class DemographicsDistributionQuerySolver:
             10,
         )
 
-        # Get the counts for each concept ID
-
-        counts: list[int] = []
-        concepts: list[int] = []
-        categories: list[str] = []
-        biobanks: list[str] = []
-        datasets: list[str] = []
-        codes: list[str] = []
-        descriptions: list[str] = []
-        alternatives: list[str] = []
-
         # People count statement
         if rounding > 0:
             stmnt = select(
@@ -121,55 +106,74 @@ class DemographicsDistributionQuerySolver:
         if low_number > 0:
             stmnt = stmnt.having(func.count(distinct(Person.person_id)) > low_number)
 
-        concepts.append(8507)
-        concepts.append(8532)
-
-        # Concept description statement
+        # Get concept IDs for gender
+        concept_ids = [8507, 8532]
         concept_query = select(Concept.concept_id, Concept.concept_name).where(
-            Concept.concept_id.in_(concepts)
+            Concept.concept_id.in_(concept_ids)
         )
 
         # Get the data
         with self.db_manager.engine.connect() as con:
-            res = pd.read_sql(stmnt, con)
-            concepts_df = pd.read_sql_query(concept_query, con=con)
+            # Get counts
+            result = con.execute(stmnt)
+            counts_by_gender = {gender_id: count for count, gender_id in result}
+            
+            # Get concept descriptions
+            concept_result = con.execute(concept_query)
+            concept_names = {concept_id: name for concept_id, name in concept_result}
 
-        combined = res.merge(
-            concepts_df,
-            left_on="gender_concept_id",
-            right_on="concept_id",
-            how="left",
-        )
+        # Calculate total count with suppression
+        total_count = apply_filters(sum(counts_by_gender.values()), results_modifier)
 
-        suppressed_count: int = apply_filters(res.iloc[:, 0].sum(), results_modifier)
+        # Build alternatives string
+        alternatives = "^"
+        for concept_id in concept_ids:
+            if concept_id in counts_by_gender:
+                count = apply_filters(counts_by_gender[concept_id], results_modifier)
+                name = concept_names.get(concept_id, "Unknown")
+                alternatives += f"{name}|{count}^"
 
-        # Compile the data
-        counts.append(suppressed_count)
-        concepts.extend(res.iloc[:, 1])
-        categories.append("DEMOGRAPHICS")
-        biobanks.append(self.query.collection)
-        datasets.append("person")
-        descriptions.append("Sex")
-        codes.append("SEX")
+        # Create rows of data
+        rows = [
+            {
+                "COUNT": total_count,
+                "CATEGORY": "DEMOGRAPHICS",
+                "CODE": "SEX",
+                "BIOBANK": self.query.collection,
+                "DATASET": "person",
+                "DESCRIPTION": "Sex",
+                "ALTERNATIVES": alternatives,
+                "MIN": "",
+                "Q1": "",
+                "MEDIAN": "",
+                "MEAN": "",
+                "Q3": "",
+                "MAX": "",
+                "OMOP": "",
+                "OMOP_DESCR": "",
+            },
+            {
+                "COUNT": total_count,
+                "CATEGORY": "DEMOGRAPHICS",
+                "CODE": "GENOMICS",
+                "BIOBANK": self.query.collection,
+                "DATASET": "person",
+                "DESCRIPTION": "Genomics",
+                "ALTERNATIVES": f"^No|{total_count}^",
+                "MIN": "",
+                "Q1": "",
+                "MEDIAN": "",
+                "MEAN": "",
+                "Q3": "",
+                "MAX": "",
+                "OMOP": "",
+                "OMOP_DESCR": "",
+            }
+        ]
 
-        alternative = "^"
-        for _, row in combined.iterrows():
-            alternative += f"{row[Concept.concept_name.name]}|{apply_filters(row.iloc[0], results_modifier)}^"
-        alternatives.append(alternative)
+        # Format as tab-separated string
+        header = "\t".join(self.output_cols)
+        values = ["\t".join(str(row.get(col, "")) for col in self.output_cols) for row in rows]
+        result_string = f"{header}{os.linesep}{os.linesep.join(values)}"
 
-        # Fill out the results table
-        df["COUNT"] = counts
-        df["CATEGORY"] = categories
-        df["CODE"] = codes
-        df["BIOBANK"] = biobanks
-        df["DATASET"] = datasets
-        df["DESCRIPTION"] = descriptions
-        df["ALTERNATIVES"] = alternatives
-
-        df = df.fillna("")
-
-        # Convert df to tab separated string
-        results = list(["\t".join(df.columns)])
-        for _, row in df.iterrows():
-            results.append("\t".join([str(r) for r in row.values]))
-        return os.linesep.join(results), len(df)
+        return result_string, len(rows)
