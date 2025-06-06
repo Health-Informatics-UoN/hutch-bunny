@@ -255,31 +255,26 @@ class DemographicsDistributionQuerySolver:
         Returns:
             Tuple[str, int]: The table as a string and the number of rows.
         """
-        # Get modifier values
         low_number, rounding = self._get_modifier_values(results_modifier)
 
         # Get the data
         with self.db_manager.engine.connect() as con:
-            # Get counts
             stmnt = self._build_gender_query(rounding, low_number)
             result = con.execute(stmnt)
             counts_by_gender = {gender_id: count for count, gender_id in result}
 
-            # Get concept descriptions
             concept_names = self._get_concept_data()
 
         # Calculate total count with suppression
         total_count = apply_filters(sum(counts_by_gender.values()), results_modifier)
 
-        # Build alternatives string
         alternatives = self._build_alternatives_string(
             counts_by_gender, concept_names, results_modifier
         )
 
-        # Create rows
         rows = self._create_demographics_rows(total_count, alternatives)
 
-        # Format as tab-separated string
+        # Format as tsv
         header = "\t".join(self.output_cols)
         values = [
             "\t".join(str(row.to_row().get(col, "")) for col in self.output_cols)
