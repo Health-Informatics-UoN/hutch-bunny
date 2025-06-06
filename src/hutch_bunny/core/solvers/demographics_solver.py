@@ -42,8 +42,13 @@ class DemographicsRow:
     omop: str = ""
     omop_descr: str = ""
 
-    def to_row(self) -> Dict[str, str]:
-        """Convert the row to a dictionary format."""
+    def to_dict(self) -> Dict[str, str]:
+        """
+        Convert the row to a dictionary format.
+
+        Returns:
+            Dict[str, str]: The row as a dictionary.
+        """
         return {
             "BIOBANK": self.biobank,
             "CODE": self.code,
@@ -277,7 +282,7 @@ class DemographicsDistributionQuerySolver:
         # Format as tsv
         header = "\t".join(self.output_cols)
         values = [
-            "\t".join(str(row.to_row().get(col, "")) for col in self.output_cols)
+            "\t".join(str(row.to_dict().get(col, "")) for col in self.output_cols)
             for row in rows
         ]
         result_string = f"{header}{os.linesep}{os.linesep.join(values)}"
