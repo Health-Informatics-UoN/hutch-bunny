@@ -1,6 +1,6 @@
 from pydantic import BaseModel, field_validator
 from hutch_bunny.core.enums import DistributionQueryType
-from hutch_bunny.core.rquest_dto.cohort import Cohort
+from hutch_bunny.core.rquest_models.cohort import Cohort
 
 
 class AvailabilityQuery(BaseModel):

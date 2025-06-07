@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from hutch_bunny.core.rquest_dto.rule import Rule
+from hutch_bunny.core.rquest_models.rule import Rule
 
 
 class Group(BaseModel):

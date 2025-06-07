@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock, patch
 from src.hutch_bunny.core.upstream.task_handler import handle_task
-from src.hutch_bunny.core.rquest_dto.result import RquestResult
+from src.hutch_bunny.core.rquest_models.result import RquestResult
 
 
 @pytest.fixture

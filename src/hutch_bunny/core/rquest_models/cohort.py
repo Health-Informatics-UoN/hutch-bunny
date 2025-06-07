@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from hutch_bunny.core.rquest_dto.group import Group
+from hutch_bunny.core.rquest_models.group import Group
 
 
 class Cohort(BaseModel):

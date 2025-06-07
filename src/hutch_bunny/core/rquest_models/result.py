@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from hutch_bunny.core.rquest_dto.file import File
+from hutch_bunny.core.rquest_models.file import File
 
 
 class QueryResult(BaseModel):

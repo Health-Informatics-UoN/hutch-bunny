@@ -1,5 +1,5 @@
 from hutch_bunny.core.db_manager import SyncDBManager
-from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
+from hutch_bunny.core.rquest_models.query import AvailabilityQuery, DistributionQuery
 from hutch_bunny.core.solvers.query_solvers import (
     solve_availability,
     solve_distribution,
