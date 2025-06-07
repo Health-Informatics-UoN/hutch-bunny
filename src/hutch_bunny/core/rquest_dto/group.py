@@ -1,36 +1,39 @@
-from typing import List
-from hutch_bunny.core.rquest_dto.base_dto import BaseDto
+from typing import Dict, List
+from pydantic import BaseModel, Field, field_validator
 from hutch_bunny.core.rquest_dto.rule import Rule
 
 
-class Group(BaseDto):
-    """Python representation of a group based on [ItemList](https://schema.org/ItemList)."""
+class Group(BaseModel):
+    """Group - represents a collection of rules with an operator to combine them"""
 
-    def __init__(self, rules: List[Rule], rules_operator: str, **kwargs) -> None:
-        self.rules = rules
-        self.rules_operator = rules_operator
+    rules: List[Rule]
+    rules_operator: str = Field(alias="rules_oper")
 
-    def to_dict(self) -> dict:
+    model_config = {
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True,
+    }
+
+    @field_validator("rules", mode="before")
+    @classmethod
+    def validate_rules(cls, v: List[dict]) -> List[Rule]:
+        """Validate and convert the list of rule dictionaries to Rule objects.
+        This ensures proper validation of each rule's fields.
+
+        Args:
+            v (List[dict]): List of rule dictionaries to validate
+
+        Returns:
+            List[Rule]: List of validated Rule objects
+        """
+        if isinstance(v, list):
+            return [Rule.model_validate(r) for r in v]
+        return v
+
+    def to_dict(self) -> Dict[str, List[Dict[str, str]] | str]:
         """Convert `Group` to `dict`.
 
         Returns:
-            dict: `Group` as a `dict`.
+            Dict[str, List[Dict[str, str]] | str]: `Group` as a `dict`.
         """
-        return {
-            "rules": [r.to_dict() for r in self.rules],
-            "rules_oper": self.rules_operator,
-        }
-
-    @classmethod
-    def from_dict(cls, dict_: dict):
-        """Create a `Group` from dict.
-
-        Args:
-            dict_ (dict): Mapping containing the `Group`'s attributes.
-
-        Returns:
-            Self: `Group` object.
-        """
-        rules = [Rule.from_dict(r) for r in dict_.get("rules", [])]
-        rules_operator = dict_.get("rules_oper", "")
-        return cls(rules=rules, rules_operator=rules_operator)
+        return self.model_dump(by_alias=True)

@@ -1,34 +1,39 @@
 from typing import List
-from hutch_bunny.core.rquest_dto.base_dto import BaseDto
+from pydantic import BaseModel, Field, field_validator
 from hutch_bunny.core.rquest_dto.group import Group
 
 
-class Cohort(BaseDto):
-    def __init__(self, groups: List[Group], groups_operator: str) -> None:
-        self.groups = groups
-        self.groups_operator = groups_operator
+class Cohort(BaseModel):
+    """Cohort - represents a collection of groups with an operator to combine them"""
 
-    def to_dict(self) -> dict:
+    groups: List[Group]
+    groups_operator: str = Field(alias="groups_oper")
+
+    model_config = {
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True,
+    }
+
+    @field_validator("groups", mode="before")
+    @classmethod
+    def validate_groups(cls, v: List[dict]) -> List[Group]:
+        """Validate and convert the list of group dictionaries to Group objects.
+        This ensures proper nested validation of groups and their rules.
+
+        Args:
+            v (List[dict]): List of group dictionaries to validate
+
+        Returns:
+            List[Group]: List of validated Group objects
+        """
+        if isinstance(v, list):
+            return [Group.model_validate(g) for g in v]
+        return v
+
+    def to_dict(self) -> dict[str, List[dict[str, str | bool | float]] | str]:
         """Convert `Cohort` to `dict`
 
         Returns:
-            dict: The `Cohort` as a `dict`
+            dict[str, List[dict[str, str | bool | float]] | str]: The `Cohort` as a `dict`
         """
-        return {
-            "groups": [g.to_dict() for g in self.groups],
-            "groups_oper": self.groups_operator,
-        }
-
-    @classmethod
-    def from_dict(cls, dict_: dict):
-        """Build a `Cohort` from a `dict`
-
-        Args:
-            dict_ (dict): The `dict with the cohort's details`
-
-        Returns:
-            Self: a `Cohort` instance
-        """
-        groups = [Group.from_dict(g) for g in dict_.get("groups", [])]
-        groups_operator = dict_.get("groups_oper", "")
-        return cls(groups=groups, groups_operator=groups_operator)
+        return self.model_dump(by_alias=True)

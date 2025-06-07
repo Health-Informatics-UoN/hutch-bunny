@@ -1,118 +1,67 @@
+from pydantic import BaseModel, field_validator
 from hutch_bunny.core.enums import DistributionQueryType
-from hutch_bunny.core.rquest_dto.base_dto import BaseDto
 from hutch_bunny.core.rquest_dto.cohort import Cohort
 
 
-class AvailabilityQuery(BaseDto):
-    """Python representation of an RQuest Availability Query"""
+class AvailabilityQuery(BaseModel):
+    """Availability Query - represents the top-level structure of an availability query request"""
 
-    def __init__(
-        self,
-        cohort: Cohort,
-        uuid: str,
-        owner: str,
-        collection: str,
-        protocol_version: str,
-        char_salt: str,
-        **kwargs,
-    ) -> None:
-        self.cohort = cohort
-        self.uuid = uuid
-        self.owner = owner
-        self.collection = collection
-        self.protocol_version = protocol_version
-        self.char_salt = char_salt
+    cohort: Cohort
+    uuid: str
+    owner: str
+    collection: str
+    protocol_version: str
+    char_salt: str
 
-    def to_dict(self) -> dict:
-        """Convert `AvailabilityQuery` to `dict`.
+    model_config = {
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True,
+    }
 
-        Returns:
-            dict: `AvailabilityQuery` as a `dict`.
-        """
-        return {
-            "cohort": self.cohort.to_dict(),
-            "uuid": self.uuid,
-            "owner": self.owner,
-            "collection": self.collection,
-            "protocol_version": self.protocol_version,
-            "char_salt": self.char_salt,
-        }
-
+    @field_validator("cohort", mode="before")
     @classmethod
-    def from_dict(cls, dict_: dict):
-        """Create a `AvailabilityQuery` from RQuest JSON.
+    def validate_cohort(cls, v: dict) -> Cohort:
+        """Validate and convert the cohort dictionary to a Cohort object.
+        This ensures proper nested validation of the entire query structure.
 
         Args:
-            dict_ (dict): Mapping containing the `AvailabilityQuery`'s attributes.
+            v (dict): The cohort dictionary to validate, containing groups and their rules
 
         Returns:
-            Self: `AvailabilityQuery` object.
+            Cohort: The validated Cohort object with all nested structures validated
         """
-        cohort = Cohort.from_dict(dict_.pop("cohort", {}))
-        return cls(cohort=cohort, **dict_)
+        if isinstance(v, dict):
+            return Cohort.model_validate(v)
+        return v
 
 
-class DistributionQuery(BaseDto):
-    """Python representation of an RQuest Distribution Query"""
+class DistributionQuery(BaseModel):
+    """Distribution Query - represents the top-level structure of a distribution query request"""
 
-    def __init__(
-        self,
-        owner: str,
-        code: DistributionQueryType,
-        analysis: str,
-        uuid: str,
-        collection: str,
-        **kwargs,
-    ) -> None:
-        self.owner = owner
-        self.code = code
-        self.analysis = analysis
-        self.uuid = uuid
-        self.collection = collection
+    owner: str
+    code: DistributionQueryType
+    analysis: str
+    uuid: str
+    collection: str
 
-    def to_dict(self) -> dict:
-        """Convert `DistributionQuery` to `dict`.
-
-        Returns:
-            dict: `DistributionQuery` as a `dict`.
-        """
-        return {
-            "owner": self.owner,
-            "code": self.code.value,
-            "analysis": self.analysis,
-            "uuid": self.uuid,
-            "collection": self.collection,
-        }
-
+    @field_validator("code", mode="before")
     @classmethod
-    def from_dict(cls, dict_: dict):
-        """Create a `DistributionQuery` from RQuest JSON.
+    def validate_code(cls, v: str) -> DistributionQueryType:
+        """Validate that the code is a valid distribution query type.
 
         Args:
-            dict_ (dict): Mapping containing the `DistributionQuery`'s attributes.
+            v (str): The code value to validate
 
         Raises:
-            TypeError: "Distribution queries must have values for: 'owner', 'code', 'analysis', 'uuid' and 'collection'"
-            ValueError: `dict_` contains an incorrect value for `code`.
+            ValueError: If the code is not a valid distribution query type
 
         Returns:
-            Self: `DistributionQuery` object.
+            DistributionQueryType: The validated enum value
         """
-
-        owner = dict_.get("owner")
-        code = dict_.get("code")
-        analysis = dict_.get("analysis")
-        uuid = dict_.get("uuid")
-        collection = dict_.get("collection")
-
-        if any(v is None for v in [owner, code, analysis, uuid, collection]):
-            raise TypeError(
-                "Distribution queries must have values for: 'owner', 'code', 'analysis', 'uuid' and 'collection'"
-            )
-
-        if code_enum := DistributionQueryType.get_value(code):
-            return cls(owner, code_enum, analysis, uuid, collection)
-        else:
+        try:
+            return DistributionQueryType(v)
+        except ValueError:
+            valid_values = [t.value for t in DistributionQueryType]
             raise ValueError(
-                f"'{code}' is not a valid distribution query type. Valid values are: '{DistributionQueryType.DEMOGRAPHICS.value}', '{DistributionQueryType.GENERIC.value}' or '{DistributionQueryType.ICD_MAIN.value}'"
+                f"'{v}' is not a valid distribution query type. Valid values are: {', '.join(repr(v) for v in valid_values)}"
             )

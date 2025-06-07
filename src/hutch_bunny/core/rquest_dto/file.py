@@ -1,32 +1,25 @@
-from hutch_bunny.core.rquest_dto.base_dto import BaseDto
+from pydantic import BaseModel, Field
 
 
-class File(BaseDto):
-    def __init__(
-        self,
-        data: str,
-        description: str,
-        name: str,
-        reference: str,
-        sensitive: bool,
-        size: float,
-        type_: str,
-    ) -> None:
-        self.data = data
-        self.description = description
-        self.name = name
-        self.reference = reference
-        self.sensitive = sensitive
-        self.size = size
-        self.type_ = type_
+class File(BaseModel):
+    """Python representation of an RQuest File"""
 
-    def to_dict(self) -> dict:
-        return {
-            "file_name": self.name,
-            "file_data": self.data,
-            "file_description": self.description,
-            "file_size": self.size,
-            "file_type": self.type_,
-            "file_sensitive": self.sensitive,
-            "file_reference": self.reference,
-        }
+    data: str = Field(alias="file_data")
+    description: str = Field(alias="file_description")
+    name: str = Field(alias="file_name")
+    reference: str = Field(alias="file_reference")
+    sensitive: bool = Field(alias="file_sensitive")
+    size: float = Field(alias="file_size")
+    type_: str = Field(alias="file_type")
+
+    model_config = {
+        "populate_by_name": True,
+    }
+
+    def to_dict(self) -> dict[str, str | bool | float]:
+        """Convert to dictionary using field aliases.
+
+        Returns:
+            dict[str, str | bool | float]: Dictionary representation using field aliases
+        """
+        return self.model_dump(by_alias=True)

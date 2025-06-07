@@ -55,7 +55,7 @@ def execute_query(
     else:
         logger.debug("Processing availability query...")
         try:
-            query = AvailabilityQuery.from_dict(query_dict)
+            query = AvailabilityQuery.model_validate(query_dict)
 
             result = query_solvers.solve_availability(
                 results_modifier, db_manager=db_manager, query=query
