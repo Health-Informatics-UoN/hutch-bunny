@@ -20,12 +20,12 @@ class AvailabilityQuery(BaseModel):
 
     @field_validator("cohort", mode="before")
     @classmethod
-    def validate_cohort(cls, v: dict) -> Cohort:
+    def validate_cohort(cls, v: dict[str, str | float | bool]) -> Cohort:
         """Validate and convert the cohort dictionary to a Cohort object.
         This ensures proper nested validation of the entire query structure.
 
         Args:
-            v (dict): The cohort dictionary to validate, containing groups and their rules
+            v (dict[str, str | float | bool]): The cohort dictionary to validate, containing groups and their rules
 
         Returns:
             Cohort: The validated Cohort object with all nested structures validated

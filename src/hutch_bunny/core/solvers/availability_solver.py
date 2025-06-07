@@ -590,7 +590,7 @@ class AvailabilitySolver:
         # with a single entry is provided.
         secondary_modifier_list = []
 
-        for type_index, typeAdd in enumerate(current_rule.secondary_modifier, start=0):
+        for typeAdd in current_rule.secondary_modifier or []:
             if typeAdd != "":
                 secondary_modifier_list.append(
                     ConditionOccurrence.condition_type_concept_id == int(typeAdd)
