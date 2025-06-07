@@ -1,3 +1,5 @@
+from hutch_bunny.core.db_manager import SyncDBManager
+from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
 from hutch_bunny.core.solvers.query_solvers import (
     solve_availability,
     solve_distribution,
@@ -7,12 +9,12 @@ import pytest
 
 @pytest.mark.integration
 def test_pool_clean_up_availability(
-    db_manager,
-    availability_query_onerule_equals,
-    availability_query_onerule_notequals,
-    availability_query_tworules_equals,
-    availability_query_tworules_notequals,
-):
+    db_manager: SyncDBManager,
+    availability_query_onerule_equals: AvailabilityQuery,
+    availability_query_onerule_notequals: AvailabilityQuery,
+    availability_query_tworules_equals: AvailabilityQuery,
+    availability_query_tworules_notequals: AvailabilityQuery,
+) -> None:
     starting_checked_out_connections = db_manager.engine.pool.checkedout()
     solve_availability(
         results_modifier=[],
@@ -51,7 +53,9 @@ def test_pool_clean_up_availability(
 
 
 @pytest.mark.integration
-def test_pool_clean_up_distribution(db_manager, distribution_query):
+def test_pool_clean_up_distribution(
+    db_manager: SyncDBManager, distribution_query: DistributionQuery
+) -> None:
     starting_checked_out_connections = db_manager.engine.pool.checkedout()
     solve_distribution(
         results_modifier=[], db_manager=db_manager, query=distribution_query
