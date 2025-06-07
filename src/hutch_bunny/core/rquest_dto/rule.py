@@ -1,5 +1,5 @@
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 
@@ -13,7 +13,7 @@ class Rule(BaseModel):
     operator: str = Field(default="", alias="oper")
     raw_range: str = ""
     varcat: Optional[str] = None
-    secondary_modifier: Optional[List[Any]] = None
+    secondary_modifier: Optional[list[Any]] = None
     min_value: Optional[float] = None
     max_value: Optional[float] = None
 
@@ -40,21 +40,3 @@ class Rule(BaseModel):
                     max_value = None
                 return min_value if info.field_name == "min_value" else max_value
         return None
-
-    def to_dict(self) -> Dict[str, str]:
-        """Convert `Rule` to `dict`.
-
-        Returns:
-            Dict[str, str]: `Rule` as a `dict`.
-        """
-        varname = self.varname
-        value = self.value
-        if self.type_ == "NUM":
-            varname = f"OMOP={value}"
-            value = f"{self.min_value}..{self.max_value}"
-        return {
-            "varname": varname,
-            "type": self.type_,
-            "oper": self.operator,
-            "value": value,
-        }

@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 
 
 class File(BaseModel):
-    """Python representation of an RQuest File"""
+    """RQuest File"""
 
     data: str = Field(alias="file_data")
     description: str = Field(alias="file_description")
@@ -15,11 +15,3 @@ class File(BaseModel):
     model_config = {
         "populate_by_name": True,
     }
-
-    def to_dict(self) -> dict[str, str | bool | float]:
-        """Convert to dictionary using field aliases.
-
-        Returns:
-            dict[str, str | bool | float]: Dictionary representation using field aliases
-        """
-        return self.model_dump(by_alias=True)
