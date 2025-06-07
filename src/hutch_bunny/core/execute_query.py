@@ -31,7 +31,7 @@ def execute_query(
     if "analysis" in query_dict.keys():
         logger.debug("Processing distribution query...")
         try:
-            query = DistributionQuery.from_dict(query_dict)
+            query = DistributionQuery.model_validate(query_dict)
 
             # Check for ICD-MAIN queries before calling the solver
             # So we dont return results upstream
