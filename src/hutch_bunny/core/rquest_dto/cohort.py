@@ -15,7 +15,7 @@ class Cohort(BaseModel):
 
     @field_validator("groups", mode="before")
     @classmethod
-    def validate_groups(cls, v: list[dict]) -> list[Group]:
+    def validate_groups(cls, v: list[dict[str, str | float | bool]]) -> list[Group]:
         """Validate and convert the list of group dictionaries to Group objects.
         This ensures proper nested validation of groups and their rules.
 

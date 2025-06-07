@@ -15,7 +15,7 @@ class Group(BaseModel):
 
     @field_validator("rules", mode="before")
     @classmethod
-    def validate_rules(cls, v: list[dict]) -> list[Rule]:
+    def validate_rules(cls, v: list[dict[str, str | float | bool]]) -> list[Rule]:
         """Validate and convert the list of rule dictionaries to Rule objects.
         This ensures proper validation of each rule's fields.
 
