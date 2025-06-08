@@ -4,11 +4,26 @@ from hutch_bunny.core.rquest_models.file import File
 
 
 class QueryResult(BaseModel):
-    """Nested model for query result data"""
+    """
+    Nested model for query result data.
+
+    Specifies the result of a query.
+    """
 
     count: int
+    """
+    Result count of the query.
+    """
+
     datasetCount: int = Field(alias="datasetCount")
+    """
+    Count of the datasets in the query.
+    """
+
     files: list[File] = Field(default_factory=list)
+    """
+    Result files of the query.
+    """
 
 
 class RquestResult(BaseModel):
