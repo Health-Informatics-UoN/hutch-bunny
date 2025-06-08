@@ -1,6 +1,26 @@
-from pydantic import BaseModel, field_validator
-from hutch_bunny.core.enums import DistributionQueryType
+from enum import Enum
+from typing import Literal
+from pydantic import BaseModel, field_validator, ConfigDict
 from hutch_bunny.core.rquest_models.cohort import Cohort
+
+
+class DistributionQueryType(str, Enum):
+    """Types of distribution queries."""
+
+    DEMOGRAPHICS = "DEMOGRAPHICS"
+    GENERIC = "GENERIC"
+    ICD_MAIN = "ICD-MAIN"
+
+    @property
+    def file_name(self) -> Literal["demographics.distribution", "code.distribution"]:
+        """Get the corresponding file name for this distribution type."""
+        mapping = {
+            DistributionQueryType.DEMOGRAPHICS: "demographics.distribution",
+            DistributionQueryType.GENERIC: "code.distribution",
+        }
+        if self not in mapping:
+            raise ValueError(f"No file name mapping for query type: {self}")
+        return mapping[self]  # type: ignore
 
 
 class AvailabilityQuery(BaseModel):
@@ -38,10 +58,10 @@ class AvailabilityQuery(BaseModel):
     Char salt of the query.
     """
 
-    model_config = {
-        "populate_by_name": True,
-        "arbitrary_types_allowed": True,
-    }
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
 
     @field_validator("cohort", mode="before")
     @classmethod
@@ -86,6 +106,9 @@ class DistributionQuery(BaseModel):
     """
 
     collection: str
+    """
+    Collection of the query.
+    """
 
     @field_validator("code", mode="before")
     @classmethod
