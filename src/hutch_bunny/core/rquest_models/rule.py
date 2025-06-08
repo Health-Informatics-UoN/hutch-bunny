@@ -1,19 +1,19 @@
 import re
-from typing import Any
+from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
 class Rule(BaseModel):
     """Rule"""
 
-    value: Any = None
-    type_: str = Field(default="", alias="type")
+    value: str = ""
+    type_: Literal["NUM", "TEXT"] = Field(default="TEXT", alias="type")
     time: str | None = None
     varname: str = ""
-    operator: str = Field(default="", alias="oper")
-    raw_range: str = ""
-    varcat: str | None = None
-    secondary_modifier: list[Any] | None = None
+    operator: Literal["=", "!="] = Field(default="=", alias="oper")
+    raw_range: str | None = None
+    varcat: Literal["Person", "Condition", "Observation", "Drug", "Measurement"]
+    secondary_modifier: list[int] | None = None
     min_value: float | None = None
     max_value: float | None = None
 
@@ -29,7 +29,7 @@ class Rule(BaseModel):
             parts = self.varname.split("=")
             v = parts[1] if len(parts) > 1 else None
             self.raw_range = self.value
-            self.value = v
+            self.value = v or ""
         else:
             self.min_value, self.max_value = None, None
 
