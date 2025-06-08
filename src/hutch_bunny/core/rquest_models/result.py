@@ -1,5 +1,5 @@
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from hutch_bunny.core.rquest_models.file import File
 
 
@@ -74,10 +74,10 @@ class RquestResult(BaseModel):
     Protocol version of the query. Supplied by the upstream API.
     """
 
-    model_config = {
-        "populate_by_name": True,
-        "arbitrary_types_allowed": True,
-    }
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
 
     def to_dict(self) -> dict[str, str | int | dict[str, str | int | float | bool]]:
         """

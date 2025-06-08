@@ -1,5 +1,5 @@
 from typing import Literal
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from hutch_bunny.core.rquest_models.rule import Rule
 
 
@@ -9,12 +9,19 @@ class Group(BaseModel):
     """
 
     rules: list[Rule]
-    rules_operator: Literal["AND", "OR"] = Field(alias="rules_oper")
+    """
+    Rules of the group.
+    """
 
-    model_config = {
-        "populate_by_name": True,
-        "arbitrary_types_allowed": True,
-    }
+    rules_operator: Literal["AND", "OR"] = Field(alias="rules_oper")
+    """
+    Operator to combine the rules.
+    """
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
 
     @field_validator("rules", mode="before")
     @classmethod

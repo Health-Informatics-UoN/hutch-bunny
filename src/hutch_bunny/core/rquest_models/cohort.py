@@ -1,5 +1,5 @@
 from typing import Literal
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from hutch_bunny.core.rquest_models.group import Group
 
 
@@ -18,10 +18,10 @@ class Cohort(BaseModel):
     Operator to combine the groups.
     """
 
-    model_config = {
-        "populate_by_name": True,
-        "arbitrary_types_allowed": True,
-    }
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
 
     @field_validator("groups", mode="before")
     @classmethod

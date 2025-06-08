@@ -1,5 +1,5 @@
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class File(BaseModel):
@@ -55,6 +55,6 @@ class File(BaseModel):
     `BCOS` for binary content.
     """
 
-    model_config = {
-        "populate_by_name": True,
-    }
+    model_config = ConfigDict(
+        populate_by_name=True,
+    )

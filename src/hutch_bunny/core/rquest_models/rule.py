@@ -1,6 +1,6 @@
 import re
 from typing import Any, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Rule(BaseModel):
@@ -82,10 +82,10 @@ class Rule(BaseModel):
     min_value: float | None = None
     max_value: float | None = None
 
-    model_config = {
-        "populate_by_name": True,
-        "arbitrary_types_allowed": True,
-    }
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
 
     def model_post_init(self, __context: Any) -> None:
         """
