@@ -18,7 +18,7 @@ from tenacity import (
     before_sleep_log,
     after_log,
 )
-from hutch_bunny.core.rquest_models.query import DistributionQuery
+from hutch_bunny.core.rquest_models.distribution import DistributionQuery
 from sqlalchemy import select
 from hutch_bunny.core.solvers.availability_solver import ResultModifier
 

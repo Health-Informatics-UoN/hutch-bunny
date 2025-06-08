@@ -37,7 +37,7 @@ from sqlalchemy import exists
 
 from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.rquest_models.group import Group
-from hutch_bunny.core.rquest_models.query import AvailabilityQuery
+from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from sqlalchemy.engine import Engine
 from hutch_bunny.core.logger import logger, INFO
 

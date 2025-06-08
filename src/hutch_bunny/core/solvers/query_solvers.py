@@ -4,11 +4,11 @@ from hutch_bunny.core.logger import logger
 
 from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
 from hutch_bunny.core.db_manager import SyncDBManager
-from hutch_bunny.core.rquest_models.query import (
-    AvailabilityQuery,
+from hutch_bunny.core.rquest_models.distribution import (
     DistributionQuery,
     DistributionQueryType,
 )
+from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.rquest_models.file import File
 from hutch_bunny.core.solvers.availability_solver import ResultModifier
 
