@@ -9,12 +9,40 @@ class File(BaseModel):
     """
 
     data: str = Field(alias="file_data")
+    """
+    Data of the file.
+    
+    Base64 encoded string containing the result of the query, in a TSV format.
+
+    See: https://hutch.health/concepts/distribution#response-schema for more details.
+    """
+
     description: str = Field(alias="file_description")
-    name: str = Field(alias="file_name")
+    """
+    Description of the file.
+    """
+
     reference: str = Field(alias="file_reference")
+    """
+    Reference of the file. This is not used by Bunny.
+    """
+
     sensitive: bool = Field(alias="file_sensitive")
+    """
+    Sensitive flag of the file.
+    """
+
     size: float = Field(alias="file_size")
+    """
+    Size of the file in KB.
+    """
+
     type_: str = Field(alias="file_type")
+    """
+    Type of the file. 
+
+    `BCOS` for binary content.
+    """
 
     model_config = {
         "populate_by_name": True,
