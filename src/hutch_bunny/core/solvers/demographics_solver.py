@@ -1,6 +1,6 @@
 import os
 from typing import Tuple, List, Dict
-from dataclasses import dataclass
+from pydantic import BaseModel
 
 from sqlalchemy import Select, distinct, func, select
 
@@ -22,9 +22,10 @@ from hutch_bunny.core.rquest_dto.query import DistributionQuery
 from hutch_bunny.core.solvers.availability_solver import ResultModifier
 
 
-@dataclass
-class DemographicsRow:
-    """Represents a single row in the demographics output."""
+class DemographicsRow(BaseModel):
+    """
+    A single row in the demographics output.
+    """
 
     code: str
     description: str
@@ -41,31 +42,6 @@ class DemographicsRow:
     max_val: str = ""
     omop: str = ""
     omop_descr: str = ""
-
-    def to_dict(self) -> Dict[str, str]:
-        """
-        Convert the row to a dictionary format.
-
-        Returns:
-            Dict[str, str]: The row as a dictionary.
-        """
-        return {
-            "BIOBANK": self.biobank,
-            "CODE": self.code,
-            "DESCRIPTION": self.description,
-            "COUNT": str(self.count),
-            "MIN": self.min_val,
-            "Q1": self.q1,
-            "MEDIAN": self.median,
-            "MEAN": self.mean,
-            "Q3": self.q3,
-            "MAX": self.max_val,
-            "ALTERNATIVES": self.alternatives,
-            "DATASET": self.dataset,
-            "OMOP": self.omop,
-            "OMOP_DESCR": self.omop_descr,
-            "CATEGORY": self.category,
-        }
 
 
 class DemographicsDistributionQuerySolver:
@@ -282,7 +258,10 @@ class DemographicsDistributionQuerySolver:
         # Format as tsv
         header = "\t".join(self.output_cols)
         values = [
-            "\t".join(str(row.to_dict().get(col, "")) for col in self.output_cols)
+            "\t".join(
+                str(row.model_dump(mode="json").get(col.lower(), ""))
+                for col in self.output_cols
+            )
             for row in rows
         ]
         result_string = f"{header}{os.linesep}{os.linesep.join(values)}"

@@ -65,6 +65,10 @@ python_version = "3.13"
 strict = true
 plugins = ['pydantic.mypy']
 
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+
 # Prevent ANY implicit `Any` types  
 disallow_any_generics = true
 disallow_any_explicit = true
