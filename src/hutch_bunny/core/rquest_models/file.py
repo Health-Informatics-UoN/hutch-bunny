@@ -2,7 +2,9 @@ from pydantic import BaseModel, Field
 
 
 class File(BaseModel):
-    """RQuest File"""
+    """
+    A file as part of a RquestResult.
+    """
 
     data: str = Field(alias="file_data")
     description: str = Field(alias="file_description")

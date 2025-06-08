@@ -12,7 +12,7 @@ class QueryResult(BaseModel):
 
 class RquestResult(BaseModel):
     """
-    This class represents the result of an RQuest query.
+    RquestResult model.
     """
 
     uuid: str
@@ -30,10 +30,11 @@ class RquestResult(BaseModel):
     }
 
     def to_dict(self) -> dict[str, str | int | dict[str, str | int | float | bool]]:
-        """Convert this `DistributionResult` object to a JSON serialisable `dict`.
+        """
+        Convert `RquestResult` to a JSON serialisable `dict`.
 
         Returns:
-            dict[str, str | int | dict[str, str | int | float | bool]]: The dict representing the result of a distribution query.
+            dict[str, str | int | dict[str, str | int | float | bool]]: The dict of result.
         """
         query_result = QueryResult(
             count=self.count, datasetCount=self.datasets_count, files=self.files
