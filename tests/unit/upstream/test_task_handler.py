@@ -26,9 +26,7 @@ def mock_task_api_client():
 def test_handle_task_success(mock_db_manager, mock_settings, mock_task_api_client):
     # Arrange
     task_data = {"query": "SELECT * FROM table"}
-    mock_result = RquestResult(
-        status="success", uuid="1234", collection_id="5678", count=10
-    )
+    mock_result = RquestResult(status="ok", uuid="1234", collection_id="5678", count=10)
 
     expected_result_modifier = [
         {"id": "Low Number Suppression", "threshold": 10},

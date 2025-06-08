@@ -1,12 +1,15 @@
 import pytest
 import os
 
-from hutch_bunny.core.enums import DistributionQueryType
 from hutch_bunny.core.rquest_models.cohort import Cohort
 from hutch_bunny.core.rquest_models.group import Group
 from hutch_bunny.core.rquest_models.rule import Rule
 from hutch_bunny.core.db_manager import SyncDBManager
-from hutch_bunny.core.rquest_models.query import AvailabilityQuery, DistributionQuery
+from hutch_bunny.core.rquest_models.query import (
+    AvailabilityQuery,
+    DistributionQuery,
+    DistributionQueryType,
+)
 from hutch_bunny.core.settings import Settings
 import hutch_bunny.core.db as db
 
@@ -95,7 +98,7 @@ def availability_query_tworules_equals() -> AvailabilityQuery:
                             varname="OMOP",
                             varcat="Person",
                             type_="TEXT",
-                            operator="==",
+                            operator="=",
                             value="8507",
                         ),
                         Rule(
