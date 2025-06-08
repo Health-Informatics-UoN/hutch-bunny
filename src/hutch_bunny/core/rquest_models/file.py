@@ -4,6 +4,8 @@ from pydantic import BaseModel, Field
 class File(BaseModel):
     """
     A file as part of a RquestResult.
+
+    Specifies the file details of a query.
     """
 
     data: str = Field(alias="file_data")

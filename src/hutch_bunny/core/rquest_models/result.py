@@ -1,3 +1,4 @@
+from typing import Literal
 from pydantic import BaseModel, Field
 from hutch_bunny.core.rquest_models.file import File
 
@@ -13,16 +14,50 @@ class QueryResult(BaseModel):
 class RquestResult(BaseModel):
     """
     RquestResult model.
+
+    Specifies the result of a query.
     """
 
     uuid: str
-    status: str
+    """
+    UUID of the query. Supplied by the upstream API.
+    """
+
+    status: Literal["ok", "error"]
+    """
+    Status of the query.
+    """
+
     collection_id: str
+    """
+    Collection ID of the query. Supplied by the upstream API.
+    """
+
     count: int = 0
+    """
+    Result count of the query.
+    """
+
     datasets_count: int = Field(default=0, alias="datasetCount")
+    """
+    Count of the datasets in the query.
+    Bunny only returns 1 dataset.
+    """
+
     files: list[File] = Field(default_factory=list)
+    """
+    Result files of the query.
+    """
+
     message: str = ""
+    """
+    Message of the query. This is only used when the status is `error`.
+    """
+
     protocol_version: str = Field(default="v2", alias="protocolVersion")
+    """
+    Protocol version of the query. Supplied by the upstream API.
+    """
 
     model_config = {
         "populate_by_name": True,

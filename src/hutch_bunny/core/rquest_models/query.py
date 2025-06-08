@@ -4,14 +4,39 @@ from hutch_bunny.core.rquest_models.cohort import Cohort
 
 
 class AvailabilityQuery(BaseModel):
-    """Availability Query - represents the top-level structure of an availability query request"""
+    """
+    The top-level structure of an availability query request.
+    """
 
     cohort: Cohort
+    """
+    Cohort of the query, which contains the query groups and their rules.
+    """
+
     uuid: str
+    """
+    UUID of the query.
+    """
+
     owner: str
+    """
+    Owner of the query. 
+    """
+
     collection: str
+    """
+    Collection of the query.
+    """
+
     protocol_version: str
+    """
+    Protocol version of the query.
+    """
+
     char_salt: str
+    """
+    Char salt of the query.
+    """
 
     model_config = {
         "populate_by_name": True,
@@ -36,12 +61,30 @@ class AvailabilityQuery(BaseModel):
 
 
 class DistributionQuery(BaseModel):
-    """Distribution Query - represents the top-level structure of a distribution query request"""
+    """
+    The top-level structure of a distribution query request.
+    """
 
     owner: str
+    """
+    Owner of the query.
+    """
+
     code: DistributionQueryType
+    """
+    Code of the query.
+    """
+
     analysis: str
+    """
+    Analysis of the query.
+    """
+
     uuid: str
+    """
+    UUID of the query.
+    """
+
     collection: str
 
     @field_validator("code", mode="before")
