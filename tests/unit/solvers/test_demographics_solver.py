@@ -188,8 +188,8 @@ def test_create_demographics_rows(solver: DemographicsDistributionQuerySolver) -
     assert rows[1].alternatives == f"^No|{total_count}^"
 
 
-def test_demographics_row_to_dict() -> None:
-    """Test DemographicsRow.to_dict method."""
+def test_demographics_row_model_dump() -> None:
+    """Test DemographicsRow.model_dump method."""
     row = DemographicsRow(
         code="TEST",
         description="Test Description",
@@ -198,12 +198,12 @@ def test_demographics_row_to_dict() -> None:
         biobank="test_biobank",
     )
 
-    result = row.to_dict()
+    result = row.model_dump(mode="json")
     assert isinstance(result, dict)
-    assert result["CODE"] == "TEST"
-    assert result["DESCRIPTION"] == "Test Description"
-    assert result["COUNT"] == "100"
-    assert result["ALTERNATIVES"] == "^TEST|100^"
-    assert result["BIOBANK"] == "test_biobank"
-    assert result["CATEGORY"] == "DEMOGRAPHICS"
-    assert result["DATASET"] == "person"
+    assert result["code"] == "TEST"
+    assert result["description"] == "Test Description"
+    assert result["count"] == 100
+    assert result["alternatives"] == "^TEST|100^"
+    assert result["biobank"] == "test_biobank"
+    assert result["category"] == "DEMOGRAPHICS"
+    assert result["dataset"] == "person"
