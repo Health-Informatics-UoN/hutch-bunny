@@ -9,7 +9,14 @@ class Cohort(BaseModel):
     """
 
     groups: list[Group]
+    """
+    Groups of the cohort.
+    """
+
     groups_operator: Literal["AND", "OR"] = Field(alias="groups_oper")
+    """
+    Operator to combine the groups.
+    """
 
     model_config = {
         "populate_by_name": True,
