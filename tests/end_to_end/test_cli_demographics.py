@@ -127,6 +127,19 @@ def test_cli_demographics(test_case: DemographicsTestCase) -> None:
         assert output_data["message"] == ""
         assert output_data["collection_id"] == "collection_id"
 
+        # Assert file details
+        assert (
+            output_data["queryResult"]["files"][0]["file_name"]
+            == "demographics.distribution"
+        )
+        assert output_data["queryResult"]["files"][0]["file_type"] == "BCOS"
+        assert output_data["queryResult"]["files"][0]["file_sensitive"] is True
+        assert (
+            output_data["queryResult"]["files"][0]["file_description"]
+            == "Result of code.distribution analysis"
+        )
+        assert output_data["queryResult"]["files"][0]["file_data"] is not None
+
         # Assert expected values in output file
         file_data = base64.b64decode(
             output_data["queryResult"]["files"][0]["file_data"]

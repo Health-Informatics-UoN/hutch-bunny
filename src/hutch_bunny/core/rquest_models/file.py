@@ -1,3 +1,4 @@
+from typing import Literal
 from pydantic import BaseModel, Field
 
 
@@ -8,10 +9,20 @@ class File(BaseModel):
     Specifies the file details of a query.
     """
 
+    name: Literal["demographics.distribution", "code.distribution"] = Field(
+        alias="file_name"
+    )
+    """
+    Name of the file.
+
+    `demographics.distribution` for demographics distribution.
+    `code.distribution` for code distribution.
+    """
+
     data: str = Field(alias="file_data")
     """
     Data of the file.
-    
+
     Base64 encoded string containing the result of the query, in a TSV format.
 
     See: https://hutch.health/concepts/distribution#response-schema for more details.
