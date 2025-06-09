@@ -38,18 +38,18 @@ class AzureManagedIdentityDBClient(SyncDBClient):
         )
 
         self.schema = schema if schema is not None and len(schema) > 0 else None
-        self.engine = create_engine(url=url)
+        self._engine = create_engine(url=url)
 
         # Set up Azure managed identity authentication
         self.managed_identity_client_id = managed_identity_client_id
         self._setup_azure_managed_identity_auth()
 
         if self.schema is not None:
-            self.engine.update_execution_options(
+            self._engine.update_execution_options(
                 schema_translate_map={None: self.schema}
             )
 
-        self.inspector = inspect(self.engine)
+        self._inspector = inspect(self._engine)
 
         self._check_tables_exist()
         self._check_indexes_exist()
@@ -57,7 +57,7 @@ class AzureManagedIdentityDBClient(SyncDBClient):
     def _setup_azure_managed_identity_auth(self) -> None:
         """Set up the Azure managed identity authentication event listener."""
 
-        @event.listens_for(self.engine, "do_connect")
+        @event.listens_for(self._engine, "do_connect")
         def do_connect(
             dialect: Any, conn_rec: Any, cargs: Any, cparams: dict[str, Any]
         ) -> None:
