@@ -14,51 +14,51 @@ class DemographicsTestCase:
     modifiers: str
     expected_count: int  # Number of lines in the output file
     expected_gender_count: int
-    expected_values: Dict[str, int]
+    expected_values: Dict[str, Dict[str, int]]  # Maps category to its expected values
 
 
 test_cases = [
     DemographicsTestCase(
         json_file_path="tests/queries/distribution/demographics.json",
         modifiers="[]",
-        expected_count=1,
+        expected_count=2,
         expected_gender_count=100,
-        expected_values={"MALE": 40, "FEMALE": 60},
+        expected_values={"SEX": {"MALE": 40, "FEMALE": 60}, "GENOMICS": {"No": 100}},
     ),
     DemographicsTestCase(
         json_file_path="tests/queries/distribution/demographics.json",
         modifiers='[{"id": "Rounding", "nearest": 0}]',
-        expected_count=1,
+        expected_count=2,
         expected_gender_count=99,
-        expected_values={"MALE": 44, "FEMALE": 55},
+        expected_values={"SEX": {"MALE": 44, "FEMALE": 55}, "GENOMICS": {"No": 99}},
     ),
     DemographicsTestCase(
         json_file_path="tests/queries/distribution/demographics.json",
         modifiers='[{"id": "Rounding", "nearest": 100}]',
-        expected_count=1,
+        expected_count=2,
         expected_gender_count=100,
-        expected_values={"MALE": 0, "FEMALE": 100},
+        expected_values={"SEX": {"MALE": 0, "FEMALE": 100}, "GENOMICS": {"No": 100}},
     ),
     DemographicsTestCase(
         json_file_path="tests/queries/distribution/demographics.json",
         modifiers='[{"id": "Rounding", "nearest": 10}, {"id": "Low Number Suppression", "threshold": 10}]',
-        expected_count=1,
+        expected_count=2,
         expected_gender_count=100,
-        expected_values={"MALE": 40, "FEMALE": 60},
+        expected_values={"SEX": {"MALE": 40, "FEMALE": 60}, "GENOMICS": {"No": 100}},
     ),
     DemographicsTestCase(
         json_file_path="tests/queries/distribution/demographics.json",
         modifiers='[{"id": "Rounding", "nearest": 10}, {"id": "Low Number Suppression", "threshold": 50}]',
-        expected_count=1,
+        expected_count=2,
         expected_gender_count=60,
-        expected_values={"FEMALE": 60},
+        expected_values={"SEX": {"FEMALE": 60}, "GENOMICS": {"No": 60}},
     ),
     DemographicsTestCase(
         json_file_path="tests/queries/distribution/demographics.json",
         modifiers='[{"id": "Rounding", "nearest": 0}, {"id": "Low Number Suppression", "threshold": 0}]',
-        expected_count=1,
+        expected_count=2,
         expected_gender_count=99,
-        expected_values={"MALE": 44, "FEMALE": 55},
+        expected_values={"SEX": {"MALE": 44, "FEMALE": 55}, "GENOMICS": {"No": 99}},
     ),
 ]
 
@@ -140,16 +140,20 @@ def test_cli_demographics(test_case: DemographicsTestCase) -> None:
         # Assert the gender count and gender distribution
         # Sample line:
         # collection_id	SEX	Sex	100							^MALE|40^FEMALE|60^	person			DEMOGRAPHICS
-        fields = lines[1].split("\t")
+        # collection_id	GENOMICS	Genomics	100							^No|100^	person			DEMOGRAPHICS
+        for i, line in enumerate(lines[1:], 1):  # Skip header line
+            fields = line.split("\t")
+            category = fields[1]  # e.g., "SEX" or "GENOMICS"
 
-        # Assert the gender count
-        assert int(fields[3]) == test_case.expected_gender_count
+            # Assert the count for this category
+            assert int(fields[3]) == test_case.expected_gender_count
 
-        # Assert the gender distribution (e.g. ^MALE|40^FEMALE|60^)
-        values = fields[10].split("^")
-        for value in values[1:2]:
-            gender, count = value.split("|")
-            assert int(count) == test_case.expected_values[gender]
+            # Assert the distribution for this category
+            values = fields[10].split("^")
+            for value in values[1:-1]:  # Skip empty first and last elements
+                if value:  # Skip empty values
+                    gender, count = value.split("|")
+                    assert int(count) == test_case.expected_values[category][gender]
 
     # Clean up
     os.remove(output_file_path)

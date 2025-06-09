@@ -1,6 +1,6 @@
 [project]
 name = "hutch-bunny"
-version = "1.0.0"
+version = "1.0.1"
 description = "A Cohort Discovery Task API worker"
 license = { text = "MIT License" }
 readme = "README.md"
@@ -64,6 +64,10 @@ convention = "google"
 python_version = "3.13"
 strict = true
 plugins = ['pydantic.mypy']
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
 
 # Prevent ANY implicit `Any` types  
 disallow_any_generics = true
