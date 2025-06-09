@@ -37,4 +37,3 @@ class Group(BaseModel):
         """
         if isinstance(v, list):
             return [Rule.model_validate(r) for r in v]
-        return v

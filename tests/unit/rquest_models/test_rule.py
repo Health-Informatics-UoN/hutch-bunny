@@ -5,7 +5,7 @@ from hutch_bunny.core.rquest_models.rule import Rule
 def test_rule_basic_initialization() -> None:
     """Test basic rule initialization with default values"""
     with pytest.raises(ValueError):
-        Rule()  # varcat is required
+        Rule()  # type: ignore
 
     rule = Rule(varcat="Person")
     assert rule.value == ""
@@ -53,6 +53,36 @@ def test_rule_numeric_with_invalid_format() -> None:
     assert rule.value == "value"
 
 
+def test_rule_numeric_with_invalid_values() -> None:
+    """Test numeric rule with invalid numeric values in range"""
+    # Test with non-numeric values in range
+    rule = Rule(type_="NUM", value="abc..def", varname="age=value", varcat="Person")
+    assert rule.min_value is None
+    assert rule.max_value is None
+    assert rule.raw_range == "abc..def"
+    assert rule.value == "value"
+
+    # Test with null values in range
+    rule = Rule(type_="NUM", value="null..null", varname="age=value", varcat="Person")
+    assert rule.min_value is None
+    assert rule.max_value is None
+    assert rule.raw_range == "null..null"
+    assert rule.value == "value"
+
+    # Test with mixed valid and invalid values
+    rule = Rule(type_="NUM", value="18.0..null", varname="age=value", varcat="Person")
+    assert rule.min_value == 18.0
+    assert rule.max_value is None
+    assert rule.raw_range == "18.0..null"
+    assert rule.value == "value"
+
+    rule = Rule(type_="NUM", value="null..65.0", varname="age=value", varcat="Person")
+    assert rule.min_value is None
+    assert rule.max_value == 65.0
+    assert rule.raw_range == "null..65.0"
+    assert rule.value == "value"
+
+
 def test_rule_condition_concept() -> None:
     """Test rule with condition concept"""
     rule = Rule(
@@ -85,16 +115,16 @@ def test_rule_secondary_modifier() -> None:
 def test_rule_invalid_type() -> None:
     """Test rule with invalid type"""
     with pytest.raises(ValueError):
-        Rule(type_="INVALID", varcat="Person")
+        Rule(type_="INVALID", varcat="Person")  # type: ignore
 
 
 def test_rule_invalid_operator() -> None:
     """Test rule with invalid operator"""
     with pytest.raises(ValueError):
-        Rule(operator=">", varcat="Person")
+        Rule(operator=">", varcat="Person")  # type: ignore
 
 
 def test_rule_invalid_varcat() -> None:
     """Test rule with invalid varcat"""
     with pytest.raises(ValueError):
-        Rule(varcat="InvalidCategory")
+        Rule(varcat="InvalidCategory")  # type: ignore
