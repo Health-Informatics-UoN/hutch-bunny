@@ -37,4 +37,3 @@ class Cohort(BaseModel):
         """
         if isinstance(v, list):
             return [Group.model_validate(g) for g in v]
-        return v
