@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-class Settings(BaseSettings):  # type: ignore
+class Settings(BaseSettings):
     """
     Settings for the application
     """
@@ -60,7 +60,7 @@ class Settings(BaseSettings):  # type: ignore
         return self.model_dump(exclude={"DATASOURCE_DB_PASSWORD"})
 
 
-class DaemonSettings(Settings):  # type: ignore
+class DaemonSettings(Settings):
     """
     Settings for the daemon
     """
