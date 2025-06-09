@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import Select, distinct, func, select
 
 from hutch_bunny.core.obfuscation import apply_filters
-from hutch_bunny.core.db_manager import SyncDBManager
+from hutch_bunny.core.db import SyncDBManager
 from hutch_bunny.core.entities import (
     Concept,
     Person,

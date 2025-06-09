@@ -14,7 +14,7 @@ from sqlalchemy import (
     text,
     Exists,
 )
-from hutch_bunny.core.db_manager import SyncDBManager
+from hutch_bunny.core.db import SyncDBManager
 from hutch_bunny.core.entities import (
     Concept,
     ConditionOccurrence,

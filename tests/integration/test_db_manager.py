@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-from hutch_bunny.core.db_manager import SyncDBManager
+from hutch_bunny.core.db import SyncDBManager
 
 
 @pytest.mark.integration

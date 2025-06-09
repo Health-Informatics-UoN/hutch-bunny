@@ -3,7 +3,7 @@ from hutch_bunny.core.logger import logger
 
 
 from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
-from hutch_bunny.core.db_manager import SyncDBManager
+from hutch_bunny.core.db import SyncDBManager
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
 from hutch_bunny.core.rquest_dto.file import File
 from hutch_bunny.core.solvers.availability_solver import ResultModifier

@@ -1,4 +1,4 @@
-from hutch_bunny.core.db_manager import SyncDBManager
+from hutch_bunny.core.db import SyncDBManager
 from hutch_bunny.core.settings import DaemonSettings
 from hutch_bunny.core.execute_query import execute_query
 from hutch_bunny.core.upstream.task_api_client import TaskApiClient
