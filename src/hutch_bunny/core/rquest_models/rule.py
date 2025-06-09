@@ -74,6 +74,8 @@ class Rule(BaseModel):
     """
     Secondary modifier to use in the search.
 
+    This is used to on the provenance of the data on `ConditionOccurence`.
+
     A list of concept_ids, for example `[32020]`.
     """
 
