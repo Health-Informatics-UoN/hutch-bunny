@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import Select, distinct, func, select
 
 from hutch_bunny.core.obfuscation import apply_filters
-from hutch_bunny.core.db import SyncDBManager
+from hutch_bunny.core.db import SyncDBClient
 from hutch_bunny.core.db.entities import (
     Concept,
     Person,
@@ -49,7 +49,7 @@ class DemographicsDistributionQuerySolver:
     Solve distribution queries for demographics queries.
 
     Args:
-        db_manager (SyncDBManager): The database manager.
+        db_client (SyncDBClient): The database client.
         query (DistributionQuery): The distribution query to solve.
 
     Attributes:
@@ -79,8 +79,8 @@ class DemographicsDistributionQuerySolver:
         "CATEGORY",
     ]
 
-    def __init__(self, db_manager: SyncDBManager, query: DistributionQuery) -> None:
-        self.db_manager = db_manager
+    def __init__(self, db_client: SyncDBClient, query: DistributionQuery) -> None:
+        self.db_client = db_client
         self.query = query
 
     def _get_modifier_values(
@@ -158,7 +158,7 @@ class DemographicsDistributionQuerySolver:
         concept_query = select(Concept.concept_id, Concept.concept_name).where(
             Concept.concept_id.in_(self.GENDER_CONCEPT_IDS)
         )
-        with self.db_manager.engine.connect() as con:
+        with self.db_client.engine.connect() as con:
             concept_result = con.execute(concept_query)
             return {concept_id: name for concept_id, name in concept_result}
 
@@ -239,7 +239,7 @@ class DemographicsDistributionQuerySolver:
         low_number, rounding = self._get_modifier_values(results_modifier)
 
         # Get the data
-        with self.db_manager.engine.connect() as con:
+        with self.db_client.engine.connect() as con:
             stmnt = self._build_gender_query(rounding, low_number)
             result = con.execute(stmnt)
             counts_by_gender = {gender_id: count for count, gender_id in result}

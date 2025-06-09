@@ -1,27 +1,27 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-from hutch_bunny.core.db import SyncDBManager
+from hutch_bunny.core.db import SyncDBClient
 
 
 @pytest.mark.integration
-def test_check_tables_exist_integration(db_manager: SyncDBManager) -> None:
+def test_check_tables_exist_integration(db_client: SyncDBClient) -> None:
     """
     Verifies that the function correctly identifies when all required tables
     exist in a real database.
     """
-    # The db_manager fixture already calls _check_tables_exist during initialization
+    # The db_client fixture already calls _check_tables_exist during initialization
     # If we get here, it means no exception was raised, which is what we want
 
     # But we can also call the method to assert it doesn't raise an exception
-    db_manager._check_tables_exist()
+    db_client._check_tables_exist()
 
     # If we get here, the test passes
     assert True
 
 
 @pytest.mark.integration
-def test_check_tables_exist_with_missing_tables(db_manager: SyncDBManager) -> None:
+def test_check_tables_exist_with_missing_tables(db_client: SyncDBClient) -> None:
     """
     Verifies that the function correctly raises a RuntimeError when
     required tables are missing.
@@ -37,12 +37,12 @@ def test_check_tables_exist_with_missing_tables(db_manager: SyncDBManager) -> No
     ]
 
     with patch.object(
-        db_manager.inspector,
+        db_client.inspector,
         "get_table_names",
         side_effect=mock_inspector.get_table_names,
     ):
         with pytest.raises(RuntimeError) as exc_info:
-            db_manager._check_tables_exist()
+            db_client._check_tables_exist()
 
         # Assert error message contains the missing tables
         assert "Missing tables or views in the database" in str(exc_info.value)
@@ -52,28 +52,28 @@ def test_check_tables_exist_with_missing_tables(db_manager: SyncDBManager) -> No
 
 
 @pytest.mark.integration
-def test_check_tables_exist_with_schema_integration(db_manager: SyncDBManager) -> None:
+def test_check_tables_exist_with_schema_integration(db_client: SyncDBClient) -> None:
     """
     Verifies that the function correctly handles schemas when checking
     for required tables.
     """
-    if db_manager.schema:
-        db_manager._check_tables_exist()
+    if db_client.schema:
+        db_client._check_tables_exist()
 
         # If we get here, the test passes
         assert True
     else:
-        # If the db_manager doesn't have a schema, we can skip this test
+        # If the db_client doesn't have a schema, we can skip this test
         pytest.skip("No schema configured for this test")
 
 
 @pytest.mark.integration
-def test_check_indexes_exist_integration(db_manager: SyncDBManager) -> None:
+def test_check_indexes_exist_integration(db_client: SyncDBClient) -> None:
     """
     Verify that the _check_indexes_exist method works against the synth db.
     """
     # Call the method directly
-    db_manager._check_indexes_exist()
+    db_client._check_indexes_exist()
 
     # If we get here without an exception, the test passes
     # The method might log warnings if indexes are missing, but it shouldn't raise exceptions
@@ -81,7 +81,7 @@ def test_check_indexes_exist_integration(db_manager: SyncDBManager) -> None:
 
 
 @pytest.mark.integration
-def test_check_indexes_exist_with_missing_indexes(db_manager: SyncDBManager) -> None:
+def test_check_indexes_exist_with_missing_indexes(db_client: SyncDBClient) -> None:
     """
     Verify that the _check_indexes_exist method logs warnings when indexes are missing.
 
@@ -92,13 +92,13 @@ def test_check_indexes_exist_with_missing_indexes(db_manager: SyncDBManager) -> 
     mock_inspector.get_indexes.return_value = []
 
     with patch.object(
-        db_manager.inspector,
+        db_client.inspector,
         "get_indexes",
         side_effect=mock_inspector.get_indexes,
     ):
         with patch("hutch_bunny.core.db_manager.logger") as mock_logger:
             # Call the method directly
-            db_manager._check_indexes_exist()
+            db_client._check_indexes_exist()
 
             # Verify a warning was logged
             mock_logger.warning.assert_called_once()

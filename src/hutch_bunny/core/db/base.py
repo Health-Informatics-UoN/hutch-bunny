@@ -7,7 +7,7 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 
-class BaseDBManager:
+class BaseDBClient:
     def __init__(
         self,
         username: str,
@@ -17,8 +17,8 @@ class BaseDBManager:
         database: str,
         drivername: str,
     ) -> None:
-        """Constructor method for DBManager classes.
-        Creates the connection engine and the inpector for the database.
+        """Constructor method for DB client classes.
+        Creates the connection engine and the inspector for the database.
 
         Args:
             username (str): The username for the database.

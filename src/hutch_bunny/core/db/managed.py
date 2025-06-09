@@ -2,10 +2,10 @@ from typing import Any
 from sqlalchemy import create_engine, inspect, event
 from sqlalchemy.engine import URL as SQLAURL
 from azure.identity import DefaultAzureCredential
-from .sync import SyncDBManager
+from .sync import SyncDBClient
 
 
-class ManagedIdentityDBManager(SyncDBManager):
+class ManagedIdentityDBClient(SyncDBClient):
     def __init__(
         self,
         username: str,
@@ -16,7 +16,7 @@ class ManagedIdentityDBManager(SyncDBManager):
         managed_identity_client_id: str,
         schema: str | None = None,
     ) -> None:
-        """Constructor method for ManagedIdentityDBManager.
+        """Constructor method for ManagedIdentityDBClient.
         Creates the connection engine and the inspector for the database using managed identity authentication.
 
         Args:

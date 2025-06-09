@@ -4,12 +4,12 @@ from sqlalchemy.engine import URL as SQLAURL, Row
 from sqlalchemy.sql import Executable
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.settings import Settings
-from .base import BaseDBManager
+from .base import BaseDBClient
 
 settings = Settings()
 
 
-class SyncDBManager(BaseDBManager):
+class SyncDBClient(BaseDBClient):
     def __init__(
         self,
         username: str,

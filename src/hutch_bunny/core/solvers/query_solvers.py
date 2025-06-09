@@ -3,10 +3,9 @@ from hutch_bunny.core.logger import logger
 
 
 from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
-from hutch_bunny.core.db import SyncDBManager
+from hutch_bunny.core.db import SyncDBClient
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
 from hutch_bunny.core.rquest_dto.file import File
-from hutch_bunny.core.solvers.availability_solver import ResultModifier
 
 from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.enums import DistributionQueryType
@@ -21,24 +20,21 @@ settings = Settings()
 
 
 def solve_availability(
-    results_modifier: list[ResultModifier],
-    db_manager: SyncDBManager,
+    results_modifier: list[dict[str, str | int]],
+    db_client: SyncDBClient,
     query: AvailabilityQuery,
 ) -> RquestResult:
-    """Solve RQuest availability queries.
+    """Solve an availability query.
 
     Args:
-        results_modifier: List
-            A list of modifiers to be applied to the results of the query before returning them to Relay
-
-        db_manager (SyncDBManager): The database manager
-        query (AvailabilityQuery): The availability query object
-
+        results_modifier (list[dict[str, str | int]]): The results modifier.
+        db_client (SyncDBClient): The database client.
+        query (AvailabilityQuery): The query to solve.
 
     Returns:
-        RquestResult: Result object for the query
+        RquestResult: The result of the query.
     """
-    solver = AvailabilitySolver(db_manager, query)
+    solver = AvailabilitySolver(db_client, query)
     try:
         count_ = solver.solve_query(results_modifier)
         result = RquestResult(
@@ -55,14 +51,14 @@ def solve_availability(
 
 
 def _get_distribution_solver(
-    db_manager: SyncDBManager, query: DistributionQuery
+    db_client: SyncDBClient, query: DistributionQuery
 ) -> CodeDistributionQuerySolver | DemographicsDistributionQuerySolver:
     """Return a distribution query solver depending on the query.
     If `query.code` is "GENERIC", return a `CodeDistributionQuerySolver`.
     If `query.code` is "DEMOGRAPHICS", return a `DemographicsDistributionQuerySolver`.
 
     Args:
-        db_manager (SyncDBManager): The database manager.
+        db_client (SyncDBClient): The database client.
         query (DistributionQuery): The distribution query to solve.
 
     Returns:
@@ -70,29 +66,28 @@ def _get_distribution_solver(
     """
 
     if query.code == DistributionQueryType.GENERIC:
-        return CodeDistributionQuerySolver(db_manager, query)
+        return CodeDistributionQuerySolver(db_client, query)
     if query.code == DistributionQueryType.DEMOGRAPHICS:
-        return DemographicsDistributionQuerySolver(db_manager, query)
+        return DemographicsDistributionQuerySolver(db_client, query)
     raise NotImplementedError(f"Queries with code: {query.code} are not yet supported.")
 
 
 def solve_distribution(
-    results_modifier: list[ResultModifier],
-    db_manager: SyncDBManager,
+    results_modifier: list[dict[str, str | int]],
+    db_client: SyncDBClient,
     query: DistributionQuery,
 ) -> RquestResult:
-    """Solve RQuest distribution queries.
+    """Solve a distribution query.
 
     Args:
-        db_manager (SyncDBManager): The database manager
-        query (DistributionQuery): The distribution query object
-        results_modifier: List
-            A list of modifiers to be applied to the results of the query before returning them to Relay
+        results_modifier (list[dict[str, str | int]]): The results modifier.
+        db_client (SyncDBClient): The database client.
+        query (DistributionQuery): The query to solve.
 
     Returns:
-        DistributionResult: Result object for the query
+        RquestResult: The result of the query.
     """
-    solver = _get_distribution_solver(db_manager, query)
+    solver = _get_distribution_solver(db_client, query)
     try:
         res, count = solver.solve_query(results_modifier)
         # Convert file data to base64

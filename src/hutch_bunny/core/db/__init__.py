@@ -10,10 +10,10 @@ from tenacity import (
     after_log,
 )
 
-from .base import BaseDBManager
-from .sync import SyncDBManager
-from .managed import ManagedIdentityDBManager
-from .trino import TrinoDBManager
+from .base import BaseDBClient
+from .sync import SyncDBClient
+from .managed import ManagedIdentityDBClient
+from .trino import TrinoDBClient
 from .utils import (
     DEFAULT_TRINO_PORT,
     expand_short_drivers,
@@ -28,14 +28,14 @@ settings = Settings()
     before_sleep=before_sleep_log(logger, INFO),
     after=after_log(logger, INFO),
 )
-def get_db_manager() -> SyncDBManager | TrinoDBManager:
+def get_db_client() -> SyncDBClient | TrinoDBClient:
     logger.info("Connecting to database...")
 
     # Trino has some different settings / defaults compared with SQLAlchemy
     if settings.DATASOURCE_USE_TRINO:
         datasource_db_port = settings.DATASOURCE_DB_PORT or DEFAULT_TRINO_PORT
         try:
-            return TrinoDBManager(
+            return TrinoDBClient(
                 username=settings.DATASOURCE_DB_USERNAME,
                 password=settings.DATASOURCE_DB_PASSWORD,
                 host=settings.DATASOURCE_DB_HOST,
@@ -53,7 +53,7 @@ def get_db_manager() -> SyncDBManager | TrinoDBManager:
         )
 
         try:
-            return SyncDBManager(
+            return SyncDBClient(
                 username=settings.DATASOURCE_DB_USERNAME,
                 password=settings.DATASOURCE_DB_PASSWORD,
                 host=settings.DATASOURCE_DB_HOST,
@@ -70,11 +70,11 @@ def get_db_manager() -> SyncDBManager | TrinoDBManager:
 
 
 __all__ = [
-    "BaseDBManager",
-    "SyncDBManager",
-    "ManagedIdentityDBManager",
-    "TrinoDBManager",
-    "get_db_manager",
+    "BaseDBClient",
+    "SyncDBClient",
+    "ManagedIdentityDBClient",
+    "TrinoDBClient",
+    "get_db_client",
     "DEFAULT_TRINO_PORT",
     "expand_short_drivers",
 ]

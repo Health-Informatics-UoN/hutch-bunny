@@ -3,10 +3,10 @@ from sqlalchemy import create_engine, inspect
 from trino.sqlalchemy import URL as TrinoURL  # type: ignore
 from sqlalchemy.engine import Row
 from sqlalchemy.sql import Executable
-from .base import BaseDBManager
+from .base import BaseDBClient
 
 
-class TrinoDBManager(BaseDBManager):
+class TrinoDBClient(BaseDBClient):
     def __init__(
         self,
         username: str,
@@ -18,7 +18,7 @@ class TrinoDBManager(BaseDBManager):
         schema: Optional[str] = None,
         database: Optional[str] = None,
     ) -> None:
-        """Create a DB manager that interacts with Trino.
+        """Create a DB client that interacts with Trino.
 
         Args:
             username (str): The username on the Trino server.

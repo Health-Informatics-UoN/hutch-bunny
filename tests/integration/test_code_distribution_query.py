@@ -1,7 +1,7 @@
 import pytest
 from hutch_bunny.core.solvers.query_solvers import solve_distribution
 from hutch_bunny.core.rquest_dto.query import DistributionQuery
-from hutch_bunny.core.db import SyncDBManager
+from hutch_bunny.core.db import SyncDBClient
 from hutch_bunny.core.rquest_dto.result import RquestResult
 from hutch_bunny.core.rquest_dto.file import File
 from hutch_bunny.core.settings import Settings
@@ -11,9 +11,9 @@ settings = Settings()
 
 
 @pytest.fixture
-def db_manager():
+def db_client() -> SyncDBClient:
     datasource_db_port = settings.DATASOURCE_DB_PORT
-    return SyncDBManager(
+    return SyncDBClient(
         username=settings.DATASOURCE_DB_USERNAME,
         password=settings.DATASOURCE_DB_PASSWORD,
         host=settings.DATASOURCE_DB_HOST,
@@ -60,10 +60,10 @@ def distribution_example():
 
 
 @pytest.fixture
-def distribution_result(db_manager, distribution_query):
-    db_manager.list_tables()
+def distribution_result(db_client, distribution_query):
+    db_client.list_tables()
     return solve_distribution(
-        results_modifier=[], db_manager=db_manager, query=distribution_query
+        results_modifier=[], db_client=db_client, query=distribution_query
     )
 
 

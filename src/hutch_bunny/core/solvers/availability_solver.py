@@ -14,7 +14,7 @@ from sqlalchemy import (
     text,
     Exists,
 )
-from hutch_bunny.core.db import SyncDBManager
+from hutch_bunny.core.db import SyncDBClient
 from hutch_bunny.core.db.entities import (
     Concept,
     ConditionOccurrence,
@@ -67,8 +67,8 @@ class AvailabilitySolver:
         "Procedure": ProcedureOccurrence,
     }
 
-    def __init__(self, db_manager: SyncDBManager, query: AvailabilityQuery) -> None:
-        self.db_manager = db_manager
+    def __init__(self, db_client: SyncDBClient, query: AvailabilityQuery) -> None:
+        self.db_client = db_client
         self.query = query
 
     @retry(
@@ -109,7 +109,7 @@ class AvailabilitySolver:
             .where(Concept.concept_id.in_(concept_ids))
             .distinct()
         )
-        with self.db_manager.engine.connect() as con:
+        with self.db_client.engine.connect() as con:
             concepts_df = pd.read_sql_query(concept_query, con=con)
         concept_dict = {
             str(concept_id): domain_id for concept_id, domain_id in concepts_df.values
@@ -153,7 +153,7 @@ class AvailabilitySolver:
             10,
         )
 
-        with self.db_manager.engine.connect() as con:
+        with self.db_client.engine.connect() as con:
             # this is used to store the query for each group, one entry per group
             all_groups_queries: list[BinaryExpression[bool]] = []
 
@@ -357,7 +357,7 @@ class AvailabilitySolver:
             logger.debug(
                 str(
                     full_query_all_groups.compile(
-                        dialect=self.db_manager.engine.dialect,
+                        dialect=self.db_client.engine.dialect,
                         compile_kwargs={"literal_binds": True},
                     )
                 )
@@ -404,7 +404,7 @@ class AvailabilitySolver:
         if left_value_time == "":
             self.condition = self.condition.where(
                 self._get_year_difference(
-                    self.db_manager.engine,
+                    self.db_client.engine,
                     ConditionOccurrence.condition_start_datetime,
                     Person.birth_datetime,
                 )
@@ -412,7 +412,7 @@ class AvailabilitySolver:
             )
             self.drug = self.drug.where(
                 self._get_year_difference(
-                    self.db_manager.engine,
+                    self.db_client.engine,
                     DrugExposure.drug_exposure_start_date,
                     Person.birth_datetime,
                 )
@@ -420,7 +420,7 @@ class AvailabilitySolver:
             )
             self.measurement = self.measurement.where(
                 self._get_year_difference(
-                    self.db_manager.engine,
+                    self.db_client.engine,
                     Measurement.measurement_date,
                     Person.birth_datetime,
                 )
@@ -428,7 +428,7 @@ class AvailabilitySolver:
             )
             self.observation = self.observation.where(
                 self._get_year_difference(
-                    self.db_manager.engine,
+                    self.db_client.engine,
                     Observation.observation_date,
                     Person.birth_datetime,
                 )
@@ -437,7 +437,7 @@ class AvailabilitySolver:
         else:
             self.condition = self.condition.where(
                 self._get_year_difference(
-                    self.db_manager.engine,
+                    self.db_client.engine,
                     ConditionOccurrence.condition_start_date,
                     Person.birth_datetime,
                 )
@@ -445,7 +445,7 @@ class AvailabilitySolver:
             )
             self.drug = self.drug.where(
                 self._get_year_difference(
-                    self.db_manager.engine,
+                    self.db_client.engine,
                     DrugExposure.drug_exposure_start_date,
                     Person.birth_datetime,
                 )
@@ -453,7 +453,7 @@ class AvailabilitySolver:
             )
             self.measurement = self.measurement.where(
                 self._get_year_difference(
-                    self.db_manager.engine,
+                    self.db_client.engine,
                     Measurement.measurement_date,
                     Person.birth_datetime,
                 )
@@ -461,7 +461,7 @@ class AvailabilitySolver:
             )
             self.observation = self.observation.where(
                 self._get_year_difference(
-                    self.db_manager.engine,
+                    self.db_client.engine,
                     Observation.observation_date,
                     Person.birth_datetime,
                 )
@@ -548,7 +548,7 @@ class AvailabilitySolver:
                 return person_constraints_for_group
 
             age = self._get_year_difference(
-                self.db_manager.engine, func.current_timestamp(), Person.birth_datetime
+                self.db_client.engine, func.current_timestamp(), Person.birth_datetime
             )
             person_constraints_for_group.append(age >= min_value)
             person_constraints_for_group.append(age <= max_value)

@@ -6,7 +6,7 @@ import pandas as pd
 from sqlalchemy import distinct, func
 
 from hutch_bunny.core.obfuscation import apply_filters
-from hutch_bunny.core.db import SyncDBManager
+from hutch_bunny.core.db import SyncDBClient
 from hutch_bunny.core.db.entities import (
     Concept,
     ConditionOccurrence,
@@ -43,7 +43,7 @@ class CodeDistributionQuerySolver:
     Solve distribution queries for code queries.
 
     Args:
-        db_manager (SyncDBManager): The database manager.
+        db_client (SyncDBClient): The database client.
         query (DistributionQuery): The distribution query to solve.
 
     Attributes:
@@ -92,8 +92,8 @@ class CodeDistributionQuerySolver:
         "CATEGORY",
     ]
 
-    def __init__(self, db_manager: SyncDBManager, query: DistributionQuery) -> None:
-        self.db_manager = db_manager
+    def __init__(self, db_client: SyncDBClient, query: DistributionQuery) -> None:
+        self.db_client = db_client
         self.query = query
 
     @retry(
@@ -141,7 +141,7 @@ class CodeDistributionQuerySolver:
         biobanks: list[str] = []
         omop_desc: list[str] = []
 
-        with self.db_manager.engine.connect() as con:
+        with self.db_client.engine.connect() as con:
             for domain_id in self.allowed_domains_map:
                 logger.debug(domain_id)
                 # get the right table and column based on the domain

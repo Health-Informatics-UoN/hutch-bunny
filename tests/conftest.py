@@ -4,7 +4,7 @@ import os
 from hutch_bunny.core.rquest_dto.cohort import Cohort
 from hutch_bunny.core.rquest_dto.group import Group
 from hutch_bunny.core.rquest_dto.rule import Rule
-from hutch_bunny.core.db import SyncDBManager
+from hutch_bunny.core.db import SyncDBClient
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
 from hutch_bunny.core.settings import Settings
 import hutch_bunny.core.db as db
@@ -14,9 +14,9 @@ settings = Settings()
 
 
 @pytest.fixture
-def db_manager():
+def db_client() -> SyncDBClient:
     datasource_db_port = os.getenv("DATASOURCE_DB_PORT")
-    return SyncDBManager(
+    return SyncDBClient(
         username=settings.DATASOURCE_DB_USERNAME,
         password=settings.DATASOURCE_DB_PASSWORD,
         host=settings.DATASOURCE_DB_HOST,
