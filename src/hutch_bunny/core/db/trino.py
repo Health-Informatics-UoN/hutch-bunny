@@ -1,7 +1,7 @@
 from typing import Any, Optional, Sequence
 from sqlalchemy import create_engine, inspect
 from trino.sqlalchemy import URL as TrinoURL  # type: ignore
-from sqlalchemy.engine import Row
+from sqlalchemy.engine import Row, Engine
 from sqlalchemy.sql import Executable
 from .base import BaseDBClient
 
@@ -39,8 +39,16 @@ class TrinoDBClient(BaseDBClient):
             catalog=catalog,
         )
 
-        self.engine = create_engine(url, connect_args={"http_scheme": "http"})
-        self.inspector = inspect(self.engine)
+        self._engine = create_engine(url, connect_args={"http_scheme": "http"})
+        self._inspector = inspect(self._engine)
+
+    @property
+    def engine(self) -> Engine:
+        return self._engine
+
+    @property
+    def inspector(self) -> Any:
+        return self._inspector
 
     def execute_and_fetch(self, stmnt: Executable) -> Sequence[Row[Any]]:  # type: ignore
         with self.engine.begin() as conn:
@@ -57,4 +65,7 @@ class TrinoDBClient(BaseDBClient):
         self.engine.dispose()
 
     def list_tables(self) -> list[str]:
-        return self.inspector.get_table_names()
+        table_names = self.inspector.get_table_names()
+        if not isinstance(table_names, list):
+            raise TypeError("Expected a list of table names")
+        return table_names

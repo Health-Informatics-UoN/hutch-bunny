@@ -1,7 +1,8 @@
 from typing import Any, Sequence
 from sqlalchemy.sql import Executable
-from sqlalchemy.engine import Row
+from sqlalchemy.engine import Row, Engine
 from typing import ParamSpec, TypeVar
+from abc import abstractmethod
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -30,6 +31,26 @@ class BaseDBClient:
 
         Raises:
             NotImplementedError: Raised when this method has not been implemented in subclass.
+        """
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def engine(self) -> Engine:
+        """The SQLAlchemy engine instance.
+
+        Returns:
+            Engine: The SQLAlchemy engine instance.
+        """
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def inspector(self) -> Any:
+        """The SQLAlchemy inspector instance.
+
+        Returns:
+            Any: The SQLAlchemy inspector instance.
         """
         raise NotImplementedError
 

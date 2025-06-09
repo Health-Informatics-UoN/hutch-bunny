@@ -1,6 +1,7 @@
 from typing import Any, Sequence
-from sqlalchemy import create_engine, inspect
-from sqlalchemy.engine import URL as SQLAURL, Row
+from sqlalchemy import create_engine
+from sqlalchemy.inspection import inspect
+from sqlalchemy.engine import URL as SQLAURL, Row, Engine
 from sqlalchemy.sql import Executable
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.settings import Settings
@@ -30,17 +31,25 @@ class SyncDBClient(BaseDBClient):
         )
 
         self.schema = schema if schema is not None and len(schema) > 0 else None
-        self.engine = create_engine(url=url)
+        self._engine = create_engine(url=url)
 
         if self.schema is not None:
-            self.engine.update_execution_options(
+            self._engine.update_execution_options(
                 schema_translate_map={None: self.schema}
             )
 
-        self.inspector = inspect(self.engine)
+        self._inspector = inspect(self._engine)
 
         self._check_tables_exist()
         self._check_indexes_exist()
+
+    @property
+    def engine(self) -> Engine:
+        return self._engine
+
+    @property
+    def inspector(self) -> Any:
+        return self._inspector
 
     def _check_tables_exist(self) -> None:
         """
@@ -125,4 +134,7 @@ class SyncDBClient(BaseDBClient):
         self.engine.dispose()
 
     def list_tables(self) -> list[str]:
-        return self.inspector.get_table_names(schema=self.schema)
+        table_names = self.inspector.get_table_names(schema=self.schema)
+        if not isinstance(table_names, list):
+            raise TypeError("Expected a list of table names")
+        return table_names
