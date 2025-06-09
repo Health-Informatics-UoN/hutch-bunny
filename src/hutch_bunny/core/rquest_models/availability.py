@@ -16,27 +16,27 @@ class AvailabilityQuery(BaseModel):
 
     uuid: str
     """
-    UUID of the query.
+    Unique identifier of the query.
     """
 
     owner: str
     """
-    Owner of the query. 
+    Owner of the query. Not the user itself, but the ID of the connection - default is `user1`.
     """
 
     collection: str
     """
-    Collection of the query.
+    Collection of the query. This is the unqiue collection that the query is being run on.
     """
 
     protocol_version: str
     """
-    Protocol version of the query.
+    Protocol version of the query, for example `v2`.
     """
 
     char_salt: str
     """
-    Char salt of the query.
+    Char salt of the query used for hashing.
     """
 
     model_config = ConfigDict(

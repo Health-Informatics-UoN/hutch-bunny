@@ -23,14 +23,14 @@ class File(BaseModel):
     """
     Data of the file.
 
-    Base64 encoded string containing the result of the query, in a TSV format.
+    Base64 encoded string containing the file data of the query, in a TSV format.
 
     See: https://hutch.health/concepts/distribution#response-schema for more details.
     """
 
     description: str = Field(alias="file_description")
     """
-    Description of the file.
+    User friendly description of the file.
     """
 
     reference: str = Field(alias="file_reference")
@@ -40,7 +40,7 @@ class File(BaseModel):
 
     sensitive: bool = Field(alias="file_sensitive")
     """
-    Sensitive flag of the file.
+    Sensitive flag of the file - whether the file contains sensitive data.
     """
 
     size: float = Field(alias="file_size")
@@ -48,11 +48,11 @@ class File(BaseModel):
     Size of the file in KB.
     """
 
-    type_: str = Field(alias="file_type")
+    type_: Literal["BCOS"] = Field(alias="file_type")
     """
     Type of the file. 
 
-    `BCOS` for binary content.
+    `BCOS` for tab separated binary content.
     """
 
     model_config = ConfigDict(

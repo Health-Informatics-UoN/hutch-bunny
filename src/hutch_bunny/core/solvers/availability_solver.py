@@ -591,7 +591,7 @@ class AvailabilitySolver:
         secondary_modifier_list = []
 
         for typeAdd in current_rule.secondary_modifier or []:
-            if typeAdd != "":
+            if typeAdd:
                 secondary_modifier_list.append(
                     ConditionOccurrence.condition_type_concept_id == int(typeAdd)
                 )

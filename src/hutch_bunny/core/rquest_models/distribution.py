@@ -29,27 +29,27 @@ class DistributionQuery(BaseModel):
 
     owner: str
     """
-    Owner of the query.
+    Owner of the query. Not the user itself, but the ID of the connection - default is `user1`.
     """
 
     code: DistributionQueryType
     """
-    Code of the query.
+    Code of the query. This is the type of distribution query to run.
     """
 
-    analysis: str
+    analysis: Literal["DISTRIBUTION"]
     """
-    Analysis of the query.
+    Analysis of the query. Currently only `DISTRIBUTION` is supported.
     """
 
     uuid: str
     """
-    UUID of the query.
+    Unique identifier of the query.
     """
 
     collection: str
     """
-    Collection of the query.
+    Collection of the query. This is the unqiue collection that the query is being run on.
     """
 
     @field_validator("code", mode="before")

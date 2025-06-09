@@ -31,6 +31,8 @@ class Rule(BaseModel):
 
     - `TEXT`: For OMOP concept_id searches
     - `NUM`: For AGE or Measurement searches
+
+    RQUEST supports `ALT`, `SET`, `BOOLEAN` also - but Bunny does not.
     """
 
     operator: Literal["=", "!="] = Field(default="=", alias="oper")
