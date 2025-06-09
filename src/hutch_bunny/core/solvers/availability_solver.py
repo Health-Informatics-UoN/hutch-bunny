@@ -14,7 +14,7 @@ from sqlalchemy import (
     text,
     Exists,
 )
-from hutch_bunny.core.db import SyncDBClient
+from hutch_bunny.core.db import BaseDBClient
 from hutch_bunny.core.db.entities import (
     Concept,
     ConditionOccurrence,
@@ -67,7 +67,7 @@ class AvailabilitySolver:
         "Procedure": ProcedureOccurrence,
     }
 
-    def __init__(self, db_client: SyncDBClient, query: AvailabilityQuery) -> None:
+    def __init__(self, db_client: BaseDBClient, query: AvailabilityQuery) -> None:
         self.db_client = db_client
         self.query = query
 

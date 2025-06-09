@@ -28,7 +28,7 @@ settings = Settings()
     before_sleep=before_sleep_log(logger, INFO),
     after=after_log(logger, INFO),
 )
-def get_db_client() -> SyncDBClient | TrinoDBClient:
+def get_db_client() -> BaseDBClient:
     logger.info("Connecting to database...")
 
     # Trino has some different settings / defaults compared with SQLAlchemy

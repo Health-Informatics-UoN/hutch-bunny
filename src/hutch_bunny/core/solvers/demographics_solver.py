@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import Select, distinct, func, select
 
 from hutch_bunny.core.obfuscation import apply_filters
-from hutch_bunny.core.db import SyncDBClient
+from hutch_bunny.core.db import BaseDBClient
 from hutch_bunny.core.db.entities import (
     Concept,
     Person,
@@ -79,7 +79,7 @@ class DemographicsDistributionQuerySolver:
         "CATEGORY",
     ]
 
-    def __init__(self, db_client: SyncDBClient, query: DistributionQuery) -> None:
+    def __init__(self, db_client: BaseDBClient, query: DistributionQuery) -> None:
         self.db_client = db_client
         self.query = query
 

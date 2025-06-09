@@ -3,7 +3,7 @@ from hutch_bunny.core.logger import logger
 
 
 from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
-from hutch_bunny.core.db import SyncDBClient
+from hutch_bunny.core.db import BaseDBClient
 from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
 from hutch_bunny.core.rquest_dto.file import File
 
@@ -21,14 +21,14 @@ settings = Settings()
 
 def solve_availability(
     results_modifier: list[dict[str, str | int]],
-    db_client: SyncDBClient,
+    db_client: BaseDBClient,
     query: AvailabilityQuery,
 ) -> RquestResult:
     """Solve an availability query.
 
     Args:
         results_modifier (list[dict[str, str | int]]): The results modifier.
-        db_client (SyncDBClient): The database client.
+        db_client (BaseDBClient): The database client.
         query (AvailabilityQuery): The query to solve.
 
     Returns:
@@ -51,14 +51,14 @@ def solve_availability(
 
 
 def _get_distribution_solver(
-    db_client: SyncDBClient, query: DistributionQuery
+    db_client: BaseDBClient, query: DistributionQuery
 ) -> CodeDistributionQuerySolver | DemographicsDistributionQuerySolver:
     """Return a distribution query solver depending on the query.
     If `query.code` is "GENERIC", return a `CodeDistributionQuerySolver`.
     If `query.code` is "DEMOGRAPHICS", return a `DemographicsDistributionQuerySolver`.
 
     Args:
-        db_client (SyncDBClient): The database client.
+        db_client (BaseDBClient): The database client.
         query (DistributionQuery): The distribution query to solve.
 
     Returns:
@@ -74,14 +74,14 @@ def _get_distribution_solver(
 
 def solve_distribution(
     results_modifier: list[dict[str, str | int]],
-    db_client: SyncDBClient,
+    db_client: BaseDBClient,
     query: DistributionQuery,
 ) -> RquestResult:
     """Solve a distribution query.
 
     Args:
         results_modifier (list[dict[str, str | int]]): The results modifier.
-        db_client (SyncDBClient): The database client.
+        db_client (BaseDBClient): The database client.
         query (DistributionQuery): The query to solve.
 
     Returns:
