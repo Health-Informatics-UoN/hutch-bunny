@@ -6,7 +6,7 @@ from sqlalchemy import Select, distinct, func, select
 
 from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.db import SyncDBManager
-from hutch_bunny.core.entities import (
+from hutch_bunny.core.db.entities import (
     Concept,
     Person,
 )

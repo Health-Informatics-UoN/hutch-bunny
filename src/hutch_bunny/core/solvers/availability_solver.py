@@ -15,7 +15,7 @@ from sqlalchemy import (
     Exists,
 )
 from hutch_bunny.core.db import SyncDBManager
-from hutch_bunny.core.entities import (
+from hutch_bunny.core.db.entities import (
     Concept,
     ConditionOccurrence,
     Measurement,
