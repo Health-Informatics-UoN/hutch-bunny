@@ -5,7 +5,7 @@ from azure.identity import DefaultAzureCredential
 from .sync import SyncDBClient
 
 
-class ManagedIdentityDBClient(SyncDBClient):
+class AzureManagedIdentityDBClient(SyncDBClient):
     def __init__(
         self,
         username: str,
@@ -16,8 +16,8 @@ class ManagedIdentityDBClient(SyncDBClient):
         managed_identity_client_id: str,
         schema: str | None = None,
     ) -> None:
-        """Constructor method for ManagedIdentityDBClient.
-        Creates the connection engine and the inspector for the database using managed identity authentication.
+        """Constructor method for AzureManagedIdentityDBClient.
+        Creates the connection engine and the inspector for the database using Azure managed identity authentication.
 
         Args:
             username (str): The username for the database.
@@ -25,7 +25,7 @@ class ManagedIdentityDBClient(SyncDBClient):
             port (int): The port number for the database.
             database (str): The name of the database.
             drivername (str): The database driver e.g. "psycopg2", "pymysql", etc.
-            managed_identity_client_id (str): The client ID for managed identity.
+            managed_identity_client_id (str): The client ID for Azure managed identity.
             schema (str | None): Optional schema name.
         """
         # Create URL without password
@@ -40,9 +40,9 @@ class ManagedIdentityDBClient(SyncDBClient):
         self.schema = schema if schema is not None and len(schema) > 0 else None
         self.engine = create_engine(url=url)
 
-        # Set up managed identity authentication
+        # Set up Azure managed identity authentication
         self.managed_identity_client_id = managed_identity_client_id
-        self._setup_managed_identity_auth()
+        self._setup_azure_managed_identity_auth()
 
         if self.schema is not None:
             self.engine.update_execution_options(
@@ -54,8 +54,8 @@ class ManagedIdentityDBClient(SyncDBClient):
         self._check_tables_exist()
         self._check_indexes_exist()
 
-    def _setup_managed_identity_auth(self) -> None:
-        """Set up the managed identity authentication event listener."""
+    def _setup_azure_managed_identity_auth(self) -> None:
+        """Set up the Azure managed identity authentication event listener."""
 
         @event.listens_for(self.engine, "do_connect")
         def do_connect(

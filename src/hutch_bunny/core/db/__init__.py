@@ -12,8 +12,8 @@ from tenacity import (
 
 from .base import BaseDBClient
 from .sync import SyncDBClient
-from .managed import ManagedIdentityDBClient
 from .trino import TrinoDBClient
+from .azure import AzureManagedIdentityDBClient
 from .utils import (
     DEFAULT_TRINO_PORT,
     expand_short_drivers,
@@ -72,8 +72,8 @@ def get_db_client() -> SyncDBClient | TrinoDBClient:
 __all__ = [
     "BaseDBClient",
     "SyncDBClient",
-    "ManagedIdentityDBClient",
     "TrinoDBClient",
+    "AzureManagedIdentityDBClient",
     "get_db_client",
     "DEFAULT_TRINO_PORT",
     "expand_short_drivers",
