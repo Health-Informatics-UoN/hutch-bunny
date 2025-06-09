@@ -49,7 +49,7 @@ class DistributionQuery(BaseModel):
 
     collection: str
     """
-    Collection of the query. This is the unqiue collection that the query is being run on.
+    Collection of the query. This is the unique collection that the query is being run on.
     """
 
     @field_validator("code", mode="before")
