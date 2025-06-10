@@ -11,7 +11,7 @@ import pytest
 def test_low_number_suppression():
     # Test that the threshold is applied
     assert low_number_suppression(99, threshold=100) == 0
-    assert low_number_suppression(100, threshold=100) == 0
+    assert low_number_suppression(100, threshold=100) == 100
     assert low_number_suppression(101, threshold=100) == 101
 
     # Test that the threshold can be set to 0

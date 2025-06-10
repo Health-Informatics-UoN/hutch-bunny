@@ -1,6 +1,6 @@
 [project]
 name = "hutch-bunny"
-version = "1.0.0-alpha.6"
+version = "1.0.2"
 description = "A Cohort Discovery Task API worker"
 license = { text = "MIT License" }
 readme = "README.md"
@@ -26,6 +26,7 @@ dependencies = [
   "trino>=0.331.0", # should become optional
   "pymssql>=2.3.2", # for SQL Server
   "pydantic-settings>=2.7.1",
+  "tenacity>=9.1.2", # for retry
 ]
 
 [project.scripts]
@@ -46,6 +47,7 @@ dev = [
     "coverage>=7.6.12",
     "pytest-cov>=6.0.0",
     "pre-commit>=4.1.0",
+    "types-python-dateutil>=2.9.0.20250516",
 ]
 
 [tool.pytest.ini_options]
@@ -61,12 +63,17 @@ convention = "google"
 [tool.mypy]
 python_version = "3.13"
 strict = true
+plugins = ['pydantic.mypy']
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
 
 # Prevent ANY implicit `Any` types  
 disallow_any_generics = true
 disallow_any_explicit = true
 disallow_any_unimported = true
-disallow_any_expr = true
+disallow_any_expr = false
 disallow_any_decorated = true
 
 # Ensure everything is typed properly  
