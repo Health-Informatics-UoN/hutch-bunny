@@ -15,6 +15,13 @@ class Settings(BaseSettings):
     DATASOURCE_USE_TRINO: bool = Field(
         description="Whether to use Trino as the datasource", default=False
     )
+    DATASOURCE_USE_AZURE_MANAGED_IDENTITY: bool = Field(
+        description="Whether to use Azure managed identity for authentication",
+        default=False,
+    )
+    DATASOURCE_AZURE_MANAGED_IDENTITY_CLIENT_ID: str | None = Field(
+        description="The client ID for Azure managed identity", default=None
+    )
     LOW_NUMBER_SUPPRESSION_THRESHOLD: int = Field(
         description="The threshold for low numbers", default=10
     )

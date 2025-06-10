@@ -53,17 +53,36 @@ def get_db_client() -> BaseDBClient:
         )
 
         try:
-            return SyncDBClient(
-                username=settings.DATASOURCE_DB_USERNAME,
-                password=settings.DATASOURCE_DB_PASSWORD,
-                host=settings.DATASOURCE_DB_HOST,
-                port=(
-                    int(datasource_db_port) if datasource_db_port is not None else None
-                ),
-                database=settings.DATASOURCE_DB_DATABASE,
-                drivername=datasource_db_drivername,
-                schema=settings.DATASOURCE_DB_SCHEMA,
-            )
+            if settings.DATASOURCE_USE_AZURE_MANAGED_IDENTITY:
+                if not settings.DATASOURCE_AZURE_MANAGED_IDENTITY_CLIENT_ID:
+                    raise ValueError(
+                        "DATASOURCE_AZURE_MANAGED_IDENTITY_CLIENT_ID must be set when using Azure managed identity"
+                    )
+                return AzureManagedIdentityDBClient(
+                    username=settings.DATASOURCE_DB_USERNAME,
+                    host=settings.DATASOURCE_DB_HOST,
+                    port=int(datasource_db_port)
+                    if datasource_db_port is not None
+                    else None,
+                    database=settings.DATASOURCE_DB_DATABASE,
+                    drivername=datasource_db_drivername,
+                    managed_identity_client_id=settings.DATASOURCE_AZURE_MANAGED_IDENTITY_CLIENT_ID,
+                    schema=settings.DATASOURCE_DB_SCHEMA,
+                )
+            else:
+                return SyncDBClient(
+                    username=settings.DATASOURCE_DB_USERNAME,
+                    password=settings.DATASOURCE_DB_PASSWORD,
+                    host=settings.DATASOURCE_DB_HOST,
+                    port=(
+                        int(datasource_db_port)
+                        if datasource_db_port is not None
+                        else None
+                    ),
+                    database=settings.DATASOURCE_DB_DATABASE,
+                    drivername=datasource_db_drivername,
+                    schema=settings.DATASOURCE_DB_SCHEMA,
+                )
         except TypeError as e:
             logger.error(str(e))
             exit()
