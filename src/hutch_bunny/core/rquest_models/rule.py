@@ -20,7 +20,15 @@ class Rule(BaseModel):
     - `OMOP=21490742`: For Measurement searches
     """
 
-    varcat: Literal["Person", "Condition", "Observation", "Drug", "Measurement"]
+    varcat: Literal[
+        "Person",
+        "Condition",
+        "Observation",
+        "Drug",
+        "Measurement",
+        "Medication",
+        "Procedure",
+    ]
     """
     Table to search in.
     """
