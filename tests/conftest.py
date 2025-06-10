@@ -1,11 +1,15 @@
 import pytest
 import os
 
-from hutch_bunny.core.rquest_dto.cohort import Cohort
-from hutch_bunny.core.rquest_dto.group import Group
-from hutch_bunny.core.rquest_dto.rule import Rule
+from hutch_bunny.core.rquest_models.cohort import Cohort
+from hutch_bunny.core.rquest_models.group import Group
+from hutch_bunny.core.rquest_models.rule import Rule
 from hutch_bunny.core.db_manager import SyncDBManager
-from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
+from hutch_bunny.core.rquest_models.distribution import (
+    DistributionQuery,
+    DistributionQueryType,
+)
+from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.settings import Settings
 import hutch_bunny.core.db as db
 
@@ -14,13 +18,13 @@ settings = Settings()
 
 
 @pytest.fixture
-def db_manager():
+def db_manager() -> SyncDBManager:
     datasource_db_port = os.getenv("DATASOURCE_DB_PORT")
     return SyncDBManager(
         username=settings.DATASOURCE_DB_USERNAME,
         password=settings.DATASOURCE_DB_PASSWORD,
         host=settings.DATASOURCE_DB_HOST,
-        port=(int(datasource_db_port) if datasource_db_port is not None else None),
+        port=int(datasource_db_port),
         database=settings.DATASOURCE_DB_DATABASE,
         drivername=db.expand_short_drivers(settings.DATASOURCE_DB_DRIVERNAME),
         schema=settings.DATASOURCE_DB_SCHEMA,
@@ -28,10 +32,10 @@ def db_manager():
 
 
 @pytest.fixture
-def availability_query_onerule_equals():
+def availability_query_onerule_equals() -> AvailabilityQuery:
     return AvailabilityQuery(
         cohort=Cohort(
-            [
+            groups=[
                 Group(
                     rules=[
                         Rule(
@@ -56,10 +60,10 @@ def availability_query_onerule_equals():
 
 
 @pytest.fixture
-def availability_query_onerule_notequals():
+def availability_query_onerule_notequals() -> AvailabilityQuery:
     return AvailabilityQuery(
         cohort=Cohort(
-            [
+            groups=[
                 Group(
                     rules=[
                         Rule(
@@ -84,17 +88,17 @@ def availability_query_onerule_notequals():
 
 
 @pytest.fixture
-def availability_query_tworules_equals():
+def availability_query_tworules_equals() -> AvailabilityQuery:
     return AvailabilityQuery(
         cohort=Cohort(
-            [
+            groups=[
                 Group(
                     rules=[
                         Rule(
                             varname="OMOP",
                             varcat="Person",
                             type_="TEXT",
-                            operator="==",
+                            operator="=",
                             value="8507",
                         ),
                         Rule(
@@ -119,10 +123,10 @@ def availability_query_tworules_equals():
 
 
 @pytest.fixture
-def availability_query_tworules_notequals():
+def availability_query_tworules_notequals() -> AvailabilityQuery:
     return AvailabilityQuery(
         cohort=Cohort(
-            [
+            groups=[
                 Group(
                     rules=[
                         Rule(
@@ -154,10 +158,10 @@ def availability_query_tworules_notequals():
 
 
 @pytest.fixture
-def distribution_query():
+def distribution_query() -> DistributionQuery:
     return DistributionQuery(
         owner="user1",
-        code="DEMOGRAPHICS",
+        code=DistributionQueryType.DEMOGRAPHICS,
         analysis="DISTRIBUTION",
         uuid="unique_id",
         collection="collection_id",

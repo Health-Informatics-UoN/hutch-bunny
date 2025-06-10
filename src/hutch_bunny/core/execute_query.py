@@ -1,7 +1,11 @@
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.solvers import query_solvers
-from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
-from hutch_bunny.core.rquest_dto.result import RquestResult
+from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
+from hutch_bunny.core.rquest_models.distribution import (
+    DistributionQuery,
+    DistributionQueryType,
+)
+from hutch_bunny.core.rquest_models.result import RquestResult
 from hutch_bunny.core.db_manager import SyncDBManager
 
 
@@ -31,17 +35,17 @@ def execute_query(
     if "analysis" in query_dict.keys():
         logger.debug("Processing distribution query...")
         try:
-            query = DistributionQuery.from_dict(query_dict)
+            distribution_query = DistributionQuery.model_validate(query_dict)
 
             # Check for ICD-MAIN queries before calling the solver
             # So we dont return results upstream
-            if query.code.startswith("ICD-MAIN"):
+            if distribution_query.code == DistributionQueryType.ICD_MAIN:
                 raise NotImplementedError(
                     "ICD-MAIN queries are not yet supported. See: https://github.com/Health-Informatics-UoN/hutch-bunny/issues/30"
                 )
 
             result = query_solvers.solve_distribution(
-                results_modifier, db_manager=db_manager, query=query
+                results_modifier, db_manager=db_manager, query=distribution_query
             )
 
             return result
@@ -55,10 +59,10 @@ def execute_query(
     else:
         logger.debug("Processing availability query...")
         try:
-            query = AvailabilityQuery.from_dict(query_dict)
+            availability_query = AvailabilityQuery.model_validate(query_dict)
 
             result = query_solvers.solve_availability(
-                results_modifier, db_manager=db_manager, query=query
+                results_modifier, db_manager=db_manager, query=availability_query
             )
             return result
         except TypeError as te:  # raised if the distribution query json format is wrong

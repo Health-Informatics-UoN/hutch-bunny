@@ -2,7 +2,7 @@ import pytest
 from hutch_bunny.core.solvers.query_solvers import (
     solve_availability,
 )
-from hutch_bunny.core.rquest_dto.result import RquestResult
+from hutch_bunny.core.rquest_models.result import RquestResult
 
 
 @pytest.fixture
