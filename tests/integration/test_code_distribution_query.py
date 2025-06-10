@@ -1,9 +1,9 @@
 import pytest
 from hutch_bunny.core.solvers.query_solvers import solve_distribution
-from hutch_bunny.core.rquest_dto.query import DistributionQuery
+from hutch_bunny.core.rquest_models.distribution import DistributionQuery
 from hutch_bunny.core.db import SyncDBClient
-from hutch_bunny.core.rquest_dto.result import RquestResult
-from hutch_bunny.core.rquest_dto.file import File
+from hutch_bunny.core.rquest_models.result import RquestResult
+from hutch_bunny.core.rquest_models.file import File
 from hutch_bunny.core.settings import Settings
 import hutch_bunny.core.db as db
 

@@ -4,7 +4,7 @@ from requests.models import Response
 from enum import Enum
 import requests
 from requests.auth import HTTPBasicAuth
-from hutch_bunny.core.rquest_dto.result import RquestResult
+from hutch_bunny.core.rquest_models.result import RquestResult
 from hutch_bunny.core.settings import DaemonSettings
 from typing import Optional
 

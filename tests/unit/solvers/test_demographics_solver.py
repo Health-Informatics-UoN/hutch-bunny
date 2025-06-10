@@ -7,7 +7,7 @@ from hutch_bunny.core.solvers.demographics_solver import (
     DemographicsDistributionQuerySolver,
     DemographicsRow,
 )
-from hutch_bunny.core.rquest_dto.query import DistributionQuery
+from hutch_bunny.core.rquest_models.distribution import DistributionQuery
 
 
 @pytest.fixture

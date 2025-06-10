@@ -4,13 +4,15 @@ from hutch_bunny.core.logger import logger
 
 from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
 from hutch_bunny.core.db import BaseDBClient
-from hutch_bunny.core.rquest_dto.query import AvailabilityQuery, DistributionQuery
-from hutch_bunny.core.rquest_dto.file import File
+from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
+from hutch_bunny.core.rquest_models.file import File
+from hutch_bunny.core.rquest_models.distribution import (
+    DistributionQuery,
+    DistributionQueryType,
+)
 
-from hutch_bunny.core.rquest_dto.result import RquestResult
-from hutch_bunny.core.enums import DistributionQueryType
+from hutch_bunny.core.rquest_models.result import RquestResult
 from hutch_bunny.core.settings import Settings
-from hutch_bunny.core.constants import DISTRIBUTION_TYPE_FILE_NAMES_MAP
 from hutch_bunny.core.solvers.demographics_solver import (
     DemographicsDistributionQuerySolver,
 )
@@ -98,7 +100,7 @@ def solve_distribution(
         result_file = File(
             data=res_b64,
             description="Result of code.distribution analysis",
-            name=DISTRIBUTION_TYPE_FILE_NAMES_MAP.get(query.code, ""),
+            name=query.code.file_name,
             sensitive=True,
             reference="",
             size=size,

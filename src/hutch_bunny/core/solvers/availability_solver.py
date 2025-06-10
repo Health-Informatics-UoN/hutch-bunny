@@ -36,13 +36,13 @@ from typing import Tuple
 from sqlalchemy import exists
 
 from hutch_bunny.core.obfuscation import apply_filters
-from hutch_bunny.core.rquest_dto.group import Group
-from hutch_bunny.core.rquest_dto.query import AvailabilityQuery
+from hutch_bunny.core.rquest_models.group import Group
+from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from sqlalchemy.engine import Engine
 from hutch_bunny.core.logger import logger, INFO
 
 from hutch_bunny.core.settings import Settings
-from hutch_bunny.core.rquest_dto.rule import Rule
+from hutch_bunny.core.rquest_models.rule import Rule
 
 
 class ResultModifier(TypedDict):
@@ -590,8 +590,8 @@ class AvailabilitySolver:
         # with a single entry is provided.
         secondary_modifier_list = []
 
-        for type_index, typeAdd in enumerate(current_rule.secondary_modifier, start=0):
-            if typeAdd != "":
+        for typeAdd in current_rule.secondary_modifier or []:
+            if typeAdd:
                 secondary_modifier_list.append(
                     ConditionOccurrence.condition_type_concept_id == int(typeAdd)
                 )

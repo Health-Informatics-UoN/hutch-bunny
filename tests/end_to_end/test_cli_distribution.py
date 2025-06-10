@@ -153,6 +153,18 @@ def test_cli_distribution(test_case: DistributionTestCase) -> None:
         assert output_data["message"] == ""
         assert output_data["collection_id"] == "collection_id"
 
+        # Assert file details
+        assert (
+            output_data["queryResult"]["files"][0]["file_name"] == "code.distribution"
+        )
+        assert output_data["queryResult"]["files"][0]["file_type"] == "BCOS"
+        assert output_data["queryResult"]["files"][0]["file_sensitive"] is True
+        assert (
+            output_data["queryResult"]["files"][0]["file_description"]
+            == "Result of code.distribution analysis"
+        )
+        assert output_data["queryResult"]["files"][0]["file_data"] is not None
+
         # Assert expected values in output file
         file_data = base64.b64decode(
             output_data["queryResult"]["files"][0]["file_data"]
@@ -173,9 +185,9 @@ def test_cli_distribution(test_case: DistributionTestCase) -> None:
 
             # Validate count is an integer
             count_str = fields[2]  # COUNT column as string
-            assert count_str.isdigit(), (
-                f"Expected an integer count, but got: {count_str}"
-            )
+            assert (
+                count_str.isdigit()
+            ), f"Expected an integer count, but got: {count_str}"
             count = int(count_str)  # Convert to int after validation
             assert count == test_case.expected_values[omop_code]
 
