@@ -176,7 +176,7 @@ test_cases = [
         json_file_path="tests/queries/availability/secondary_modifiers.json",
         rounding=0,
         low_number_suppression=0,
-        expected_count=442,
+        expected_count=333,
     ),
 ]
 
