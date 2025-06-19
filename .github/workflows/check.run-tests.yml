@@ -44,6 +44,7 @@ jobs:
           DB_PASSWORD: postgres
           DB_NAME: hutch-omop
           SYNTHETIC: true
+          SYNTHETIC_NUMBER: 1000
 
     steps:
       - uses: actions/checkout@v4
