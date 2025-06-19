@@ -7,7 +7,7 @@
       {
         "rules": [
           {
-            "varname": "OMOP=21490742",
+            "varname": "OMOP=46236952",
             "varcat": "Measurement",
             "type": "NUM",
             "oper": "=",

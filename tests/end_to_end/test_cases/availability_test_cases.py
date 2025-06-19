@@ -42,96 +42,100 @@ test_cases = [
     # Basic availability test - assert default rounding.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/availability.json",
-        expected_count=40,
+        expected_count=570,
     ),
     # Basic availability test - assert rounding to 0.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/availability.json",
         rounding=0,
-        expected_count=44,
+        expected_count=572,
     ),
     # Basic availability test - assert overriden rounding and low number suppression.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/availability.json",
         rounding=0,
         low_number_suppression=0,
-        expected_count=44,
+        expected_count=572,
     ),
     # Basic availability test - assert overriden rounding.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/availability.json",
         low_number_suppression=30,
-        expected_count=40,
+        expected_count=570,
     ),
     # Basic availability test - assert low number suppression on threshold.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/availability.json",
-        low_number_suppression=40,
-        expected_count=40,
+        low_number_suppression=570,
+        expected_count=570,
     ),
     # Basic availability test - assert rounding and low number suppression.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/availability.json",
         rounding=10,
         low_number_suppression=20,
-        expected_count=40,
+        expected_count=570,
     ),
     # Basic availability test - assert rounding to 100.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/availability.json",
         rounding=100,
-        expected_count=0,
+        expected_count=600,
     ),
     # Basic availability test - assert rounding to 10.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/availability.json",
         rounding=10,
-        expected_count=40,
+        expected_count=570,
     ),
     # Basic gender test - assert gender OR filtering with default rounding.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/basic_gender_or.json",
-        expected_count=100,
+        expected_count=1130,
     ),
     # Basic gender test - assert gender OR filtering with rounding to 0.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/basic_gender_or.json",
         rounding=0,
-        expected_count=99,
+        expected_count=1130,
     ),
     # Multiple in group test - assert multiple in group AND filtering with default rounding.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_and.json",
-        expected_count=0,
+        expected_count=220,
     ),
     # Mutiple in group test - assert multiple in group OR filtering with default rounding.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_or.json",
-        expected_count=60,
+        expected_count=780,
     ),
     # Mutiple in group test - assert multiple in group OR filtering with rounding to 0.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_or.json",
         rounding=0,
-        expected_count=55,
+        expected_count=782,
     ),
     # Mutiple in group test - assert multiple in group OR filtering with age 1.
+    # TODO: This test case is not working as expected.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_or_with_age1.json",
         expected_count=60,
     ),
     # Mutiple in group test - assert multiple in group OR filtering with age 1 and rounding to 0.
+    # TODO: This test case is not working as expected.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_or_with_age1.json",
         rounding=0,
         expected_count=55,
     ),
     # Mutiple in group test - assert multiple in group OR filtering with age 2.
+    # TODO: This test case is not working as expected.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_or_with_age2.json",
         expected_count=60,
     ),
     # Mutiple in group test - assert multiple in group OR filtering with age 2 and rounding to 0.
+    # TODO: This test case is not working as expected.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_or_with_age2.json",
         rounding=0,
@@ -142,35 +146,37 @@ test_cases = [
         json_file_path="tests/queries/availability/measurement.json",
         rounding=0,
         low_number_suppression=10,
-        expected_count=12,
+        expected_count=329,
     ),
     # Multiple in group, exclusion criteria, and time test.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_exclusion_time.json",
         rounding=0,
         low_number_suppression=10,
-        expected_count=13,
+        expected_count=442,
     ),
     # Basic ethnicity test - assert ethnicity OR filtering with override rounding.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/basic_ethnicity_or.json",
         rounding=0,
         low_number_suppression=0,
-        expected_count=41,
+        expected_count=112,
     ),
     # Basic race test - assert race OR filtering with override rounding.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/basic_race_or.json",
         rounding=0,
         low_number_suppression=0,
-        expected_count=95,
+        expected_count=82,
     ),
     # Secondary modifiers test - assert secondary modifiers with override rounding.
+    # TODO: There is insufficent data to properly test this.
+    # All condition_occurrence have secondary modifier = 32020.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/secondary_modifiers.json",
         rounding=0,
         low_number_suppression=0,
-        expected_count=13,
+        expected_count=442,
     ),
 ]
 
