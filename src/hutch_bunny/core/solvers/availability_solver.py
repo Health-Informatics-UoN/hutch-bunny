@@ -137,20 +137,20 @@ class AvailabilitySolver:
 
         low_number: int = next(
             (
-                item["threshold"] if item["threshold"] is not None else 10
+                item["threshold"] if item["threshold"] is not None else 0
                 for item in results_modifier
                 if item["id"] == "Low Number Suppression"
             ),
-            10,
+            0,
         )
 
         rounding: int = next(
             (
-                item["nearest"] if item["nearest"] is not None else 10
+                item["nearest"] if item["nearest"] is not None else 0
                 for item in results_modifier
                 if item["id"] == "Rounding"
             ),
-            10,
+            0,
         )
 
         with self.db_manager.engine.connect() as con:
@@ -387,85 +387,130 @@ class AvailabilitySolver:
         if left_value_time is None or right_value_time is None:
             return
 
-        self.condition = self.condition.join(
-            Person, Person.person_id == ConditionOccurrence.person_id
-        )
-        self.drug = self.drug.join(Person, Person.person_id == DrugExposure.person_id)
-        self.measurement = self.measurement.join(
-            Person, Person.person_id == Measurement.person_id
-        )
-        self.observation = self.observation.join(
-            Person, Person.person_id == Observation.person_id
-        )
-
         # due to the way the query is expressed and how split above, if the left value is empty
         # it indicates a less than search
 
         if left_value_time == "":
             self.condition = self.condition.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    ConditionOccurrence.condition_start_datetime,
-                    Person.birth_datetime,
+                exists(
+                    select(1).where(
+                        and_(
+                            Person.person_id == ConditionOccurrence.person_id,
+                            self._get_year_difference(
+                                self.db_manager.engine,
+                                ConditionOccurrence.condition_start_datetime,
+                                Person.birth_datetime,
+                            )
+                            < int(right_value_time),
+                        )
+                    )
                 )
-                < int(right_value_time)
             )
             self.drug = self.drug.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    DrugExposure.drug_exposure_start_date,
-                    Person.birth_datetime,
+                exists(
+                    select(1).where(
+                        and_(
+                            Person.person_id == DrugExposure.person_id,
+                            self._get_year_difference(
+                                self.db_manager.engine,
+                                DrugExposure.drug_exposure_start_date,
+                                Person.birth_datetime,
+                            )
+                            < int(right_value_time),
+                        )
+                    )
                 )
-                < int(right_value_time)
             )
             self.measurement = self.measurement.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    Measurement.measurement_date,
-                    Person.birth_datetime,
+                exists(
+                    select(1).where(
+                        and_(
+                            Person.person_id == Measurement.person_id,
+                            self._get_year_difference(
+                                self.db_manager.engine,
+                                Measurement.measurement_date,
+                                Person.birth_datetime,
+                            )
+                            < int(right_value_time),
+                        )
+                    )
                 )
-                < int(right_value_time)
             )
             self.observation = self.observation.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    Observation.observation_date,
-                    Person.birth_datetime,
+                exists(
+                    select(1).where(
+                        and_(
+                            Person.person_id == Observation.person_id,
+                            self._get_year_difference(
+                                self.db_manager.engine,
+                                Observation.observation_date,
+                                Person.birth_datetime,
+                            )
+                            < int(right_value_time),
+                        )
+                    )
                 )
-                < int(right_value_time)
             )
         else:
             self.condition = self.condition.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    ConditionOccurrence.condition_start_date,
-                    Person.birth_datetime,
+                exists(
+                    select(1).where(
+                        and_(
+                            Person.person_id == ConditionOccurrence.person_id,
+                            self._get_year_difference(
+                                self.db_manager.engine,
+                                ConditionOccurrence.condition_start_date,
+                                Person.birth_datetime,
+                            )
+                            > int(left_value_time),
+                        )
+                    )
                 )
-                > int(left_value_time)
             )
             self.drug = self.drug.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    DrugExposure.drug_exposure_start_date,
-                    Person.birth_datetime,
+                exists(
+                    select(1).where(
+                        and_(
+                            Person.person_id == DrugExposure.person_id,
+                            self._get_year_difference(
+                                self.db_manager.engine,
+                                DrugExposure.drug_exposure_start_date,
+                                Person.birth_datetime,
+                            )
+                            > int(left_value_time),
+                        )
+                    )
                 )
-                > int(left_value_time)
             )
             self.measurement = self.measurement.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    Measurement.measurement_date,
-                    Person.birth_datetime,
+                exists(
+                    select(1).where(
+                        and_(
+                            Person.person_id == Measurement.person_id,
+                            self._get_year_difference(
+                                self.db_manager.engine,
+                                Measurement.measurement_date,
+                                Person.birth_datetime,
+                            )
+                            > int(left_value_time),
+                        )
+                    )
                 )
-                > int(left_value_time)
             )
             self.observation = self.observation.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    Observation.observation_date,
-                    Person.birth_datetime,
+                exists(
+                    select(1).where(
+                        and_(
+                            Person.person_id == Observation.person_id,
+                            self._get_year_difference(
+                                self.db_manager.engine,
+                                Observation.observation_date,
+                                Person.birth_datetime,
+                            )
+                            > int(left_value_time),
+                        )
+                    )
                 )
-                > int(left_value_time)
             )
 
     def _get_year_difference(
