@@ -116,31 +116,47 @@ test_cases = [
         rounding=0,
         expected_count=782,
     ),
-    # Mutiple in group test - assert multiple in group OR filtering with age 1.
     # TODO: This test case is not working as expected.
+    # Mutiple in group test - assert multiple in group AND filtering with age 1.
+    # 8532 Female
+    # AND
+    # 260139 Acute Bronchitis
+    # Age > 50 years when it occurred
     AvailabilityTestCase(
-        json_file_path="tests/queries/availability/multiple_in_group_or_with_age1.json",
-        expected_count=60,
+        json_file_path="tests/queries/availability/multiple_in_group_and_with_age1.json",
+        expected_count=150,
     ),
-    # Mutiple in group test - assert multiple in group OR filtering with age 1 and rounding to 0.
     # TODO: This test case is not working as expected.
+    # Mutiple in group test - assert multiple in group AND filtering with age 1 and rounding to 0.
+    # 8532 Female
+    # AND
+    # 260139 Acute Bronchitis
+    # Age > 50 years when it occurred
     AvailabilityTestCase(
-        json_file_path="tests/queries/availability/multiple_in_group_or_with_age1.json",
+        json_file_path="tests/queries/availability/multiple_in_group_and_with_age1.json",
         rounding=0,
-        expected_count=55,
+        expected_count=151,
     ),
+    # TODO: This test case is not working as expected.
     # Mutiple in group test - assert multiple in group OR filtering with age 2.
-    # TODO: This test case is not working as expected.
+    # 8532 Female
+    # AND
+    # 260139 Acute Bronchitis
+    # Age < 50 years when it occurred
     AvailabilityTestCase(
-        json_file_path="tests/queries/availability/multiple_in_group_or_with_age2.json",
-        expected_count=60,
+        json_file_path="tests/queries/availability/multiple_in_group_and_with_age2.json",
+        expected_count=290,
     ),
-    # Mutiple in group test - assert multiple in group OR filtering with age 2 and rounding to 0.
     # TODO: This test case is not working as expected.
+    # Mutiple in group test - assert multiple in group OR filtering with age 2 and rounding to 0.
+    # 8532 Female
+    # AND
+    # 260139 Acute Bronchitis
+    # Age < 50 years when it occurred
     AvailabilityTestCase(
-        json_file_path="tests/queries/availability/multiple_in_group_or_with_age2.json",
+        json_file_path="tests/queries/availability/multiple_in_group_and_with_age2.json",
         rounding=0,
-        expected_count=55,
+        expected_count=289,
     ),
     # Basic measurement test - assert measurement with default rounding.
     AvailabilityTestCase(

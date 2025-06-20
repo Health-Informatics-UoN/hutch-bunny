@@ -1,5 +1,5 @@
 {
-  "task_id" : "job-2025-02-14-09:03:27-RQ-87808b58-b878-4b59-839f-3537727c64a6",
+  "task_id" : "job-2025-02-14-09:04:03-RQ-4b5efbbe-4d8a-4a41-873b-70916ec58c94",
   "project" : "project_id",
   "owner" : "user1",
   "cohort" : {
@@ -16,9 +16,9 @@
         "type" : "TEXT",
         "oper" : "=",
         "value" : "260139",
-        "time" : "10|:AGE:Y"
+        "time" : "|50:AGE:Y"
       } ],
-      "rules_oper" : "OR"
+      "rules_oper" : "AND"
     } ],
     "groups_oper" : "AND"
   },
