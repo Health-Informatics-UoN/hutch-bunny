@@ -38,6 +38,7 @@ class AvailabilityTestCase:
         return json.dumps(modifiers_list)
 
 
+# TODO: add the detail on what is queried.
 test_cases = [
     # Basic availability test - assert default rounding.
     AvailabilityTestCase(
@@ -170,8 +171,6 @@ test_cases = [
         expected_count=82,
     ),
     # Secondary modifiers test - assert secondary modifiers with override rounding.
-    # TODO: There is insufficent data to properly test this.
-    # All condition_occurrence have secondary modifier = 32020.
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/secondary_modifiers.json",
         rounding=0,
@@ -197,4 +196,3 @@ todo_test_cases = [
         expected_count=11,
     ),
 ]
-
