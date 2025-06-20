@@ -15,7 +15,7 @@
         "varcat" : "Condition",
         "type" : "TEXT",
         "oper" : "=",
-        "value" : "260139",
+        "value" : "432867",
         "time" : "|50:AGE:Y"
       } ],
       "rules_oper" : "AND"

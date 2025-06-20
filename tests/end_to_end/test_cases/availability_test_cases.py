@@ -120,43 +120,43 @@ test_cases = [
     # Mutiple in group test - assert multiple in group AND filtering with age 1.
     # 8532 Female
     # AND
-    # 260139 Acute Bronchitis
+    # 432867 Hyperlipidemia
     # Age > 50 years when it occurred
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_and_with_age1.json",
-        expected_count=150,
+        expected_count=30,
     ),
     # TODO: This test case is not working as expected.
     # Mutiple in group test - assert multiple in group AND filtering with age 1 and rounding to 0.
     # 8532 Female
     # AND
-    # 260139 Acute Bronchitis
+    # 432867 Hyperlipidemia
     # Age > 50 years when it occurred
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_and_with_age1.json",
         rounding=0,
-        expected_count=151,
+        expected_count=26,
     ),
     # TODO: This test case is not working as expected.
     # Mutiple in group test - assert multiple in group OR filtering with age 2.
     # 8532 Female
     # AND
-    # 260139 Acute Bronchitis
+    # 432867 Hyperlipidemia
     # Age < 50 years when it occurred
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_and_with_age2.json",
-        expected_count=290,
+        expected_count=20,
     ),
     # TODO: This test case is not working as expected.
     # Mutiple in group test - assert multiple in group OR filtering with age 2 and rounding to 0.
     # 8532 Female
     # AND
-    # 260139 Acute Bronchitis
+    # 432867 Hyperlipidemia
     # Age < 50 years when it occurred
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_and_with_age2.json",
         rounding=0,
-        expected_count=289,
+        expected_count=21,
     ),
     # Basic measurement test - assert measurement with default rounding.
     AvailabilityTestCase(
