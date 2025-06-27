@@ -1,7 +1,7 @@
 import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-from typing import TypedDict
+from typing import Any, Callable, TypedDict
 from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy import (
     or_,
@@ -43,6 +43,7 @@ from hutch_bunny.core.logger import logger, INFO
 
 from hutch_bunny.core.settings import Settings
 from hutch_bunny.core.rquest_models.rule import Rule
+import operator as op
 
 
 class ResultModifier(TypedDict):
@@ -384,89 +385,93 @@ class AvailabilitySolver:
     def _add_age_constraints(
         self, left_value_time: str | None, right_value_time: str | None
     ) -> None:
+        """
+        This function adds age constraints to the query.
+        If the left value is empty it indicates a less than search.
+
+        Args:
+            left_value_time: The left value of the time constraint.
+            right_value_time: The right value of the time constraint.
+
+        Returns:
+            None
+        """
         if left_value_time is None or right_value_time is None:
             return
 
-        self.condition = self.condition.join(
-            Person, Person.person_id == ConditionOccurrence.person_id
-        )
-        self.drug = self.drug.join(Person, Person.person_id == DrugExposure.person_id)
-        self.measurement = self.measurement.join(
-            Person, Person.person_id == Measurement.person_id
-        )
-        self.observation = self.observation.join(
-            Person, Person.person_id == Observation.person_id
-        )
-
-        # due to the way the query is expressed and how split above, if the left value is empty
-        # it indicates a less than search
-
         if left_value_time == "":
-            self.condition = self.condition.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    ConditionOccurrence.condition_start_datetime,
-                    Person.birth_datetime,
-                )
-                < int(right_value_time)
-            )
-            self.drug = self.drug.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    DrugExposure.drug_exposure_start_date,
-                    Person.birth_datetime,
-                )
-                < int(right_value_time)
-            )
-            self.measurement = self.measurement.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    Measurement.measurement_date,
-                    Person.birth_datetime,
-                )
-                < int(right_value_time)
-            )
-            self.observation = self.observation.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    Observation.observation_date,
-                    Person.birth_datetime,
-                )
-                < int(right_value_time)
-            )
+            comparator = op.lt
+            age_value = int(right_value_time)
         else:
-            self.condition = self.condition.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    ConditionOccurrence.condition_start_date,
-                    Person.birth_datetime,
+            comparator = op.gt
+            age_value = int(left_value_time)
+
+        self.condition = self._apply_age_constraint_to_table(
+            self.condition,
+            ConditionOccurrence.person_id,
+            ConditionOccurrence.condition_start_date,
+            comparator,
+            age_value,
+        )
+        self.drug = self._apply_age_constraint_to_table(
+            self.drug,
+            DrugExposure.person_id,
+            DrugExposure.drug_exposure_start_date,
+            comparator,
+            age_value,
+        )
+        self.measurement = self._apply_age_constraint_to_table(
+            self.measurement,
+            Measurement.person_id,
+            Measurement.measurement_date,
+            comparator,
+            age_value,
+        )
+        self.observation = self._apply_age_constraint_to_table(
+            self.observation,
+            Observation.person_id,
+            Observation.observation_date,
+            comparator,
+            age_value,
+        )
+
+    def _apply_age_constraint_to_table(
+        self,
+        table_query: Select[Tuple[int]],
+        table_person_id: ClauseElement,
+        table_date_column: ClauseElement,
+        operator_func: Callable[[Any, Any], BinaryExpression[bool]],
+        age_value: int,
+    ) -> Select[Tuple[int]]:
+        """
+        Helper method to apply age constraints to a table query.
+
+        Args:
+            table_query: The table query to apply the age constraint to.
+            table_person_id: The person_id column in the table.
+            table_date_column: The date column in the table.
+            operator_func: The operator function to use in the constraint.
+            age_value: The age value to use in the constraint.
+
+        Returns:
+            The table query with the age constraint applied.
+        """
+        age_difference = self._get_year_difference(
+            self.db_manager.engine, table_date_column, Person.birth_datetime
+        )
+
+        constraint = operator_func(age_difference, age_value)
+
+        return table_query.where(
+            exists(
+                select(1).where(
+                    and_(
+                        Person.person_id == table_person_id,
+                        constraint,
+                    )
                 )
-                > int(left_value_time)
             )
-            self.drug = self.drug.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    DrugExposure.drug_exposure_start_date,
-                    Person.birth_datetime,
-                )
-                > int(left_value_time)
-            )
-            self.measurement = self.measurement.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    Measurement.measurement_date,
-                    Person.birth_datetime,
-                )
-                > int(left_value_time)
-            )
-            self.observation = self.observation.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    Observation.observation_date,
-                    Person.birth_datetime,
-                )
-                > int(left_value_time)
-            )
+        )
 
     def _get_year_difference(
         self, engine: Engine, start_date: ClauseElement, birth_date: ClauseElement
