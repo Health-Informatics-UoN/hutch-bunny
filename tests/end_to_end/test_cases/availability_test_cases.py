@@ -128,38 +128,36 @@ test_cases = [
         rounding=0,
         expected_count=782,
     ),
-    # TODO: These cases are not working due to a bug, so are deactivated.
-    # Will be reactivated in: https://github.com/Health-Informatics-UoN/hutch-bunny/issues/176
     # Mutiple in group test - assert multiple in group AND filtering with age 1.
     # 8532 Female AND 432867 Hyperlipidemia
     # Age > 50 years when it occurred
-    # AvailabilityTestCase(
-    #     json_file_path="tests/queries/availability/multiple_in_group_and_with_age1.json",
-    #     expected_count=30,
-    # ),
+    AvailabilityTestCase(
+        json_file_path="tests/queries/availability/multiple_in_group_and_with_age1.json",
+        expected_count=30,
+    ),
     # Mutiple in group test - assert multiple in group AND filtering with age 1 and rounding to 0.
     # 8532 Female AND 432867 Hyperlipidemia
     # Age > 50 years when it occurred
-    # AvailabilityTestCase(
-    #     json_file_path="tests/queries/availability/multiple_in_group_and_with_age1.json",
-    #     rounding=0,
-    #     expected_count=26,
-    # ),
+    AvailabilityTestCase(
+        json_file_path="tests/queries/availability/multiple_in_group_and_with_age1.json",
+        rounding=0,
+        expected_count=26,
+    ),
     # Mutiple in group test - assert multiple in group OR filtering with age 2.
     # 8532 Female AND 432867 Hyperlipidemia
     # Age < 50 years when it occurred
-    # AvailabilityTestCase(
-    #     json_file_path="tests/queries/availability/multiple_in_group_and_with_age2.json",
-    #     expected_count=20,
-    # ),
+    AvailabilityTestCase(
+        json_file_path="tests/queries/availability/multiple_in_group_and_with_age2.json",
+        expected_count=20,
+    ),
     # Mutiple in group test - assert multiple in group OR filtering with age 2 and rounding to 0.
     # 8532 Female AND 432867 Hyperlipidemia
     # Age < 50 years when it occurred
-    # AvailabilityTestCase(
-    #     json_file_path="tests/queries/availability/multiple_in_group_and_with_age2.json",
-    #     rounding=0,
-    #     expected_count=21,
-    # ),
+    AvailabilityTestCase(
+        json_file_path="tests/queries/availability/multiple_in_group_and_with_age2.json",
+        rounding=0,
+        expected_count=21,
+    ),
     # Basic measurement test - assert measurement with default rounding.
     # 46236952 Glomerular filtration
     # > 1.0, < 3.0
