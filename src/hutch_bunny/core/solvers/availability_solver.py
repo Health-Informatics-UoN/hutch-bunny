@@ -409,7 +409,7 @@ class AvailabilitySolver:
         self.condition = self._apply_age_constraint_to_table(
             self.condition,
             ConditionOccurrence.person_id,
-            ConditionOccurrence.condition_start_datetime,
+            ConditionOccurrence.condition_start_date,
             comparator,
             age_value,
         )
