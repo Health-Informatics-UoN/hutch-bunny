@@ -11,7 +11,7 @@
             "varcat": "Condition",
             "type": "TEXT",
             "oper": "=",
-            "value": "4323688",
+            "value": "260139",
             "time": "1|:TIME:M"
           },
           {
@@ -19,7 +19,7 @@
             "varcat": "Condition",
             "type": "TEXT",
             "oper": "=",
-            "value": "4323688",
+            "value": "260139",
             "time": "|1:TIME:M"
           }
         ],

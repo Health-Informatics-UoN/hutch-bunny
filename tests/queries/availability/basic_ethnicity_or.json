@@ -9,19 +9,10 @@
         "varcat" : "Person",
         "type" : "TEXT",
         "oper" : "=",
-        "value" : "38003564"
-      } ],
-      "rules_oper" : "AND"
-    }, {
-      "rules" : [ {
-        "varname" : "OMOP",
-        "varcat" : "Person",
-        "type" : "TEXT",
-        "oper" : "!=",
         "value" : "38003563"
       } ],
       "rules_oper" : "AND"
-    } ],
+    }],
     "groups_oper" : "OR"
   },
   "collection": "collection_id",
