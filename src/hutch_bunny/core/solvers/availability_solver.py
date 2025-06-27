@@ -138,20 +138,20 @@ class AvailabilitySolver:
 
         low_number: int = next(
             (
-                item["threshold"] if item["threshold"] is not None else 0
+                item["threshold"] if item["threshold"] is not None else 10
                 for item in results_modifier
                 if item["id"] == "Low Number Suppression"
             ),
-            0,
+            10,
         )
 
         rounding: int = next(
             (
-                item["nearest"] if item["nearest"] is not None else 0
+                item["nearest"] if item["nearest"] is not None else 10
                 for item in results_modifier
                 if item["id"] == "Rounding"
             ),
-            0,
+            10,
         )
 
         with self.db_manager.engine.connect() as con:
