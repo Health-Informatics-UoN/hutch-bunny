@@ -37,17 +37,20 @@ jobs:
         ports:
           - 5432:5432
 
-      omop-lite:
-        image: ghcr.io/health-informatics-uon/omop-lite
-        env:
-          DB_HOST: postgres
-          DB_PASSWORD: postgres
-          DB_NAME: hutch-omop
-          SYNTHETIC: true
-          SYNTHETIC_NUMBER: 1000
-
     steps:
       - uses: actions/checkout@v4
+
+      - name: Load synthetic OMOP data
+        run: |
+          docker run \
+            --network host \
+            -e DB_HOST=localhost \
+            -e DB_NAME=hutch-omop \
+            -e DB_PASSWORD=postgres \
+            -e DIALECT=postgresql \
+            -e SYNTHETIC=true \
+            -e SYNTHETIC_NUMBER=1000 \
+            ghcr.io/health-informatics-uon/omop-lite
 
       - name: Setup uv
         uses: astral-sh/setup-uv@f94ec6bedd8674c4426838e6b50417d36b6ab231 # v5.3.1
