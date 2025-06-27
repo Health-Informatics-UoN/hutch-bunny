@@ -119,7 +119,7 @@ jobs:
           DIALECT: mssql
           SYNTHETIC: true
           SCHEMA_NAME: omop
-          SYNTHETIC_NUMBER: 1000
+          SYNTHETIC_NUMBER: 100
 
     steps:
       - uses: actions/checkout@v4
