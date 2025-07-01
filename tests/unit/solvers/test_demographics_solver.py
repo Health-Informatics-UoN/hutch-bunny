@@ -144,7 +144,7 @@ def test_build_alternatives_string(solver: DemographicsDistributionQuerySolver) 
     )
 
     # Assert
-    assert result == "^MALE|40^FEMALE|60^"
+    assert result == "^Male|40^Female|60^"
 
 
 def test_build_alternatives_string_with_modifiers(
@@ -162,7 +162,7 @@ def test_build_alternatives_string_with_modifiers(
     )
 
     # Assert
-    assert result == "^MALE|40^FEMALE|60^"
+    assert result == "^Male|40^Female|60^"
 
 
 def test_create_demographics_rows(solver: DemographicsDistributionQuerySolver) -> None:
