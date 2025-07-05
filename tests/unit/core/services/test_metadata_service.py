@@ -1,30 +1,39 @@
 import pytest
 import base64
+from unittest.mock import patch, MagicMock
 from hutch_bunny.core.services.metadata_service import MetadataService
-from hutch_bunny.core.settings import Settings
+from hutch_bunny.core.settings import DaemonSettings
 
 
 @pytest.fixture
-def settings() -> Settings:
-    """Create a test settings instance."""
-    return Settings(
-        ROUNDING_TARGET=10,
-        LOW_NUMBER_SUPPRESSION_THRESHOLD=150,
-    )
+def mock_settings() -> MagicMock:
+    """Create a mock settings instance."""
+    mock = MagicMock(spec=DaemonSettings)
+    mock.COLLECTION_ID = "test_collection"
+    mock.ROUNDING_TARGET = 10
+    mock.LOW_NUMBER_SUPPRESSION_THRESHOLD = 150
+    return mock
 
 
 @pytest.fixture
-def metadata_service(settings: Settings) -> MetadataService:
-    """Create a test metadata service instance."""
-    return MetadataService(settings)
+def metadata_service(mock_settings: MagicMock) -> MetadataService:
+    """Create a test metadata service instance with mocked settings."""
+    with patch(
+        "hutch_bunny.core.services.metadata_service.DaemonSettings",
+        return_value=mock_settings,
+    ):
+        return MetadataService()
 
 
 def test_generate_metadata(metadata_service: MetadataService) -> None:
     """Test metadata file generation."""
-    metadata_file = metadata_service.generate_metadata("test-uuid")
+    with patch(
+        "hutch_bunny.core.services.metadata_service.version", return_value="1.0.4"
+    ):
+        metadata_file = metadata_service.generate_metadata()
 
     # Check file properties
-    assert metadata_file.name == "code.distribution"
+    assert metadata_file.name == "metadata.bcos"
     assert (
         metadata_file.description
         == "Metadata for the result of code.distribution analysis"
@@ -36,16 +45,19 @@ def test_generate_metadata(metadata_service: MetadataService) -> None:
     # Check that data is base64 encoded and contains expected content
     decoded_data = base64.b64decode(metadata_file.data).decode("utf-8")
     assert "BIOBANK PROTOCOL OS BCLINK DATAMODEL ROUNDING THRESHOLD" in decoded_data
-    assert "test-uuid" in decoded_data
+    assert "test_collection" in decoded_data  # biobank (collection_id)
     assert "gened" in decoded_data
-    assert "Rocky Linux" in decoded_data
-    assert "6.3.4" in decoded_data
+    assert "1.0.4" in decoded_data  # bclink (version)
     assert "OMOP" in decoded_data
-    assert "10" in decoded_data
-    assert "150" in decoded_data
+    assert "10" in decoded_data  # rounding
+    assert "150" in decoded_data  # threshold
 
 
-def test_metadata_service_initialization(settings: Settings) -> None:
+def test_metadata_service_initialization(mock_settings: MagicMock) -> None:
     """Test metadata service initialization."""
-    service = MetadataService(settings)
-    assert service.settings == settings
+    with patch(
+        "hutch_bunny.core.services.metadata_service.DaemonSettings",
+        return_value=mock_settings,
+    ):
+        service = MetadataService()
+        assert service.settings == mock_settings
