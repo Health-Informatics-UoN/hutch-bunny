@@ -29,8 +29,8 @@ class MetadataService:
         threshold = str(self.settings.LOW_NUMBER_SUPPRESSION_THRESHOLD)
 
         # Format metadata to the expected format
-        header = "BIOBANK PROTOCOL OS BCLINK DATAMODEL ROUNDING THRESHOLD"
-        data_line = f"{biobank} {protocol} {os_info} {bclink} {datamodel} {rounding} {threshold}"
+        header = "BIOBANK\tPROTOCOL\tOS\tBCLINK\tDATAMODEL\tROUNDING\tTHRESHOLD"
+        data_line = f"{biobank}\t{protocol}\t{os_info}\t{bclink}\t{datamodel}\t{rounding}\t{threshold}"
 
         metadata = f"{header}\n{data_line}"
 
