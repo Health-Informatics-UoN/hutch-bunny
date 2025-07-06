@@ -114,7 +114,7 @@ def solve_distribution(
             type_="BCOS",
         )
         # Metadata file is only for demographics queries
-        if query.code == DistributionQueryType.DEMOGRAPHICS:
+        if query.code == DistributionQueryType.GENERIC:
             metadata_file = metadata_service.generate_metadata()
         else:
             metadata_file = None
@@ -124,7 +124,7 @@ def solve_distribution(
             status="ok",
             count=count,
             datasets_count=1,
-            files=[result_file, metadata_file] if metadata_file else [result_file],
+            files=[metadata_file, result_file] if metadata_file else [result_file],
             collection_id=query.collection,
         )
     except Exception as e:
