@@ -23,6 +23,8 @@ class MetadataService:
         # version number
         bclink = version("hutch-bunny")
         datamodel = "OMOP"
+
+        # TODO: these should only be sent if enabled to be sent..
         rounding = str(self.settings.ROUNDING_TARGET)
         threshold = str(self.settings.LOW_NUMBER_SUPPRESSION_THRESHOLD)
 
