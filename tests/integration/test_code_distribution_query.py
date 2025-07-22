@@ -1,3 +1,5 @@
+import os
+os.environ["TASK_API_BASE_URL"] = "https://localhost:8000"
 import pytest
 from hutch_bunny.core.solvers.query_solvers import solve_distribution
 from hutch_bunny.core.rquest_models.distribution import (
