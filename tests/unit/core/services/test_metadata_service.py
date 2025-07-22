@@ -12,6 +12,7 @@ def mock_settings() -> MagicMock:
     mock.COLLECTION_ID = "test_collection"
     mock.ROUNDING_TARGET = 10
     mock.LOW_NUMBER_SUPPRESSION_THRESHOLD = 150
+    mock.TASK_API_ENFORCE_HTTPS=False
     return mock
 
 
