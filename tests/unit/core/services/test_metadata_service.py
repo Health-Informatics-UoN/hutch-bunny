@@ -1,5 +1,4 @@
-import os
-os.environ["TASK_API_BASE_URL"] = "https://localhost:8000"
+
 import pytest
 import base64
 from unittest.mock import patch, MagicMock
