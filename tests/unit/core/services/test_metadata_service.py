@@ -46,7 +46,7 @@ def test_generate_metadata(metadata_service: MetadataService) -> None:
 
     # Check that data is base64 encoded and contains expected content
     decoded_data = base64.b64decode(metadata_file.data).decode("utf-8")
-    assert "BIOBANK PROTOCOL OS BCLINK DATAMODEL ROUNDING THRESHOLD" in decoded_data
+    assert "BIOBANK\tPROTOCOL\tOS\tBCLINK\tDATAMODEL\tROUNDING\tTHRESHOLD" in decoded_data
     assert "test_collection" in decoded_data  # biobank (collection_id)
     assert "Bunny" in decoded_data
     assert "1.0.5" in decoded_data  # bclink (version)
