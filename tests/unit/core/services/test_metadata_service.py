@@ -29,10 +29,8 @@ def metadata_service(mock_settings: MagicMock) -> MetadataService:
 
 def test_generate_metadata(metadata_service: MetadataService) -> None:
     """Test metadata file generation."""
-    with patch(
-        "hutch_bunny.core.services.metadata_service.version", return_value="1.0.4"
-    ):
-        metadata_file = metadata_service.generate_metadata()
+    metadata_file = metadata_service.generate_metadata()
+
 
     # Check file properties
     assert metadata_file.name == "metadata.bcos"
