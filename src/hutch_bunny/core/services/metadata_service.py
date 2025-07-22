@@ -18,7 +18,7 @@ class MetadataService:
             File object containing the metadata
         """
         biobank = self.settings.COLLECTION_ID
-        protocol = "gened"
+        protocol = "Bunny"
         os_info = ""
         # version number
         bclink = version("hutch-bunny")
