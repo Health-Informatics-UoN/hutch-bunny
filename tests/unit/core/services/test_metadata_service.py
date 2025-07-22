@@ -1,3 +1,5 @@
+import os
+os.environ["TASK_API_BASE_URL"] = "https://localhost:8000"
 import pytest
 import base64
 from unittest.mock import patch, MagicMock
@@ -12,7 +14,6 @@ def mock_settings() -> MagicMock:
     mock.COLLECTION_ID = "test_collection"
     mock.ROUNDING_TARGET = 10
     mock.LOW_NUMBER_SUPPRESSION_THRESHOLD = 150
-    mock.TASK_API_ENFORCE_HTTPS=False
     return mock
 
 
