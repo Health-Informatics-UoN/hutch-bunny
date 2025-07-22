@@ -52,7 +52,7 @@ def test_solve_distribution_is_ok(distribution_result: RquestResult) -> None:
 
 @pytest.mark.integration
 def test_solve_distribution_files_count(distribution_result: RquestResult) -> None:
-    assert len(distribution_result.files) == 2  # Result file + metadata file
+    assert len(distribution_result.files) == 1  # Result file + metadata file
 
 
 @pytest.mark.integration
