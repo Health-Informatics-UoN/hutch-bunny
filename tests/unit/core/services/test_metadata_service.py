@@ -49,7 +49,7 @@ def test_generate_metadata(metadata_service: MetadataService) -> None:
     assert "BIOBANK PROTOCOL OS BCLINK DATAMODEL ROUNDING THRESHOLD" in decoded_data
     assert "test_collection" in decoded_data  # biobank (collection_id)
     assert "Bunny" in decoded_data
-    assert "1.0.4" in decoded_data  # bclink (version)
+    assert "1.0.5" in decoded_data  # bclink (version)
     assert "OMOP" in decoded_data
     assert "10" in decoded_data  # rounding
     assert "150" in decoded_data  # threshold

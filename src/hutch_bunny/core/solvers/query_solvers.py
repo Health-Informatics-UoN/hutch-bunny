@@ -124,7 +124,7 @@ def solve_distribution(
             status="ok",
             count=count,
             datasets_count=1,
-            files=[metadata_file, result_file] if metadata_file else [result_file],
+            files=[result_file, metadata_file] if metadata_file else [result_file],
             collection_id=query.collection,
         )
     except Exception as e:
