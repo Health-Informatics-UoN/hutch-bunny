@@ -1,8 +1,19 @@
 import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-
-from sqlalchemy import or_, func, BinaryExpression, ColumnElement, select, Select, text
+from typing import Any, Callable, TypedDict
+from sqlalchemy.sql.expression import ClauseElement
+from sqlalchemy import (
+    or_,
+    and_,
+    func,
+    BinaryExpression,
+    ColumnElement,
+    select,
+    Select,
+    text,
+    Exists,
+)
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
     Concept,
@@ -13,26 +24,39 @@ from hutch_bunny.core.entities import (
     DrugExposure,
     ProcedureOccurrence,
 )
-from sqlalchemy.dialects import postgresql
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_fixed,
+    before_sleep_log,
+    after_log,
+)
+
+from typing import Tuple
+from sqlalchemy import exists
 
 from hutch_bunny.core.obfuscation import apply_filters
-from hutch_bunny.core.rquest_dto.query import AvailabilityQuery
+from hutch_bunny.core.rquest_models.group import Group
+from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from sqlalchemy.engine import Engine
-from hutch_bunny.core.logger import logger
+from hutch_bunny.core.logger import logger, INFO
 
-from hutch_bunny.core.settings import get_settings
-from hutch_bunny.core.rquest_dto.rule import Rule
+from hutch_bunny.core.settings import Settings
+from hutch_bunny.core.rquest_models.rule import Rule
+import operator as op
 
-settings = get_settings()
+
+class ResultModifier(TypedDict):
+    id: str
+    threshold: int | None
+    nearest: int | None
+
+
+settings = Settings()
 
 
 # Class for availability queries
 class AvailabilitySolver:
-    measurement: Select
-    drug: Select
-    condition: Select
-    observation: Select
-
     omop_domain_to_omop_table_map = {
         "Condition": ConditionOccurrence,
         "Ethnicity": Person,
@@ -48,7 +72,13 @@ class AvailabilitySolver:
         self.db_manager = db_manager
         self.query = query
 
-    def solve_query(self, results_modifier: list[dict]) -> int:
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(60),
+        before_sleep=before_sleep_log(logger, INFO),
+        after=after_log(logger, INFO),
+    )
+    def solve_query(self, results_modifier: list[ResultModifier]) -> int:
         """
         This is the start of the process that begins to run the queries.
         (1) call solve_rules that takes each group and adds those results to the sub_queries list
@@ -57,7 +87,7 @@ class AvailabilitySolver:
         # resolve within the group
         return self._solve_rules(results_modifier)
 
-    def _find_concepts(self) -> dict:
+    def _find_concepts(self, groups: list[Group]) -> dict[str, str]:
         """Function that takes all the concept IDs in the cohort definition, looks them up in the OMOP database
         to extract the concept_id and domain and place this within a dictionary for lookup during other query building
 
@@ -68,9 +98,11 @@ class AvailabilitySolver:
 
         """
         concept_ids = set()
-        for group in self.query.cohort.groups:
+        for group in groups:
             for rule in group.rules:
-                concept_ids.add(int(rule.value))
+                # Guard for None values (e.g. Age)
+                if rule.value:
+                    concept_ids.add(int(rule.value))
 
         concept_query = (
             # order must be .concept_id, .domain_id
@@ -85,7 +117,7 @@ class AvailabilitySolver:
         }
         return concept_dict
 
-    def _solve_rules(self, results_modifier: list[dict]) -> int:
+    def _solve_rules(self, results_modifier: list[ResultModifier]) -> int:
         """Function for taking the JSON query from RQUEST and creating the required query to run against the OMOP database.
 
         RQUEST API spec can have multiple groups in each query, and then a condition between the groups.
@@ -102,18 +134,23 @@ class AvailabilitySolver:
 
         """
         # get the list of concepts to build the query constraints
-        concepts: dict = self._find_concepts()
+        concepts: dict[str, str] = self._find_concepts(self.query.cohort.groups)
 
-        low_number = next(
+        low_number: int = next(
             (
-                item["threshold"]
+                item["threshold"] if item["threshold"] is not None else 10
                 for item in results_modifier
                 if item["id"] == "Low Number Suppression"
             ),
             10,
         )
-        rounding = next(
-            (item["nearest"] for item in results_modifier if item["id"] == "Rounding"),
+
+        rounding: int = next(
+            (
+                item["nearest"] if item["nearest"] is not None else 10
+                for item in results_modifier
+                if item["id"] == "Rounding"
+            ),
             10,
         )
 
@@ -124,17 +161,13 @@ class AvailabilitySolver:
             # iterate through all the groups specified in the query
             for current_group in self.query.cohort.groups:
                 # this is used to store all constraints for all rules in the group, one entry per rule
-                list_for_rules: list[list[BinaryExpression[bool]]] = []
+                list_for_rules: list[ColumnElement[bool]] = []
 
                 # captures all the person constraints for the group
                 person_constraints_for_group: list[ColumnElement[bool]] = []
 
                 # for each rule in a group
                 for current_rule in current_group.rules:
-                    # a list for all the conditions for the rule, each rule generates searches
-                    # in four tables, this field captures that
-                    rule_constraints: list[BinaryExpression[bool]] = []
-
                     # variables used to capture the relevant detail.
                     # "time" : "|1:TIME:M" in the payload means that
                     # if the | is on the left of the value it was less than 1 month
@@ -149,10 +182,10 @@ class AvailabilitySolver:
 
                     # if a number was supplied, it is in the format "value" : "0.0|200.0"
                     # therefore split to capture min as 0 and max as 200
-                    if current_rule.raw_range != "":
-                        current_rule.min_value, current_rule.max_value = (
-                            current_rule.raw_range.split("|")
-                        )
+                    if current_rule.raw_range and current_rule.raw_range != "":
+                        min_str, max_str = current_rule.raw_range.split("|")
+                        current_rule.min_value = float(min_str) if min_str else None
+                        current_rule.max_value = float(max_str) if max_str else None
 
                     # if the rule was not linked to a person variable
                     if current_rule.varcat != "Person":
@@ -163,10 +196,16 @@ class AvailabilitySolver:
                         # reliable longer term.
 
                         # initial setting for the four tables
-                        self.condition: Select = select(ConditionOccurrence.person_id)
-                        self.drug: Select = select(DrugExposure.person_id)
-                        self.measurement: Select = select(Measurement.person_id)
-                        self.observation: Select = select(Observation.person_id)
+                        self.condition: Select[Tuple[int]] = select(
+                            ConditionOccurrence.person_id
+                        )
+                        self.drug: Select[Tuple[int]] = select(DrugExposure.person_id)
+                        self.measurement: Select[Tuple[int]] = select(
+                            Measurement.person_id
+                        )
+                        self.observation: Select[Tuple[int]] = select(
+                            Observation.person_id
+                        )
 
                         """"
                         RELATIVE AGE SEARCH
@@ -204,6 +243,7 @@ class AvailabilitySolver:
                         # this section deals with a relative time constraint, such as "time" : "|1:TIME:M"
                         if (
                             left_value_time is not None
+                            and right_value_time is not None
                             and (left_value_time != "" or right_value_time != "")
                             and time_category == "TIME"
                         ):
@@ -212,29 +252,42 @@ class AvailabilitySolver:
                         """"
                         PREPARING THE LISTS FOR LATER USE
                         """
-                        rule_constraints.append(Person.person_id.in_(self.measurement))
-                        rule_constraints.append(Person.person_id.in_(self.observation))
-                        rule_constraints.append(Person.person_id.in_(self.condition))
-                        rule_constraints.append(Person.person_id.in_(self.drug))
 
-                        # all the constraints for this rule are added as a single list
-                        # to the list which captures all rules for the group
-                        list_for_rules.append(rule_constraints)
+                        # List of tables and their corresponding foreign keys
+                        table_constraints = [
+                            (self.measurement, Measurement.person_id),
+                            (self.observation, Observation.person_id),
+                            (self.condition, ConditionOccurrence.person_id),
+                            (self.drug, DrugExposure.person_id),
+                        ]
+
+                        # a switch between whether the criteria are inclusion or exclusion
+                        inclusion_criteria: bool = current_rule.operator == "="
+
+                        # a list for all the conditions for the rule, each rule generates searches
+                        # in four tables, this field captures that
+                        table_rule_constraints: list[ColumnElement[bool]] = []
+
+                        for table, fk in table_constraints:
+                            constraint: Exists = exists(
+                                table.where(fk == Person.person_id)
+                            )
+                            table_rule_constraints.append(
+                                constraint if inclusion_criteria else ~constraint
+                            )
+
+                        if inclusion_criteria:
+                            list_for_rules.append(or_(*table_rule_constraints))
+                        else:
+                            list_for_rules.append(and_(*table_rule_constraints))
 
                     else:
                         """
                         PERSON TABLE RELATED RULES
                         """
-                        # this is unsupported currently
-                        if current_rule.varname == "AGE":
-                            logger.info(
-                                "An unsupported rule for AGE was detected and ignored"
-                            )
-                            # nothing is done yet, but stops this causing problems
-                        else:
-                            person_constraints_for_group = self._add_person_constraints(
-                                person_constraints_for_group, current_rule, concepts
-                            )
+                        person_constraints_for_group = self._add_person_constraints(
+                            person_constraints_for_group, current_rule, concepts
+                        )
 
                 """
                 NOTE: all rules done for a single group. Now to apply logic between the rules
@@ -243,15 +296,12 @@ class AvailabilitySolver:
                 ## if the logic between the rules for each group is AND
                 if current_group.rules_operator == "AND":
                     # all person rules are added first
-                    group_query: Select = select(Person.person_id).where(
+                    group_query: Select[Tuple[int]] = select(Person.person_id).where(
                         *person_constraints_for_group
                     )
 
-                    # although this is an AND, we include the top level as AND, but the
-                    # sub-query is OR to account for searching in the four tables
-
                     for current_constraint in list_for_rules:
-                        group_query = group_query.where(or_(*current_constraint))
+                        group_query = group_query.where(current_constraint)
 
                 else:
                     # this might seem odd, but to add the rules as OR, we have to add them
@@ -267,8 +317,7 @@ class AvailabilitySolver:
                     # list_for_rules contains all the group of constraints for each rule
                     # therefore, we get each group, then for each group, we get each constraint
                     for current_expression in list_for_rules:
-                        for current_constraint_from in current_expression:
-                            all_parameters.append(current_constraint_from)
+                        all_parameters.append(current_expression)
 
                     # all added as an OR
                     group_query = select(Person.person_id).where(or_(*all_parameters))
@@ -302,14 +351,14 @@ class AvailabilitySolver:
 
             if low_number > 0:
                 full_query_all_groups = full_query_all_groups.having(
-                    func.count() > low_number
+                    func.count() >= low_number
                 )
 
             # here for debug, prints the SQL statement created
             logger.debug(
                 str(
                     full_query_all_groups.compile(
-                        dialect=postgresql.dialect(),
+                        dialect=self.db_manager.engine.dialect,
                         compile_kwargs={"literal_binds": True},
                     )
                 )
@@ -320,7 +369,7 @@ class AvailabilitySolver:
 
         return apply_filters(count, results_modifier)
 
-    def _add_range_as_number(self, current_rule: Rule):
+    def _add_range_as_number(self, current_rule: Rule) -> None:
         if current_rule.min_value is not None and current_rule.max_value is not None:
             self.measurement = self.measurement.where(
                 Measurement.value_as_number.between(
@@ -333,89 +382,100 @@ class AvailabilitySolver:
                 )
             )
 
-    def _add_age_constraints(self, left_value_time: str, right_value_time: str):
-        self.condition = self.condition.join(
-            Person, Person.person_id == ConditionOccurrence.person_id
-        )
-        self.drug = self.drug.join(Person, Person.person_id == DrugExposure.person_id)
-        self.measurement = self.measurement.join(
-            Person, Person.person_id == Measurement.person_id
-        )
-        self.observation = self.observation.join(
-            Person, Person.person_id == Observation.person_id
-        )
+    def _add_age_constraints(
+        self, left_value_time: str | None, right_value_time: str | None
+    ) -> None:
+        """
+        This function adds age constraints to the query.
+        If the left value is empty it indicates a less than search.
 
-        # due to the way the query is expressed and how split above, if the left value is empty
-        # it indicates a less than search
+        Args:
+            left_value_time: The left value of the time constraint.
+            right_value_time: The right value of the time constraint.
+
+        Returns:
+            None
+        """
+        if left_value_time is None or right_value_time is None:
+            return
 
         if left_value_time == "":
-            self.condition = self.condition.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    ConditionOccurrence.condition_start_date,
-                    Person.birth_datetime,
-                )
-                < int(right_value_time)
-            )
-            self.drug = self.drug.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    DrugExposure.drug_exposure_start_date,
-                    Person.birth_datetime,
-                )
-                < int(right_value_time)
-            )
-            self.measurement = self.measurement.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    Measurement.measurement_date,
-                    Person.birth_datetime,
-                )
-                < int(right_value_time)
-            )
-            self.observation = self.observation.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    Observation.observation_date,
-                    Person.birth_datetime,
-                )
-                < int(right_value_time)
-            )
+            comparator = op.lt
+            age_value = int(right_value_time)
         else:
-            self.condition = self.condition.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    ConditionOccurrence.condition_start_date,
-                    Person.birth_datetime,
-                )
-                > int(left_value_time)
-            )
-            self.drug = self.drug.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    DrugExposure.drug_exposure_start_date,
-                    Person.birth_datetime,
-                )
-                > int(left_value_time)
-            )
-            self.measurement = self.measurement.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    Measurement.measurement_date,
-                    Person.birth_datetime,
-                )
-                > int(left_value_time)
-            )
-            self.observation = self.observation.where(
-                self._get_year_difference(
-                    self.db_manager.engine,
-                    Observation.observation_date,
-                    Person.birth_datetime,
-                )
-                > int(left_value_time)
-            )
+            comparator = op.gt
+            age_value = int(left_value_time)
 
-    def _get_year_difference(self, engine: Engine, start_date, birth_date):
+        self.condition = self._apply_age_constraint_to_table(
+            self.condition,
+            ConditionOccurrence.person_id,
+            ConditionOccurrence.condition_start_date,
+            comparator,
+            age_value,
+        )
+        self.drug = self._apply_age_constraint_to_table(
+            self.drug,
+            DrugExposure.person_id,
+            DrugExposure.drug_exposure_start_date,
+            comparator,
+            age_value,
+        )
+        self.measurement = self._apply_age_constraint_to_table(
+            self.measurement,
+            Measurement.person_id,
+            Measurement.measurement_date,
+            comparator,
+            age_value,
+        )
+        self.observation = self._apply_age_constraint_to_table(
+            self.observation,
+            Observation.person_id,
+            Observation.observation_date,
+            comparator,
+            age_value,
+        )
+
+    def _apply_age_constraint_to_table(
+        self,
+        table_query: Select[Tuple[int]],
+        table_person_id: ClauseElement,
+        table_date_column: ClauseElement,
+        operator_func: Callable[[Any, Any], BinaryExpression[bool]],
+        age_value: int,
+    ) -> Select[Tuple[int]]:
+        """
+        Helper method to apply age constraints to a table query.
+
+        Args:
+            table_query: The table query to apply the age constraint to.
+            table_person_id: The person_id column in the table.
+            table_date_column: The date column in the table.
+            operator_func: The operator function to use in the constraint.
+            age_value: The age value to use in the constraint.
+
+        Returns:
+            The table query with the age constraint applied.
+        """
+        age_difference = self._get_year_difference(
+            self.db_manager.engine, table_date_column, Person.birth_datetime
+        )
+
+        constraint = operator_func(age_difference, age_value)
+
+        return table_query.where(
+            exists(
+                select(1).where(
+                    and_(
+                        Person.person_id == table_person_id,
+                        constraint,
+                    )
+                )
+            )
+        )
+
+    def _get_year_difference(
+        self, engine: Engine, start_date: ClauseElement, birth_date: ClauseElement
+    ) -> ColumnElement[int]:
         if engine.dialect.name == "postgresql":
             return func.date_part("year", start_date) - func.date_part(
                 "year", birth_date
@@ -427,7 +487,7 @@ class AvailabilitySolver:
         else:
             raise NotImplementedError("Unsupported database dialect")
 
-    def _add_relative_date(self, left_value_time: str, right_value_time: str):
+    def _add_relative_date(self, left_value_time: str, right_value_time: str) -> None:
         time_value_supplied: str
 
         # have to toggle between left and right, given |1 means less than 1 and
@@ -477,9 +537,26 @@ class AvailabilitySolver:
             )
 
     def _add_person_constraints(
-        self, person_constraints_for_group, current_rule: Rule, concepts
-    ):
-        concept_domain: str = concepts.get(current_rule.value)
+        self,
+        person_constraints_for_group: list[ColumnElement[bool]],
+        current_rule: Rule,
+        concepts: dict[str, str],
+    ) -> list[ColumnElement[bool]]:
+        concept_domain: str | None = concepts.get(current_rule.value)
+
+        if current_rule.varname == "AGE":
+            # AGE is a special case, as it is not a concept_id but a range.
+            min_value = current_rule.min_value
+            max_value = current_rule.max_value
+
+            if min_value is None or max_value is None:
+                return person_constraints_for_group
+
+            age = self._get_year_difference(
+                self.db_manager.engine, func.current_timestamp(), Person.birth_datetime
+            )
+            person_constraints_for_group.append(age >= min_value)
+            person_constraints_for_group.append(age <= max_value)
 
         if concept_domain == "Gender":
             if current_rule.operator == "=":
@@ -513,15 +590,13 @@ class AvailabilitySolver:
 
         return person_constraints_for_group
 
-    def _add_secondary_modifiers(self, current_rule: Rule):
+    def _add_secondary_modifiers(self, current_rule: Rule) -> None:
         # Not sure where, but even when a secondary modifier is not supplied, an array
         # with a single entry is provided.
-        # todo: need to confirm if this is in the JSON from the API or our implementation
-
         secondary_modifier_list = []
 
-        for type_index, typeAdd in enumerate(current_rule.secondary_modifier, start=0):
-            if typeAdd != "":
+        for typeAdd in current_rule.secondary_modifier or []:
+            if typeAdd:
                 secondary_modifier_list.append(
                     ConditionOccurrence.condition_type_concept_id == int(typeAdd)
                 )
@@ -529,30 +604,16 @@ class AvailabilitySolver:
         if len(secondary_modifier_list) > 0:
             self.condition = self.condition.where(or_(*secondary_modifier_list))
 
-    def _add_standard_concept(self, current_rule: Rule):
-        if current_rule.operator == "=":
-            self.condition = self.condition.where(
-                ConditionOccurrence.condition_concept_id == int(current_rule.value)
-            )
-            self.drug = self.drug.where(
-                DrugExposure.drug_concept_id == int(current_rule.value)
-            )
-            self.measurement = self.measurement.where(
-                Measurement.measurement_concept_id == int(current_rule.value)
-            )
-            self.observation = self.observation.where(
-                Observation.observation_concept_id == int(current_rule.value)
-            )
-        else:
-            self.condition = self.condition.where(
-                ConditionOccurrence.condition_concept_id != int(current_rule.value)
-            )
-            self.drug = self.drug.where(
-                DrugExposure.drug_concept_id != int(current_rule.value)
-            )
-            self.measurement = self.measurement.where(
-                Measurement.measurement_concept_id != int(current_rule.value)
-            )
-            self.observation = self.observation.where(
-                Observation.observation_concept_id != int(current_rule.value)
-            )
+    def _add_standard_concept(self, current_rule: Rule) -> None:
+        self.condition = self.condition.where(
+            ConditionOccurrence.condition_concept_id == int(current_rule.value)
+        )
+        self.drug = self.drug.where(
+            DrugExposure.drug_concept_id == int(current_rule.value)
+        )
+        self.measurement = self.measurement.where(
+            Measurement.measurement_concept_id == int(current_rule.value)
+        )
+        self.observation = self.observation.where(
+            Observation.observation_concept_id == int(current_rule.value)
+        )

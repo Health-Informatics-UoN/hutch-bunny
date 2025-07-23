@@ -1,5 +1,5 @@
 {
-  "task_id" : "job-2025-02-14-09:02:48-RQ-986ee282-fe00-42fe-a6c4-bff83ffd77ec",
+  "task_id" : "job-2025-02-14-09:04:03-RQ-4b5efbbe-4d8a-4a41-873b-70916ec58c94",
   "project" : "project_id",
   "owner" : "user1",
   "cohort" : {
@@ -15,9 +15,10 @@
         "varcat" : "Condition",
         "type" : "TEXT",
         "oper" : "=",
-        "value" : "260139"
+        "value" : "432867",
+        "time" : "|50:AGE:Y"
       } ],
-      "rules_oper" : "OR"
+      "rules_oper" : "AND"
     } ],
     "groups_oper" : "AND"
   },

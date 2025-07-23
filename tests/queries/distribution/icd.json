@@ -1,0 +1,7 @@
+{
+  "owner": "user_id",
+  "code": "ICD-MAIN",
+  "analysis": "DISTRIBUTION",
+  "uuid": "unique_id",
+  "collection": "collection_id"
+}

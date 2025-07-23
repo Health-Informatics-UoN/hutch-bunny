@@ -1,5 +1,5 @@
 {
-  "task_id" : "job-2025-02-14-09:03:27-RQ-87808b58-b878-4b59-839f-3537727c64a6",
+  "task_id" : "job-2025-02-14-09:00:54-RQ-6bdd4145-d484-47c5-a699-4d776fb9851a",
   "project" : "project_id",
   "owner" : "user1",
   "cohort" : {
@@ -9,18 +9,11 @@
         "varcat" : "Person",
         "type" : "TEXT",
         "oper" : "=",
-        "value" : "8532"
-      }, {
-        "varname" : "OMOP",
-        "varcat" : "Condition",
-        "type" : "TEXT",
-        "oper" : "=",
-        "value" : "4152142",
-        "time" : "10|:AGE:Y"
+        "value" : "8516"
       } ],
-      "rules_oper" : "OR"
+      "rules_oper" : "AND"
     } ],
-    "groups_oper" : "AND"
+    "groups_oper" : "OR"
   },
   "collection": "collection_id",
   "protocol_version" : "v2",
