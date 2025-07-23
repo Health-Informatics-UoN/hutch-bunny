@@ -2,6 +2,7 @@ import base64
 from hutch_bunny.core.rquest_models.file import File
 from hutch_bunny.core.settings import DaemonSettings
 from importlib.metadata import version
+from hutch_bunny.core.logger import logger, INFO
 
 
 class MetadataService:
@@ -25,8 +26,12 @@ class MetadataService:
         datamodel = "OMOP"
 
         # TODO: these should only be sent if enabled to be sent..
-        rounding = str(self.settings.ROUNDING_TARGET)
-        threshold = str(self.settings.LOW_NUMBER_SUPPRESSION_THRESHOLD)
+        # rounding = str(self.settings.ROUNDING_TARGET)
+        # threshold = str(self.settings.LOW_NUMBER_SUPPRESSION_THRESHOLD)
+
+        #hard coding these to 0 for now until wider conversations can be had
+        rounding="0"
+        threshold="0"
 
         # Format metadata to the expected format
         header = "BIOBANK\tPROTOCOL\tOS\tBCLINK\tDATAMODEL\tROUNDING\tTHRESHOLD"
