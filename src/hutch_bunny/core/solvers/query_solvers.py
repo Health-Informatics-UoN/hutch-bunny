@@ -113,7 +113,7 @@ def solve_distribution(
             size=size,
             type_="BCOS",
         )
-        # Metadata file is only for demographics queries
+        # Metadata file is only for distribution queries
         if query.code == DistributionQueryType.GENERIC:
             metadata_file = metadata_service.generate_metadata()
         else:
