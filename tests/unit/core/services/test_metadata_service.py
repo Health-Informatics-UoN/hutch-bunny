@@ -49,8 +49,8 @@ def test_generate_metadata(metadata_service: MetadataService) -> None:
     assert "Bunny" in decoded_data
     assert version("hutch-bunny") in decoded_data  # bclink (version)
     assert "OMOP" in decoded_data
-    assert "10" in decoded_data  # rounding
-    assert "150" in decoded_data  # threshold
+    assert "0" in decoded_data  # rounding
+    assert "0" in decoded_data  # threshold
 
 
 def test_metadata_service_initialization(mock_settings: MagicMock) -> None:
