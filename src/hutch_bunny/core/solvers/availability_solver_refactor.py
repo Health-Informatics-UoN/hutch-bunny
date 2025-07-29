@@ -68,7 +68,7 @@ class ResultModifier(TypedDict):
     nearest: int | None
 
 
-class QueryBuilder:
+class OMOPRuleQueryBuilder:
     """Builder for constructing OMOP queries from availability rules."""
 
     def __init__(self, db_manager: SyncDBManager):
@@ -78,7 +78,7 @@ class QueryBuilder:
         self.measurement_query: Select[Tuple[int]] = select(Measurement.person_id)
         self.observation_query: Select[Tuple[int]] = select(Observation.person_id)
 
-    def add_concept_constraint(self, concept_id: int) -> 'QueryBuilder':
+    def add_concept_constraint(self, concept_id: int) -> 'OMOPRuleQueryBuilder':
         """Add standard concept ID constraints to all relevant tables."""
         self.condition_query = self.condition_query.where(
             ConditionOccurrence.condition_concept_id == concept_id
@@ -98,10 +98,10 @@ class QueryBuilder:
         self,
         left_value_time: str | None,
         right_value_time: str | None
-    ) -> 'QueryBuilder':
+    ) -> 'OMOPRuleQueryBuilder':
         """Add age-at-event constraints."""
         if left_value_time is None or right_value_time is None:
-            return
+            return self
         if left_value_time == "":
             comparator = op.lt
             age_value = int(right_value_time)
@@ -198,7 +198,7 @@ class QueryBuilder:
         self,
         left_value_time: str,
         right_value_time: str
-    ) -> 'QueryBuilder':
+    ) -> 'OMOPRuleQueryBuilder':
         """
         Add temporal constraints relative to current date.
 
@@ -248,7 +248,7 @@ class QueryBuilder:
         self,
         min_value: float = None,
         max_value: float = None
-    ) -> 'QueryBuilder':
+    ) -> 'OMOPRuleQueryBuilder':
         self.measurement_query = self.measurement_query.where(
             Measurement.value_as_number.between(
                 float(min_value), float(max_value)
@@ -259,6 +259,21 @@ class QueryBuilder:
                 float(min_value), float(max_value)
             )
         )
+        return self
+
+    def add_secondary_modifiers(self, secondary_modifiers: list[int]) -> 'QueryBuilder':
+        """Add secondary modifier constraints (only applies to conditions)."""
+        if not secondary_modifiers:
+            return self
+
+        modifier_constraints = [
+            ConditionOccurrence.condition_type_concept_id == modifier_id
+            for modifier_id in secondary_modifiers if modifier_id
+        ]
+
+        if modifier_constraints:
+            self.condition_query = self.condition_query.where(or_(*modifier_constraints))
+
         return self
 
     def build(self, operator: str) -> ColumnElement[bool]:
@@ -289,7 +304,6 @@ class QueryBuilder:
             return or_(*table_rule_constraints)
         else:
             return and_(*table_rule_constraints)
-
 
 
 class AvailabilitySolver():
