@@ -1,0 +1,103 @@
+import pandas as pd
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+from typing import Any, Callable, TypedDict
+from sqlalchemy.sql.expression import ClauseElement
+from sqlalchemy import (
+    or_,
+    and_,
+    func,
+    BinaryExpression,
+    ColumnElement,
+    select,
+    Select,
+    text,
+    Exists
+)
+from hutch_bunny.core.db_manager import SyncDBManager
+from hutch_bunny.core.entities import (
+    Concept,
+    ConditionOccurrence,
+    Measurement,
+    Observation,
+    Person,
+    DrugExposure,
+    ProcedureOccurrence,
+)
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_fixed,
+    before_sleep_log,
+    after_log,
+)
+
+from typing import Tuple
+from sqlalchemy import exists
+
+from hutch_bunny.core.obfuscation import apply_filters
+from hutch_bunny.core.rquest_models.group import Group
+from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
+from sqlalchemy.engine import Engine
+from hutch_bunny.core.logger import logger, INFO
+
+from hutch_bunny.core.settings import Settings
+from hutch_bunny.core.rquest_models.rule import Rule
+import operator as op
+
+
+class QueryBuilder:
+    """Builder for constructing OMOP queries from availability rules."""
+
+    def __init__(self):
+        pass
+
+    def add_concept_constraint(self, concept_id: int) -> 'QueryBuilder':
+        """Add standard concept ID constraints to all relevant tables."""
+        pass
+
+    def add_age_constraint(self, operator: Callable, age_value: int) -> 'QueryBuilder':
+        pass
+
+    def add_temporal_constraint(self, before_date: datetime = None, after_date: datetime = None) -> 'QueryBuilder':
+        pass
+
+    def add_numeric_range(self, min_value: float = None, max_value: float = None) -> 'QueryBuilder':
+        pass
+
+    def build(self) -> list[ColumnElement[bool]]:
+        """Build the final constraint list."""
+        pass
+
+
+class AvailabilitySolver():
+
+    def solve_rules(self):
+        """Main query resolution."""
+        # Find concepts
+
+        # Extract modifiers
+
+        # Build the group query's and append to list
+
+        # Combine the groups
+
+        # Apply the modifiers
+
+    def _extract_modifier(
+        self,
+        results_modifiers: list[ResultsModifier],
+        result_id: str,
+        default_value: int = 10
+    ):
+        return next(
+            (
+                item["threshold"] if item["threshold"] is not None else 10
+                for item in results_modifiers
+                if item["id"] == result_id
+            ),
+            default_value,
+        )
+
+
+

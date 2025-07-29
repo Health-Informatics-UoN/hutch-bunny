@@ -12,7 +12,7 @@ from sqlalchemy import (
     select,
     Select,
     text,
-    Exists,
+    Exists
 )
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
