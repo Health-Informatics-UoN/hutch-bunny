@@ -308,19 +308,26 @@ class OMOPRuleQueryBuilder:
 
 class AvailabilitySolver():
 
+    def __init__(self, db_manager: SyncDBManager, query: AvailabilityQuery) -> None:
+        self.db_manager = db_manager
+        self.query = query
+
     def solve_rules(self):
         """Main query resolution."""
-        # Find concepts
+        concepts = self._find_concepts(self.query.cohort.groups)
+        modifiers = self._extract_modifiers(results_modifier)
 
-        # Extract modifiers
+        with self.db_manager.engine.connect() as con:
+            group_queries = []
 
-        # Build the group query's and append to list
+            for group in self.query.cohort.groups:
+                group_query = self._build_group_query(group, concepts)
+                group_queries.append(group_query)
 
-        # Combine the groups
+            final_query = self._combine_groups(group_queries, self.query.cohort.groups_operator)
+            final_query = self._apply_modifiers(final_query, modifiers)
 
-        # Apply the modifiers
-
-        # Execute the query
+            return self._execute_query(con, final_query, modifiers)
 
     def _extract_modifier(
         self,
@@ -339,7 +346,7 @@ class AvailabilitySolver():
 
     def _build_rule_constraint(self, rule: Rule) -> ColumnElement[bool]:
         """Build constraint for a single non-Person rule."""
-        builder = QueryBuilder(self.db_manager)
+        builder = OMOPRuleQueryBuilder(self.db_manager)
 
         time_constraint = self._parse_time_constraint(rule.time) if rule.time else None
         numeric_range = self._parse_numeric_range(rule.raw_range) if rule.raw_range else None
@@ -347,8 +354,24 @@ class AvailabilitySolver():
         if rule.value:
             builder.add_concept_constraint(int(rule.value))
 
-        if time_constraint and time_constraint.type == "AGE":
-            builder.add_age_constraint(time_constraint.operator, time_constraint.value)
+        if time_constraint and time_constraint.category == "AGE":
+            builder.add_age_constraint(
+                left_value_time=time_constraint.left_value,
+                right_value_time=time_constraint.right_value
+            )
+        elif time_constraint and time_constraint.category == "TIME":
+            builder.add_temporal_constraint(
+                left_value_time=time_constraint.left_value,
+                right_value_time=time_constraint.right_value
+            )
+
+        if numeric_range:
+            builder.add_numeric_range(numeric_range.min, numeric_range.max)
+
+        if rule.secondary_modifier:
+            builder.add_secondary_modifiers(rule.secondary_modifier)
+
+        return builder.build(operator=rule.operator)
 
     def _parse_time_constraint(self, time: str):
         time_value, time_category, _ = time.split(":")
