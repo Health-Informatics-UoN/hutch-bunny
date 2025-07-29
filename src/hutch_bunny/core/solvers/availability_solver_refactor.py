@@ -1,5 +1,7 @@
-import pandas as pd
+from dataclasses import dataclass
 from datetime import datetime
+
+import pandas as pd
 from dateutil.relativedelta import relativedelta
 from typing import Any, Callable, TypedDict
 from sqlalchemy.sql.expression import ClauseElement
@@ -32,7 +34,7 @@ from tenacity import (
     after_log,
 )
 
-from typing import Tuple
+from typing import Tuple, Literal
 from sqlalchemy import exists
 
 from hutch_bunny.core.obfuscation import apply_filters
@@ -44,6 +46,20 @@ from hutch_bunny.core.logger import logger, INFO
 from hutch_bunny.core.settings import Settings
 from hutch_bunny.core.rquest_models.rule import Rule
 import operator as op
+
+
+@dataclass
+class TimeConstraint:
+    value: str
+    category: Literal["AGE", "TIME"]
+    left_value: str | None = None
+    right_value: str | None = None
+
+
+@dataclass
+class NumericRange:
+    min: float = None
+    max: float = None
 
 
 class QueryBuilder:
@@ -84,6 +100,8 @@ class AvailabilitySolver():
 
         # Apply the modifiers
 
+        # Execute the query
+
     def _extract_modifier(
         self,
         results_modifiers: list[ResultsModifier],
@@ -97,6 +115,38 @@ class AvailabilitySolver():
                 if item["id"] == result_id
             ),
             default_value,
+        )
+
+    def _build_rule_constraint(self, rule: Rule) -> ColumnElement[bool]:
+        """Build constraint for a single non-Person rule."""
+        builder = QueryBuilder(self.db_manager)
+
+        time_constraint = self._parse_time_constraint(rule.time) if rule.time else None
+        numeric_range = self._parse_numeric_range(rule.raw_range) if rule.raw_range else None
+
+        if rule.value:
+            builder.add_concept_constraint(int(rule.value))
+
+        if time_constraint and time_constraint.type == "AGE":
+            builder.add_age_constraint(time_constraint.operator, time_constraint.value)
+
+    def _parse_time_constraint(self, time: str):
+        time_value, time_category, _ = time.split(":")
+        left_value_time, right_value_time = time_value.split("|")
+        return TimeConstraint(
+            value=time_value,
+            category=time_category,
+            left_value=left_value_time,
+            right_value=right_value_time
+        )
+
+    def _parse_numeric_range(self, raw_range: str):
+        min_str, max_str = raw_range.split("|")
+        min_val = float(min_str) if min_str else None
+        max_val = float(max_str) if max_str else None
+        return NumericRange(
+            min=min_val,
+            max=max_val
         )
 
 
