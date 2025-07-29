@@ -62,18 +62,125 @@ class NumericRange:
     max: float = None
 
 
+class ResultModifier(TypedDict):
+    id: str
+    threshold: int | None
+    nearest: int | None
+
+
 class QueryBuilder:
     """Builder for constructing OMOP queries from availability rules."""
 
-    def __init__(self):
-        pass
+    def __init__(self, db_manager: SyncDBManager):
+        self.db_manager = db_manager
+        self.condition_query: Select[Tuple[int]] = select(ConditionOccurrence.person_id)
+        self.drug_query: Select[Tuple[int]] = select(DrugExposure.person_id)
+        self.measurement_query: Select[Tuple[int]] = select(Measurement.person_id)
+        self.observation_query: Select[Tuple[int]] = select(Observation.person_id)
 
     def add_concept_constraint(self, concept_id: int) -> 'QueryBuilder':
         """Add standard concept ID constraints to all relevant tables."""
         pass
 
-    def add_age_constraint(self, operator: Callable, age_value: int) -> 'QueryBuilder':
-        pass
+    def add_age_constraint(
+        self,
+        left_value_time: str | None,
+        right_value_time: str | None
+    ) -> 'QueryBuilder':
+        """Add age-at-event constraints."""
+        if left_value_time is None or right_value_time is None:
+            return
+        if left_value_time == "":
+            comparator = op.lt
+            age_value = int(right_value_time)
+        else:
+            comparator = op.gt
+            age_value = int(left_value_time)
+
+        self.condition_query = self._apply_age_constraint_to_table(
+            self.condition_query,
+            ConditionOccurrence.person_id,
+            ConditionOccurrence.condition_start_date,
+            comparator,
+            age_value,
+        )
+        self.drug_query = self._apply_age_constraint_to_table(
+            self.drug_query,
+            DrugExposure.person_id,
+            DrugExposure.drug_exposure_start_date,
+            comparator,
+            age_value,
+        )
+        self.measurement_query = self._apply_age_constraint_to_table(
+            self.measurement_query,
+            Measurement.person_id,
+            Measurement.measurement_date,
+            comparator,
+            age_value,
+        )
+        self.observation_query = self._apply_age_constraint_to_table(
+            self.observation_query,
+            Observation.person_id,
+            Observation.observation_date,
+            comparator,
+            age_value,
+        )
+        return self
+
+    def _apply_age_constraint_to_table(
+        self,
+        table_query: Select[Tuple[int]],
+        table_person_id: ClauseElement,
+        table_date_column: ClauseElement,
+        operator_func: Callable[[Any, Any], BinaryExpression[bool]],
+        age_value: int,
+    ) -> Select[Tuple[int]]:
+        """
+        Helper method to apply age constraints to a table query.
+
+        Args:
+            table_query: The table query to apply the age constraint to.
+            table_person_id: The person_id column in the table.
+            table_date_column: The date column in the table.
+            operator_func: The operator function to use in the constraint.
+            age_value: The age value to use in the constraint.
+
+        Returns:
+            The table query with the age constraint applied.
+        """
+        age_difference = self._get_year_difference(
+            self.db_manager.engine, table_date_column, Person.birth_datetime
+        )
+
+        constraint = operator_func(age_difference, age_value)
+
+        return table_query.where(
+            exists(
+                select(1).where(
+                    and_(
+                        Person.person_id == table_person_id,
+                        constraint,
+                    )
+                )
+            )
+        )
+
+    def _get_year_difference(
+        self,
+        engine: Engine,
+        start_date: ClauseElement,
+        birth_date: ClauseElement
+    ) -> ColumnElement[int]:
+        if engine.dialect.name == "postgresql":
+            return func.date_part("year", start_date) - func.date_part(
+                "year", birth_date
+            )
+        elif engine.dialect.name == "mssql":
+            return func.DATEPART(text("year"), start_date) - func.DATEPART(
+                text("year"), birth_date
+            )
+        else:
+            raise NotImplementedError("Unsupported database dialect")
 
     def add_temporal_constraint(self, before_date: datetime = None, after_date: datetime = None) -> 'QueryBuilder':
         pass
