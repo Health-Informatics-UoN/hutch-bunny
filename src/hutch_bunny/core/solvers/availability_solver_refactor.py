@@ -80,7 +80,19 @@ class QueryBuilder:
 
     def add_concept_constraint(self, concept_id: int) -> 'QueryBuilder':
         """Add standard concept ID constraints to all relevant tables."""
-        pass
+        self.condition_query = self.condition_query.where(
+            ConditionOccurrence.condition_concept_id == concept_id
+        )
+        self.drug_query = self.drug_query.where(
+            DrugExposure.drug_concept_id == concept_id
+        )
+        self.measurement_query = self.measurement_query.where(
+            Measurement.measurement_concept_id == concept_id
+        )
+        self.observation_query = self.observation_query.where(
+            Observation.observation_concept_id == concept_id
+        )
+        return self
 
     def add_age_constraint(
         self,
