@@ -254,12 +254,7 @@ class AvailabilitySolver:
                         """
 
                         # List of tables and their corresponding foreign keys
-                        table_constraints = [
-                            (self.measurement, Measurement.person_id),
-                            (self.observation, Observation.person_id),
-                            (self.condition, ConditionOccurrence.person_id),
-                            (self.drug, DrugExposure.person_id),
-                        ]
+
 
                         # a switch between whether the criteria are inclusion or exclusion
                         inclusion_criteria: bool = current_rule.operator == "="

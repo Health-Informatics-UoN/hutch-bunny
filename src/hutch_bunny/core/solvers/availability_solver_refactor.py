@@ -261,9 +261,35 @@ class QueryBuilder:
         )
         return self
 
-    def build(self) -> list[ColumnElement[bool]]:
-        """Build the final constraint list."""
-        pass
+    def build(self, operator: str) -> ColumnElement[bool]:
+        """
+        Build the final constraint list for this single rule.
+
+        Returns:
+            A single constraint that represents this rule's logic
+        """
+        table_constraints = [
+            (self.measurement_query, Measurement.person_id),
+            (self.observation_query, Observation.person_id),
+            (self.condition_query, ConditionOccurrence.person_id),
+            (self.drug_query, DrugExposure.person_id),
+        ]
+        table_rule_constraints = []
+        inclusion_criteria = operator == "="
+
+        for table, fk in table_constraints:
+            constraint: Exists = exists(
+                table.where(fk == Person.person_id)
+            )
+            table_rule_constraints.append(
+                constraint if inclusion_criteria else ~constraint
+            )
+
+        if inclusion_criteria:
+            return or_(*table_rule_constraints)
+        else:
+            return and_(*table_rule_constraints)
+
 
 
 class AvailabilitySolver():
