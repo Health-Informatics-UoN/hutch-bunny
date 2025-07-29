@@ -194,8 +194,56 @@ class QueryBuilder:
         else:
             raise NotImplementedError("Unsupported database dialect")
 
-    def add_temporal_constraint(self, before_date: datetime = None, after_date: datetime = None) -> 'QueryBuilder':
-        pass
+    def add_temporal_constraint(
+        self,
+        left_value_time: str,
+        right_value_time: str
+    ) -> 'QueryBuilder':
+        """
+        Add temporal constraints relative to current date.
+
+        Args:
+
+        """
+        if left_value_time == "":
+            time_value_supplied = right_value_time
+        else:
+            time_value_supplied = left_value_time
+
+        time_to_use = int(time_value_supplied)
+        time_to_use = time_to_use * -1
+
+        today_date = datetime.now()
+        relative_date = today_date + relativedelta(months=time_to_use)
+
+        if left_value_time == "":
+            self.measurement_query = self.measurement_query.where(
+                Measurement.measurement_date >= relative_date
+            )
+            self.observation_query = self.observation_query.where(
+                Observation.observation_date >= relative_date
+            )
+            self.condition_query = self.condition_query.where(
+                ConditionOccurrence.condition_start_date >= relative_date
+            )
+            self.drug_query = self.drug_query.where(
+                DrugExposure.drug_exposure_start_date >= relative_date
+            )
+        else:
+            self.measurement_query = self.measurement_query.where(
+                Measurement.measurement_date <= relative_date
+            )
+            self.observation_query = self.observation_query.where(
+                Observation.observation_date <= relative_date
+            )
+            self.condition_query = self.condition_query.where(
+                ConditionOccurrence.condition_start_date <= relative_date
+            )
+            self.drug_query = self.drug_query.where(
+                DrugExposure.drug_exposure_start_date <= relative_date
+            )
+
+        return self
 
     def add_numeric_range(self, min_value: float = None, max_value: float = None) -> 'QueryBuilder':
         pass
