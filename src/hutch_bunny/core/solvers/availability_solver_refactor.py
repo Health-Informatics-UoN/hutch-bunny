@@ -242,11 +242,24 @@ class QueryBuilder:
             self.drug_query = self.drug_query.where(
                 DrugExposure.drug_exposure_start_date <= relative_date
             )
-
         return self
 
-    def add_numeric_range(self, min_value: float = None, max_value: float = None) -> 'QueryBuilder':
-        pass
+    def add_numeric_range(
+        self,
+        min_value: float = None,
+        max_value: float = None
+    ) -> 'QueryBuilder':
+        self.measurement_query = self.measurement_query.where(
+            Measurement.value_as_number.between(
+                float(min_value), float(max_value)
+            )
+        )
+        self.observation_query = self.observation_query.where(
+            Observation.value_as_number.between(
+                float(min_value), float(max_value)
+            )
+        )
+        return self
 
     def build(self) -> list[ColumnElement[bool]]:
         """Build the final constraint list."""
