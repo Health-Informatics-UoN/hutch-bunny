@@ -312,6 +312,21 @@ class AvailabilitySolver():
         self.db_manager = db_manager
         self.query = query
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(60),
+        before_sleep=before_sleep_log(logger, INFO),
+        after=after_log(logger, INFO),
+    )
+    def solve_query(self, results_modifier: list[ResultModifier]) -> int:
+        """
+        This is the start of the process that begins to run the queries.
+        (1) call solve_rules that takes each group and adds those results to the sub_queries list
+        (2) this function then iterates through the list of groups to resolve the logic (AND/OR) between groups
+        """
+        # resolve within the group
+        return self.solve_rules(results_modifier)
+
     def solve_rules(self, results_modifiers: list[ResultModifier]) -> int:
         """Main query resolution."""
         concepts = self._find_concepts(self.query.cohort.groups)
@@ -332,7 +347,10 @@ class AvailabilitySolver():
                 rounding
             )
 
-            return self._execute_query(con, final_query, modifiers)
+            output = con.execute(final_query).fetchone()
+            count = int(output[0]) if output is not None else 0
+        
+        return apply_filters(count, results_modifiers)
     
     def _find_concepts(self, groups: list[Group]) -> dict[str, str]:
         """Function that takes all the concept IDs in the cohort definition, looks them up in the OMOP database
