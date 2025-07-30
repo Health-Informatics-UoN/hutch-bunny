@@ -31,7 +31,7 @@
       "module": "hutch_bunny.cli",
       "args": [
         "--body",
-        "tests/queries/distribution/demographics.json",
+        "tests/queries/distribution/distribution.json",
       ],
       "justMyCode": true,
       "console": "integratedTerminal"
