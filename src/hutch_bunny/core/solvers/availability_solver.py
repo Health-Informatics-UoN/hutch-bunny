@@ -5,6 +5,7 @@ from typing import Any, Callable, TypedDict
 from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy import (
     or_,
+    and_,
     func,
     BinaryExpression,
     ColumnElement,
@@ -13,6 +14,7 @@ from sqlalchemy import (
     text,
     union,
     intersect,
+    CTE,
 )
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
@@ -370,7 +372,7 @@ class AvailabilitySolver:
                         group_ctes.append(cte)
 
                     # Union all group CTEs by selecting from them
-                    group_union_queries = [select(cte) for cte in group_ctes]
+                    group_union_queries = [select(cte).subquery() for cte in group_ctes]
                     final_union = union(*group_union_queries)
                     logger.debug("Final union created successfully")
 
@@ -396,7 +398,7 @@ class AvailabilitySolver:
                         group_ctes.append(cte)
 
                     # Use INTERSECT for AND logic between groups
-                    group_intersect_queries = [select(cte) for cte in group_ctes]
+                    group_intersect_queries = [select(cte).subquery() for cte in group_ctes]
                     final_intersect = intersect(*group_intersect_queries)
 
                     if rounding > 0:
