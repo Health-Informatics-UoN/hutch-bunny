@@ -155,8 +155,8 @@ class AvailabilitySolver:
         )
 
         with self.db_manager.engine.connect() as con:
-            # this is used to store the query for each group, one entry per group
-            all_groups_queries: list[BinaryExpression[bool]] = []
+            # this is used to store all constraints for all groups
+            all_constraints: list[ColumnElement[bool]] = []
 
             # iterate through all the groups specified in the query
             for current_group in self.query.cohort.groups:
@@ -322,32 +322,47 @@ class AvailabilitySolver:
                     # all added as an OR
                     group_query = select(Person.person_id).where(or_(*all_parameters))
 
-                # store the query for the given group in the list for assembly later across all groups
-                all_groups_queries.append(Person.person_id.in_(group_query))
+                # collect all constraints from the group
+                if current_group.rules_operator == "AND":
+                    # For AND groups, we need to combine all constraints with AND
+                    group_constraints = []
+                    group_constraints.extend(person_constraints_for_group)
+                    group_constraints.extend(list_for_rules)
+                    all_constraints.append(and_(*group_constraints))
+                else:
+                    # For OR groups, we need to combine all constraints with OR
+                    all_parameters = []
+                    all_parameters.extend(person_constraints_for_group)
+                    all_parameters.extend(list_for_rules)
+                    all_constraints.append(or_(*all_parameters))
 
             """
             ALL GROUPS COMPLETED, NOW APPLY LOGIC BETWEEN GROUPS
             """
 
-            # construct the query based on the OR/AND logic specified between groups
+            # Build the CTE for 'relevant persons'
             if self.query.cohort.groups_operator == "OR":
-                if rounding > 0:
-                    full_query_all_groups = select(
-                        func.round((func.count() / rounding), 0) * rounding
-                    ).where(or_(*all_groups_queries))
-                else:
-                    full_query_all_groups = select(func.count()).where(
-                        or_(*all_groups_queries)
-                    )
+                relevant_persons_cte = (
+                    select(Person.person_id)
+                    .where(or_(*all_constraints))
+                    .cte("relevant_persons")
+                )
             else:
-                if rounding > 0:
-                    full_query_all_groups = select(
-                        func.round((func.count() / rounding), 0) * rounding
-                    ).where(*all_groups_queries)
-                else:
-                    full_query_all_groups = select(func.count()).where(
-                        *all_groups_queries
-                    )
+                relevant_persons_cte = (
+                    select(Person.person_id)
+                    .where(*all_constraints)
+                    .cte("relevant_persons")
+                )
+
+            # Construct the final query
+            if rounding > 0:
+                full_query_all_groups = select(
+                    func.round((func.count() / rounding), 0) * rounding
+                ).select_from(relevant_persons_cte)
+            else:
+                full_query_all_groups = select(func.count()).select_from(
+                    relevant_persons_cte
+                )
 
             if low_number > 0:
                 full_query_all_groups = full_query_all_groups.having(
@@ -462,7 +477,7 @@ class AvailabilitySolver:
 
         constraint = operator_func(age_difference, age_value)
 
-        return table_query.where(Person.person_id == table_person_id, constraint)    
+        return table_query.where(constraint)
 
     def _get_year_difference(
         self, engine: Engine, start_date: ClauseElement, birth_date: ClauseElement
