@@ -462,16 +462,7 @@ class AvailabilitySolver:
 
         constraint = operator_func(age_difference, age_value)
 
-        return table_query.where(
-            exists(
-                select(1).where(
-                    and_(
-                        Person.person_id == table_person_id,
-                        constraint,
-                    )
-                )
-            )
-        )
+        return table_query.where(Person.person_id == table_person_id, constraint)    
 
     def _get_year_difference(
         self, engine: Engine, start_date: ClauseElement, birth_date: ClauseElement
