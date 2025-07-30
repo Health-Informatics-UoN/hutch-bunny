@@ -12,8 +12,7 @@ from sqlalchemy import (
     select,
     Select,
     text,
-    Exists,
-literal_column,
+    union,
 )
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
@@ -34,7 +33,6 @@ from tenacity import (
 )
 
 from typing import Tuple
-from sqlalchemy import exists
 
 from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.rquest_models.group import Group
@@ -217,7 +215,9 @@ class AvailabilitySolver:
                         if (
                             left_value_time is not None or right_value_time is not None
                         ) and time_category == "AGE":
+                            logger.debug("Adding age constraints")
                             self._add_age_constraints(left_value_time, right_value_time)
+                            logger.debug("Age constraints added successfully")
 
                         """"
                         STANDARD CONCEPT ID SEARCH
@@ -254,33 +254,19 @@ class AvailabilitySolver:
                         PREPARING THE LISTS FOR LATER USE
                         """
 
-                        # List of tables and their corresponding foreign keys
-                        table_constraints = [
-                            (self.measurement, Measurement.person_id),
-                            (self.observation, Observation.person_id),
-                            (self.condition, ConditionOccurrence.person_id),
-                            (self.drug, DrugExposure.person_id),
-                        ]
-
                         # a switch between whether the criteria are inclusion or exclusion
                         inclusion_criteria: bool = current_rule.operator == "="
 
-                        # a list for all the conditions for the rule, each rule generates searches
-                        # in four tables, this field captures that
-                        table_rule_constraints: list[ColumnElement[bool]] = []
+                        # Store the table queries for this rule to be used later in UNION
+                        if not hasattr(self, 'rule_table_queries'):
+                            self.rule_table_queries = []
 
-                        for table, fk in table_constraints:
-                            constraint: Exists = exists(
-                                table.where(fk == Person.person_id)
-                            )
-                            table_rule_constraints.append(
-                                constraint if inclusion_criteria else ~constraint
-                            )
-
-                        if inclusion_criteria:
-                            list_for_rules.append(or_(*table_rule_constraints))
-                        else:
-                            list_for_rules.append(and_(*table_rule_constraints))
+                        # Union all table queries for this rule
+                        rule_union = union(self.measurement, self.observation, self.condition, self.drug)
+                        self.rule_table_queries.append({
+                            'union_query': rule_union,
+                            'inclusion': inclusion_criteria
+                        })
 
                     else:
                         """
@@ -294,61 +280,130 @@ class AvailabilitySolver:
                 NOTE: all rules done for a single group. Now to apply logic between the rules
                 """
 
-                ## if the logic between the rules for each group is AND
-                if current_group.rules_operator == "AND":
-                    # all person rules are added first
-                    group_query: Select[Tuple[int]] = select(Person.person_id).where(
-                        *person_constraints_for_group
-                    )
+                # Build the group query using UNION approach
+                group_queries = []
+                exclusion_queries = []
 
-                    for current_constraint in list_for_rules:
-                        group_query = group_query.where(current_constraint)
+                # Add person constraints as a separate query
+                if person_constraints_for_group:
+                    person_query = select(Person.person_id).where(*person_constraints_for_group)
+                    group_queries.append(person_query)
 
+                # Add table queries for each rule
+                if hasattr(self, 'rule_table_queries'):
+                    logger.debug(f"Processing {len(self.rule_table_queries)} rule table queries")
+                    for i, rule_data in enumerate(self.rule_table_queries):
+                        union_query = rule_data['union_query']
+                        inclusion = rule_data['inclusion']
+                        logger.debug(f"Rule {i}: inclusion={inclusion}")
+
+                        if inclusion:
+                            # For inclusion: add the union directly
+                            group_queries.append(union_query)
+                            logger.debug(f"Added inclusion query for rule {i}")
+                        else:
+                            # For exclusion: store the union query to exclude people who match
+                            exclusion_queries.append(union_query)
+                            logger.debug(f"Added exclusion query for rule {i}")
                 else:
-                    # this might seem odd, but to add the rules as OR, we have to add them
-                    # all at once, therefore listAllParameters is to create one list with
-                    # everything added. So we can then add as one operation as OR
-                    all_parameters = []
+                    logger.debug("No rule table queries found")
 
-                    # firstly add the person constrains
-                    for all_constraints_for_person in person_constraints_for_group:
-                        all_parameters.append(all_constraints_for_person)
+                # Create the final group query
+                if group_queries:
+                    if current_group.rules_operator == "AND":
+                        # For AND logic, we need to use a different approach since UNION doesn't handle AND well
+                        # We'll use a subquery approach that combines the queries
+                        group_query = group_queries[0]
+                        for query in group_queries[1:]:
+                            # Combine queries using subquery approach - use intersection logic
+                            group_query = select(Person.person_id).where(
+                                Person.person_id.in_(group_query),
+                                Person.person_id.in_(query)
+                            )
+                    else:
+                        # For OR logic, use UNION
+                        group_query = union(*group_queries)
+                else:
+                    # Start with all people if no inclusion queries
+                    group_query = select(Person.person_id)
 
-                    # to get all the constraints in one list, we have to unpack the top-level grouping
-                    # list_for_rules contains all the group of constraints for each rule
-                    # therefore, we get each group, then for each group, we get each constraint
-                    for current_expression in list_for_rules:
-                        all_parameters.append(current_expression)
+                # Handle exclusion queries - remove people who match exclusion criteria
+                if exclusion_queries:
+                    logger.debug(f"Processing {len(exclusion_queries)} exclusion queries")
+                    try:
+                        exclusion_union = union(*exclusion_queries)
+                        logger.debug("Exclusion union created successfully")
+                        group_query = select(Person.person_id).where(
+                            ~Person.person_id.in_(exclusion_union.subquery())
+                        )
+                        logger.debug("Exclusion queries processed successfully")
+                    except Exception as e:
+                        logger.error(f"Error processing exclusion queries: {e}")
+                        raise
 
-                    # all added as an OR
-                    group_query = select(Person.person_id).where(or_(*all_parameters))
+                # Store the group query for later assembly
+                logger.debug("Storing group query for later assembly")
+                all_groups_queries.append(group_query)
+                logger.debug(f"Total groups stored: {len(all_groups_queries)}")
 
-                # store the query for the given group in the list for assembly later across all groups
-                all_groups_queries.append(Person.person_id.in_(group_query))
+                # Reset rule table queries for next group
+                if hasattr(self, 'rule_table_queries'):
+                    delattr(self, 'rule_table_queries')
 
             """
             ALL GROUPS COMPLETED, NOW APPLY LOGIC BETWEEN GROUPS
             """
 
             # construct the query based on the OR/AND logic specified between groups
+            logger.debug(f"Constructing final query with groups_operator: {self.query.cohort.groups_operator}")
             if self.query.cohort.groups_operator == "OR":
-                if rounding > 0:
-                    full_query_all_groups = select(
-                        func.round((func.count() / rounding), 0) * rounding
-                    ).where(or_(*all_groups_queries))
+                # For OR logic between groups, use UNION
+                if all_groups_queries:
+                    logger.debug("Creating final union for OR logic")
+                    final_union = union(*all_groups_queries)
+                    logger.debug("Final union created successfully")
+                    if rounding > 0:
+                        full_query_all_groups = select(
+                            func.round((func.count() / rounding), 0) * rounding
+                        ).select_from(final_union)
+                    else:
+                        full_query_all_groups = select(func.count()).select_from(final_union)
+                    logger.debug("Final query created successfully")
                 else:
-                    full_query_all_groups = select(func.count()).where(
-                        or_(*all_groups_queries)
-                    )
+                    # Fallback to empty query
+                    full_query_all_groups = select(func.count()).where(False)
             else:
-                if rounding > 0:
-                    full_query_all_groups = select(
-                        func.round((func.count() / rounding), 0) * rounding
-                    ).where(*all_groups_queries)
+                # For AND logic between groups, we need intersection
+                # This is more complex with UNION approach
+                if all_groups_queries:
+                    logger.debug(f"Processing AND logic with {len(all_groups_queries)} groups")
+                    # Start with the first group
+                    final_query = all_groups_queries[0]
+                    logger.debug("Starting with first group")
+                    logger.debug(f"First group query type: {type(final_query)}")
+                    # Intersect with remaining groups using subquery approach
+                    for i, group_query in enumerate(all_groups_queries[1:], 1):
+                        logger.debug(f"Intersecting with group {i}")
+                        try:
+                            final_query = select(Person.person_id).where(
+                                Person.person_id.in_(final_query.subquery()),
+                                Person.person_id.in_(group_query.subquery())
+                            )
+                            logger.debug(f"Intersection with group {i} completed")
+                        except Exception as e:
+                            logger.error(f"Error during intersection with group {i}: {e}")
+                            raise
+
+                    if rounding > 0:
+                        full_query_all_groups = select(
+                            func.round((func.count() / rounding), 0) * rounding
+                        ).select_from(final_query)
+                    else:
+                        full_query_all_groups = select(func.count()).select_from(final_query)
+                    logger.debug("Final query for AND logic created successfully")
                 else:
-                    full_query_all_groups = select(func.count()).where(
-                        *all_groups_queries
-                    )
+                    # Fallback to empty query
+                    full_query_all_groups = select(func.count()).where(False)
 
             if low_number > 0:
                 full_query_all_groups = full_query_all_groups.having(
@@ -457,46 +512,29 @@ class AvailabilitySolver:
         Returns:
             The table query with the age constraint applied.
         """
+        age_difference = self._get_year_difference(
+            self.db_manager.engine, table_date_column, Person.birth_datetime
+        )
 
-        # age_difference = self._get_year_difference(
-        #     self.db_manager.engine, table_date_column, Person.birth_datetime
-        # )
-        #
-        # constraint = operator_func(age_difference, age_value)
-        #
-        # return table_query.where(constraint)
+        constraint = operator_func(age_difference, age_value)
 
-        dialect = self.db_manager.engine.dialect.name.lower()
-
-
-        if dialect == "postgresql":
-            age_date = Person.birth_datetime + literal_column(f"interval '{age_value} years'")
-        elif dialect in ("mssql", "sql server"):
-            age_date = func.DATEADD(literal_column("YEAR"), age_value, Person.birth_datetime)
-        else:
-            raise NotImplementedError(f"Unsupported DB dialect: {dialect}")
-
-        # Apply the age constraint using the operator_func
-        constraint = operator_func(table_date_column, age_date)
-
-        return table_query.where(constraint)
+        return table_query.where(Person.person_id == table_person_id, constraint)
 
     def _get_year_difference(
         self, engine: Engine, start_date: ClauseElement, birth_date: ClauseElement
     ) -> ColumnElement[int]:
-
-
-
-        if engine.dialect.name == "postgresql":
-            return func.date_part("year", start_date) - func.date_part(
-                "year", birth_date
-            )
+        logger.debug(f"Getting year difference for dialect: {engine.dialect.name}")
+        if engine.dialect.name in ("postgresql", "postgres"):
+            result = func.date_part("year", start_date) - func.date_part("year", birth_date)
+            logger.debug("Year difference calculated successfully for PostgreSQL")
+            return result
         elif engine.dialect.name == "mssql":
-            return func.DATEPART(text("year"), start_date) - func.DATEPART(
-                text("year"), birth_date
-            )
+            result = func.DATEPART(text("year"), start_date) - func.DATEPART(text("year"), birth_date)
+            logger.debug("Year difference calculated successfully for MSSQL")
+            return result
         else:
-            raise NotImplementedError("Unsupported database dialect")
+            logger.error(f"Unsupported database dialect: {engine.dialect.name}")
+            raise NotImplementedError(f"Unsupported database dialect: {engine.dialect.name}")
 
     def _add_relative_date(self, left_value_time: str, right_value_time: str) -> None:
         time_value_supplied: str
