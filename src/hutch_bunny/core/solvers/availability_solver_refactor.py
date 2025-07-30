@@ -344,6 +344,9 @@ class AvailabilitySolver():
             default_value,
         )
 
+    def _build_group_query(self):
+        pass
+
     def _build_rule_constraint(self, rule: Rule) -> ColumnElement[bool]:
         """Build constraint for a single non-Person rule."""
         builder = OMOPRuleQueryBuilder(self.db_manager)
@@ -391,6 +394,9 @@ class AvailabilitySolver():
             min=min_val,
             max=max_val
         )
+
+    def _combine_constraints(self):
+        pass
 
 
 
