@@ -5,7 +5,6 @@ from typing import Any, Callable, TypedDict
 from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy import (
     or_,
-    and_,
     func,
     BinaryExpression,
     ColumnElement,
@@ -13,7 +12,7 @@ from sqlalchemy import (
     Select,
     text,
     union,
-    CTE,
+    intersect,
 )
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
@@ -284,6 +283,7 @@ class AvailabilitySolver:
                 # Build the group query using UNION approach
                 group_queries = []
                 exclusion_queries = []
+                current_group_index = len(all_groups_queries)
 
                 # Add person constraints as a separate query
                 if person_constraints_for_group:
@@ -309,31 +309,19 @@ class AvailabilitySolver:
                 else:
                     logger.debug("No rule table queries found")
 
-                # Create the final group query using CTEs for clarity
+                # Create the final group query (without CTEs at this level)
                 if group_queries:
                     if current_group.rules_operator == "AND":
-                        # For AND logic, create CTEs for each query and intersect them
-                        group_ctes = []
-                        for i, query in enumerate(group_queries):
-                            cte_name = f"group_{len(all_groups_queries)}_rule_{i}"
-                            cte = query.cte(name=cte_name)
-                            group_ctes.append(cte)
-
-                        # Intersect all CTEs
-                        group_query = select(Person.person_id)
-                        for cte in group_ctes:
-                            group_query = group_query.where(Person.person_id.in_(cte))
+                        # For AND logic, intersect all queries
+                        group_query = group_queries[0]
+                        for query in group_queries[1:]:
+                            group_query = select(Person.person_id).where(
+                                Person.person_id.in_(group_query),
+                                Person.person_id.in_(query)
+                            )
                     else:
-                        # For OR logic, use UNION with CTEs
-                        group_ctes = []
-                        for i, query in enumerate(group_queries):
-                            cte_name = f"group_{len(all_groups_queries)}_rule_{i}"
-                            cte = query.cte(name=cte_name)
-                            group_ctes.append(cte)
-
-                        # Union all CTEs by selecting from them
-                        group_union_queries = [select(cte) for cte in group_ctes]
-                        group_query = union(*group_union_queries)
+                        # For OR logic, use UNION
+                        group_query = union(*group_queries)
                 else:
                     # Start with all people if no inclusion queries
                     group_query = select(Person.person_id)
@@ -342,16 +330,8 @@ class AvailabilitySolver:
                 if exclusion_queries:
                     logger.debug(f"Processing {len(exclusion_queries)} exclusion queries")
                     try:
-                        # Create CTEs for exclusion queries
-                        exclusion_ctes = []
-                        for i, query in enumerate(exclusion_queries):
-                            cte_name = f"exclusion_query_{i}"
-                            cte = query.cte(name=cte_name)
-                            exclusion_ctes.append(cte)
-
-                        # Union all exclusion CTEs by selecting from them
-                        exclusion_union_queries = [select(cte) for cte in exclusion_ctes]
-                        exclusion_union = union(*exclusion_union_queries)
+                        # Union all exclusion queries
+                        exclusion_union = union(*exclusion_queries)
                         logger.debug("Exclusion union created successfully")
 
                         # Exclude people who match any exclusion criteria
@@ -405,7 +385,7 @@ class AvailabilitySolver:
                     # Fallback to empty query
                     full_query_all_groups = select(func.count()).where(False)
             else:
-                # For AND logic between groups, use intersection with CTEs
+                # For AND logic between groups, use INTERSECT with CTEs
                 if all_groups_queries:
                     logger.debug(f"Processing AND logic with {len(all_groups_queries)} groups")
                     # Create CTEs for all group queries
@@ -415,17 +395,16 @@ class AvailabilitySolver:
                         cte = query.cte(name=cte_name)
                         group_ctes.append(cte)
 
-                    # Intersect all group CTEs
-                    final_query = select(Person.person_id)
-                    for cte in group_ctes:
-                        final_query = final_query.where(Person.person_id.in_(cte))
+                    # Use INTERSECT for AND logic between groups
+                    group_intersect_queries = [select(cte) for cte in group_ctes]
+                    final_intersect = intersect(*group_intersect_queries)
 
                     if rounding > 0:
                         full_query_all_groups = select(
                             func.round((func.count() / rounding), 0) * rounding
-                        ).select_from(final_query)
+                        ).select_from(final_intersect)
                     else:
-                        full_query_all_groups = select(func.count()).select_from(final_query)
+                        full_query_all_groups = select(func.count()).select_from(final_intersect)
                     logger.debug("Final query for AND logic created successfully")
                 else:
                     # Fallback to empty query
