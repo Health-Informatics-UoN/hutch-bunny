@@ -12,9 +12,8 @@ from sqlalchemy import (
     select,
     Select,
     text,
-    union,
     intersect,
-    CTE,
+    union,
 )
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
@@ -161,8 +160,6 @@ class AvailabilitySolver:
 
             # iterate through all the groups specified in the query
             for current_group in self.query.cohort.groups:
-                # this is used to store all constraints for all rules in the group, one entry per rule
-                list_for_rules: list[ColumnElement[bool]] = []
 
                 # captures all the person constraints for the group
                 person_constraints_for_group: list[ColumnElement[bool]] = []
@@ -379,9 +376,9 @@ class AvailabilitySolver:
                     if rounding > 0:
                         full_query_all_groups = select(
                             func.round((func.count() / rounding), 0) * rounding
-                        ).select_from(final_union)
+                        ).select_from(final_union.subquery())
                     else:
-                        full_query_all_groups = select(func.count()).select_from(final_union)
+                        full_query_all_groups = select(func.count()).select_from(final_union.subquery())
                     logger.debug("Final query created successfully")
                 else:
                     # Fallback to empty query
@@ -404,9 +401,9 @@ class AvailabilitySolver:
                     if rounding > 0:
                         full_query_all_groups = select(
                             func.round((func.count() / rounding), 0) * rounding
-                        ).select_from(final_intersect)
+                        ).select_from(final_intersect.subquery())
                     else:
-                        full_query_all_groups = select(func.count()).select_from(final_intersect)
+                        full_query_all_groups = select(func.count()).select_from(final_intersect.subquery())
                     logger.debug("Final query for AND logic created successfully")
                 else:
                     # Fallback to empty query
