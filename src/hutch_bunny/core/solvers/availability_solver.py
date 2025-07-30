@@ -13,6 +13,7 @@ from sqlalchemy import (
     Select,
     text,
     Exists,
+literal_column,
 )
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
@@ -456,17 +457,36 @@ class AvailabilitySolver:
         Returns:
             The table query with the age constraint applied.
         """
-        age_difference = self._get_year_difference(
-            self.db_manager.engine, table_date_column, Person.birth_datetime
-        )
 
-        constraint = operator_func(age_difference, age_value)
+        # age_difference = self._get_year_difference(
+        #     self.db_manager.engine, table_date_column, Person.birth_datetime
+        # )
+        #
+        # constraint = operator_func(age_difference, age_value)
+        #
+        # return table_query.where(constraint)
 
-        return table_query.where(Person.person_id == table_person_id, constraint)    
+        dialect = self.db_manager.engine.dialect.name.lower()
+
+
+        if dialect == "postgresql":
+            age_date = Person.birth_datetime + literal_column(f"interval '{age_value} years'")
+        elif dialect in ("mssql", "sql server"):
+            age_date = func.DATEADD(literal_column("YEAR"), age_value, Person.birth_datetime)
+        else:
+            raise NotImplementedError(f"Unsupported DB dialect: {dialect}")
+
+        # Apply the age constraint using the operator_func
+        constraint = operator_func(table_date_column, age_date)
+
+        return table_query.where(constraint)
 
     def _get_year_difference(
         self, engine: Engine, start_date: ClauseElement, birth_date: ClauseElement
     ) -> ColumnElement[int]:
+
+
+
         if engine.dialect.name == "postgresql":
             return func.date_part("year", start_date) - func.date_part(
                 "year", birth_date
