@@ -335,7 +335,7 @@ class AvailabilitySolver:
 
                         # Exclude people who match any exclusion criteria
                         group_query = select(Person.person_id).where(
-                            ~Person.person_id.in_(exclusion_union)
+                            ~Person.person_id.in_(exclusion_union.subquery())
                         )
                         logger.debug("Exclusion queries processed successfully")
                     except Exception as e:
