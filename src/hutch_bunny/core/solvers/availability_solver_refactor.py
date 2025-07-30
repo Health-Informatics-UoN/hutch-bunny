@@ -58,8 +58,8 @@ class TimeConstraint:
 
 @dataclass
 class NumericRange:
-    min: float = None
-    max: float = None
+    min: float | None = None
+    max: float | None = None
 
 
 class ResultModifier(TypedDict):
@@ -312,10 +312,11 @@ class AvailabilitySolver():
         self.db_manager = db_manager
         self.query = query
 
-    def solve_rules(self):
+    def solve_rules(self, results_modifiers: list[ResultModifier]) -> int:
         """Main query resolution."""
         concepts = self._find_concepts(self.query.cohort.groups)
-        modifiers = self._extract_modifiers(results_modifier)
+        rounding = self._extract_modifier(results_modifiers, "Low Number Suppression")
+        low_number = self._extract_modifier(results_modifiers, "Rounding")
 
         with self.db_manager.engine.connect() as con:
             group_queries = []
@@ -324,17 +325,51 @@ class AvailabilitySolver():
                 group_query = self._build_group_query(group, concepts)
                 group_queries.append(group_query)
 
-            final_query = self._combine_groups(group_queries, self.query.cohort.groups_operator)
-            final_query = self._apply_modifiers(final_query, modifiers)
+            final_query = self._combine_groups_and_apply_modifiers(
+                group_queries, 
+                self.query.cohort.groups_operator,
+                low_number, 
+                rounding
+            )
 
             return self._execute_query(con, final_query, modifiers)
+    
+    def _find_concepts(self, groups: list[Group]) -> dict[str, str]:
+        """Function that takes all the concept IDs in the cohort definition, looks them up in the OMOP database
+        to extract the concept_id and domain and place this within a dictionary for lookup during other query building
+
+        Although the query payload will tell you where the OMOP concept is from (based on the RQUEST OMOP version, this is
+        a safer method as we know concepts can move between tables based on a vocab.
+
+        Therefore, this helps to account for a difference between the Bunny vocab version and the RQUEST OMOP version.
+
+        """
+        concept_ids = set()
+        for group in groups:
+            for rule in group.rules:
+                # Guard for None values (e.g. Age)
+                if rule.value:
+                    concept_ids.add(int(rule.value))
+
+        concept_query = (
+            # order must be .concept_id, .domain_id
+            select(Concept.concept_id, Concept.domain_id)
+            .where(Concept.concept_id.in_(concept_ids))
+            .distinct()
+        )
+        with self.db_manager.engine.connect() as con:
+            concepts_df = pd.read_sql_query(concept_query, con=con)
+        concept_dict = {
+            str(concept_id): domain_id for concept_id, domain_id in concepts_df.values
+        }
+        return concept_dict
 
     def _extract_modifier(
         self,
         results_modifiers: list[ResultsModifier],
         result_id: str,
         default_value: int = 10
-    ):
+    ) -> int:
         return next(
             (
                 item["threshold"] if item["threshold"] is not None else 10
@@ -344,8 +379,54 @@ class AvailabilitySolver():
             default_value,
         )
 
-    def _build_group_query(self):
-        pass
+    def _build_group_query(self, group: Group, concepts: dict[str, str]) -> ColumnElement[bool]:
+        """Build query for a single group - a nested SQL expression."""
+        rule_constraints = []
+        person_constraints = []
+
+        for rule in group.rules: 
+            if rule.varcat == "Person": 
+                person_constraints.extend(self._build_person_constraints(rule, concepts))
+            else: 
+                rule_constraints.append(self._build_rule_constraint(rule))
+            
+        return self._combine_constraints(rule_constraints, person_constraints, group.rules_operator)
+
+    def _combine_constraints(
+        self, 
+        rule_constraints: list, 
+        person_constraints: list, 
+        rules_operator: str
+    ) -> ColumnElement[bool]:
+        ## if the logic between the rules for each group is AND
+        if rules_operator == "AND":
+            # all person rules are added first
+            group_query: Select[Tuple[int]] = select(Person.person_id).where(
+                *person_constraints
+            )
+
+            for current_constraint in rule_constraints:
+                group_query = group_query.where(current_constraint)
+        else:
+            # this might seem odd, but to add the rules as OR, we have to add them
+            # all at once, therefore listAllParameters is to create one list with
+            # everything added. So we can then add as one operation as OR
+            all_parameters = []
+
+            # firstly add the person constrains
+            for all_constraints_for_person in person_constraints:
+                all_parameters.append(all_constraints_for_person)
+
+            # to get all the constraints in one list, we have to unpack the top-level grouping
+            # list_for_rules contains all the group of constraints for each rule
+            # therefore, we get each group, then for each group, we get each constraint
+            for current_expression in rule_constraints:
+                all_parameters.append(current_expression)
+
+            # all added as an OR
+            group_query = select(Person.person_id).where(or_(*all_parameters))
+
+        return Person.person_id.in_(group_query)
 
     def _build_rule_constraint(self, rule: Rule) -> ColumnElement[bool]:
         """Build constraint for a single non-Person rule."""
@@ -376,7 +457,7 @@ class AvailabilitySolver():
 
         return builder.build(operator=rule.operator)
 
-    def _parse_time_constraint(self, time: str):
+    def _parse_time_constraint(self, time: str) -> TimeConstraint:
         time_value, time_category, _ = time.split(":")
         left_value_time, right_value_time = time_value.split("|")
         return TimeConstraint(
@@ -386,7 +467,7 @@ class AvailabilitySolver():
             right_value=right_value_time
         )
 
-    def _parse_numeric_range(self, raw_range: str):
+    def _parse_numeric_range(self, raw_range: str) -> NumericRange:
         min_str, max_str = raw_range.split("|")
         min_val = float(min_str) if min_str else None
         max_val = float(max_str) if max_str else None
@@ -394,9 +475,47 @@ class AvailabilitySolver():
             min=min_val,
             max=max_val
         )
+            
+    def _combine_groups_and_apply_modifiers(
+        self, 
+        group_queries: list[ColumnElement[bool]], 
+        groups_operator: str, 
+        low_number: int, 
+        rounding: int 
+    ) -> Select[Tuple[int]]: 
+        # construct the query based on the OR/AND logic specified between groups
+        if groups_operator == "OR":
+            if rounding > 0:
+                full_query_all_groups = select(
+                    func.round((func.count() / rounding), 0) * rounding
+                ).where(or_(*group_queries))
+            else:
+                full_query_all_groups = select(func.count()).where(
+                    or_(*group_queries)
+                )
+        else:
+            if rounding > 0:
+                full_query_all_groups = select(
+                    func.round((func.count() / rounding), 0) * rounding
+                ).where(*group_queries)
+            else:
+                full_query_all_groups = select(func.count()).where(
+                    *group_queries
+                )
 
-    def _combine_constraints(self):
-        pass
+        if low_number > 0:
+            full_query_all_groups = full_query_all_groups.having(
+                func.count() >= low_number
+            )
 
+        # here for debug, prints the SQL statement created
+        logger.debug(
+            str(
+                full_query_all_groups.compile(
+                    dialect=self.db_manager.engine.dialect,
+                    compile_kwargs={"literal_binds": True},
+                )
+            )
+        )
 
-
+        return full_query_all_groups 
