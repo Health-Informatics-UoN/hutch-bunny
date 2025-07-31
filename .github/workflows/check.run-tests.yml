@@ -5,8 +5,11 @@ on:
 
 jobs:
   run-tests-postgres:
-    name: Run Tests (Postgres)
+    name: Run Tests (Postgres ${{ matrix.postgres-version }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        postgres-version: [14, 15, 16, 17]
     permissions:
       contents: read
       pull-requests: write
@@ -25,7 +28,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres
+        image: postgres:${{ matrix.postgres-version }}
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: hutch-omop
