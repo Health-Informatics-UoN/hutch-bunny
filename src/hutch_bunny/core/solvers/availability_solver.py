@@ -214,14 +214,11 @@ class AvailabilitySolver:
                         if (
                             left_value_time is not None or right_value_time is not None
                         ) and time_category == "AGE":
-                            logger.debug("Adding age constraints")
                             self._add_age_constraints(left_value_time, right_value_time)
-                            logger.debug("Age constraints added successfully")
 
                         """"
                         STANDARD CONCEPT ID SEARCH
                         """
-
                         self._add_standard_concept(current_rule)
 
                         """"
@@ -356,7 +353,6 @@ class AvailabilitySolver:
             """
 
             # construct the query based on the OR/AND logic specified between groups using CTEs
-            logger.debug(f"Constructing final query with groups_operator: {self.query.cohort.groups_operator}")
             if self.query.cohort.groups_operator == "OR":
                 # For OR logic between groups, use UNION with CTEs
                 if all_groups_queries:
@@ -371,7 +367,6 @@ class AvailabilitySolver:
                     # Union all group CTEs by selecting from them
                     group_union_queries = [select(cte) for cte in group_ctes]
                     final_union = union(*group_union_queries)
-                    logger.debug("Final union created successfully")
 
                     if rounding > 0:
                         full_query_all_groups = select(
@@ -379,14 +374,12 @@ class AvailabilitySolver:
                         ).select_from(final_union.subquery())
                     else:
                         full_query_all_groups = select(func.count()).select_from(final_union.subquery())
-                    logger.debug("Final query created successfully")
                 else:
                     # Fallback to empty query
                     full_query_all_groups = select(func.count()).where(False)
             else:
                 # For AND logic between groups, use INTERSECT with CTEs
                 if all_groups_queries:
-                    logger.debug(f"Processing AND logic with {len(all_groups_queries)} groups")
                     # Create CTEs for all group queries
                     group_ctes = []
                     for i, query in enumerate(all_groups_queries):
@@ -404,7 +397,7 @@ class AvailabilitySolver:
                         ).select_from(final_intersect.subquery())
                     else:
                         full_query_all_groups = select(func.count()).select_from(final_intersect.subquery())
-                    logger.debug("Final query for AND logic created successfully")
+
                 else:
                     # Fallback to empty query
                     full_query_all_groups = select(func.count()).where(False)
@@ -527,14 +520,12 @@ class AvailabilitySolver:
     def _get_year_difference(
         self, engine: Engine, start_date: ClauseElement, birth_date: ClauseElement
     ) -> ColumnElement[int]:
-        logger.debug(f"Getting year difference for dialect: {engine.dialect.name}")
+
         if engine.dialect.name in ("postgresql", "postgres"):
             result = func.date_part("year", start_date) - func.date_part("year", birth_date)
-            logger.debug("Year difference calculated successfully for PostgreSQL")
             return result
         elif engine.dialect.name == "mssql":
             result = func.DATEPART(text("year"), start_date) - func.DATEPART(text("year"), birth_date)
-            logger.debug("Year difference calculated successfully for MSSQL")
             return result
         else:
             logger.error(f"Unsupported database dialect: {engine.dialect.name}")
