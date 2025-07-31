@@ -258,7 +258,6 @@ class AvailabilitySolver:
                         """"
                         PREPARING THE LISTS FOR LATER USE
                         """
-
                         # a switch between whether the criteria are inclusion or exclusion
                         inclusion_criteria: bool = current_rule.operator == "="
 
@@ -281,7 +280,6 @@ class AvailabilitySolver:
                 """
                 NOTE: all rules done for a single group. Now to apply logic between the rules
                 """
-
                 # Build the group query using UNION approach
                 group_query = self._construct_group_query(
                     current_group, 
@@ -296,7 +294,6 @@ class AvailabilitySolver:
             """
             ALL GROUPS COMPLETED, NOW APPLY LOGIC BETWEEN GROUPS
             """
-
             # construct the query based on the OR/AND logic specified between groups using CTEs
             final_query = self._construct_final_query(all_groups_queries, rounding)
 
