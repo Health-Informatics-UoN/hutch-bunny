@@ -507,7 +507,7 @@ class AvailabilitySolver:
             The table query with the age constraint applied.
         """
         age_difference = self._get_year_difference(
-            self.db_manager.engine, table_date_column, Person.birth_datetime
+            self.db_manager.engine, table_date_column, Person.year_of_birth
         )
 
         constraint = operator_func(age_difference, age_value)
@@ -516,14 +516,13 @@ class AvailabilitySolver:
         return table_query.join(Person, Person.person_id == table_person_id).where(constraint)
 
     def _get_year_difference(
-        self, engine: Engine, start_date: ClauseElement, birth_date: ClauseElement
-    ) -> ColumnElement[int]:
-
+    self, engine: Engine, start_date: ClauseElement, year_of_birth: ClauseElement
+) -> ColumnElement[int]:
         if engine.dialect.name in ("postgresql", "postgres"):
-            result = func.date_part("year", start_date) - func.date_part("year", birth_date)
+            result = func.date_part("year", start_date) - year_of_birth
             return result
         elif engine.dialect.name == "mssql":
-            result = func.DATEPART(text("year"), start_date) - func.DATEPART(text("year"), birth_date)
+            result = func.DATEPART(text("year"), start_date) - year_of_birth
             return result
         else:
             logger.error(f"Unsupported database dialect: {engine.dialect.name}")
@@ -595,7 +594,7 @@ class AvailabilitySolver:
                 return person_constraints_for_group
 
             age = self._get_year_difference(
-                self.db_manager.engine, func.current_timestamp(), Person.birth_datetime
+                self.db_manager.engine, func.current_timestamp(), Person.year_of_birth
             )
             person_constraints_for_group.append(age >= min_value)
             person_constraints_for_group.append(age <= max_value)
