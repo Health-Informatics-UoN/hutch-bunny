@@ -284,66 +284,12 @@ class AvailabilitySolver:
                 """
 
                 # Build the group query using UNION approach
-                group_queries: list[Union[Select[Tuple[int]], CompoundSelect]] = []
-                exclusion_queries: list[Union[Select[Tuple[int]], CompoundSelect]] = []
-
-                # Add person constraints as a separate query
-                if person_constraints_for_group:
-                    person_query = select(Person.person_id).where(*person_constraints_for_group)
-                    group_queries.append(person_query)
-
-                # Add table queries for each rule
-                if hasattr(self, 'rule_table_queries'):
-                    logger.debug(f"Processing {len(self.rule_table_queries)} rule table queries")
-                    for i, rule_data in enumerate(self.rule_table_queries):
-                        union_query = rule_data['union_query']
-                        inclusion = rule_data['inclusion']
-                        logger.debug(f"Rule {i}: inclusion={inclusion}")
-
-                        if inclusion:
-                            # For inclusion: add the union directly
-                            group_queries.append(union_query)
-                            logger.debug(f"Added inclusion query for rule {i}")
-                        else:
-                            # For exclusion: store the union query to exclude people who match
-                            exclusion_queries.append(union_query)
-                            logger.debug(f"Added exclusion query for rule {i}")
-                else:
-                    logger.debug("No rule table queries found")
-
-                # Create the final group query (without CTEs at this level)
-                if group_queries:
-                    if current_group.rules_operator == "AND":
-                        # For AND logic, use INTERSECT which is more efficient than joins
-                        group_query: Union[Select[Tuple[int]], CompoundSelect] = group_queries[0]
-                        for query in group_queries[1:]:
-                            group_query = intersect(group_query, query)
-                    else:
-                        # For OR logic, use UNION
-                        group_query = union(*group_queries)
-                else:
-                    # Start with all people if no inclusion queries
-                    group_query = select(Person.person_id)
-
-                # Handle exclusion queries - remove people who match exclusion criteria
-                if exclusion_queries:
-                    logger.debug(f"Processing {len(exclusion_queries)} exclusion queries")
-                    try:
-                        # Union all exclusion queries
-                        exclusion_union = union(*exclusion_queries)
-                        logger.debug("Exclusion union created successfully")
-
-                        # Exclude people who match any exclusion criteria
-                        group_query = select(Person.person_id).where(
-                            ~Person.person_id.in_(select(exclusion_union.subquery()))
-                        )
-                        logger.debug("Exclusion queries processed successfully")
-                    except Exception as e:
-                        logger.error(f"Error processing exclusion queries: {e}")
-                        raise
+                group_query = self._construct_group_query(
+                    current_group, 
+                    person_constraints_for_group
+                )
 
                 # Store the group query for later assembly
-                logger.debug("Storing group query for later assembly")
                 all_groups_queries.append(group_query)
                 logger.debug(f"Total groups stored: {len(all_groups_queries)}")
 
@@ -442,6 +388,82 @@ class AvailabilitySolver:
                 full_query_all_groups = select(func.count()).where(literal(False))
                 
         return full_query_all_groups
+
+    def _construct_group_query(
+        self, 
+        current_group: Group, 
+        person_constraints_for_group: list[ColumnElement[bool]]
+    ) -> Union[Select[Tuple[int]], CompoundSelect]:
+        """
+        Construct the query for a single group by processing inclusion/exclusion rules.
+        
+        Args:
+            current_group: The group to construct a query for
+            person_constraints_for_group: Person-level constraints for this group
+            
+        Returns:
+            The constructed group query
+        """
+        # Build the group query using UNION approach
+        group_queries: list[Union[Select[Tuple[int]], CompoundSelect]] = []
+        exclusion_queries: list[Union[Select[Tuple[int]], CompoundSelect]] = []
+
+        # Add person constraints as a separate query
+        if person_constraints_for_group:
+            person_query = select(Person.person_id).where(*person_constraints_for_group)
+            group_queries.append(person_query)
+
+        # Add table queries for each rule
+        if hasattr(self, 'rule_table_queries'):
+            logger.debug(f"Processing {len(self.rule_table_queries)} rule table queries")
+            for i, rule_data in enumerate(self.rule_table_queries):
+                union_query = rule_data['union_query']
+                inclusion = rule_data['inclusion']
+                logger.debug(f"Rule {i}: inclusion={inclusion}")
+
+                if inclusion:
+                    # For inclusion: add the union directly
+                    group_queries.append(union_query)
+                    logger.debug(f"Added inclusion query for rule {i}")
+                else:
+                    # For exclusion: store the union query to exclude people who match
+                    exclusion_queries.append(union_query)
+                    logger.debug(f"Added exclusion query for rule {i}")
+        else:
+            logger.debug("No rule table queries found")
+
+        # Create the final group query (without CTEs at this level)
+        if group_queries:
+            if current_group.rules_operator == "AND":
+                # For AND logic, use INTERSECT which is more efficient than joins
+                group_query: Union[Select[Tuple[int]], CompoundSelect] = group_queries[0]
+                for query in group_queries[1:]:
+                    group_query = intersect(group_query, query)
+            else:
+                # For OR logic, use UNION
+                group_query = union(*group_queries)
+        else:
+            # Start with all people if no inclusion queries
+            group_query = select(Person.person_id)
+
+        # Handle exclusion queries - remove people who match exclusion criteria
+        if exclusion_queries:
+            logger.debug(f"Processing {len(exclusion_queries)} exclusion queries")
+            try:
+                # Union all exclusion queries
+                exclusion_union = union(*exclusion_queries)
+                logger.debug("Exclusion union created successfully")
+
+                # Exclude people who match any exclusion criteria
+                group_query = select(Person.person_id).where(
+                    ~Person.person_id.in_(select(exclusion_union.subquery()))
+                )
+                logger.debug("Exclusion queries processed successfully")
+            except Exception as e:
+                logger.error(f"Error processing exclusion queries: {e}")
+                raise
+
+        return group_query
 
     def _add_range_as_number(self, current_rule: Rule) -> None:
         if current_rule.min_value is not None and current_rule.max_value is not None:
