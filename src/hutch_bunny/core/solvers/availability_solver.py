@@ -6,7 +6,6 @@ from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy import (
     CompoundSelect,
     or_,
-    and_,
     func,
     BinaryExpression,
     ColumnElement,
@@ -203,14 +202,14 @@ class AvailabilitySolver:
                         # reliable longer term.
 
                         # initial setting for the four tables
-                        self.condition: Select[Tuple[int]] = select(
+                        condition_query: Select[Tuple[int]] = select(
                             ConditionOccurrence.person_id
                         )
-                        self.drug: Select[Tuple[int]] = select(DrugExposure.person_id)
-                        self.measurement: Select[Tuple[int]] = select(
+                        drug_query: Select[Tuple[int]] = select(DrugExposure.person_id)
+                        measurement_query: Select[Tuple[int]] = select(
                             Measurement.person_id
                         )
-                        self.observation: Select[Tuple[int]] = select(
+                        observation_query: Select[Tuple[int]] = select(
                             Observation.person_id
                         )
 
@@ -223,12 +222,16 @@ class AvailabilitySolver:
                         if (
                             left_value_time is not None or right_value_time is not None
                         ) and time_category == "AGE":
-                            self._add_age_constraints(left_value_time, right_value_time)
+                            condition_query, drug_query, measurement_query, observation_query = self._add_age_constraints(
+                                left_value_time, right_value_time, condition_query, drug_query, measurement_query, observation_query
+                            )
 
                         """"
                         STANDARD CONCEPT ID SEARCH
                         """
-                        self._add_standard_concept(current_rule)
+                        condition_query, drug_query, measurement_query, observation_query = self._add_standard_concept(
+                            current_rule, condition_query, drug_query, measurement_query, observation_query
+                        )
 
                         """"
                         SECONDARY MODIFIER
@@ -236,12 +239,14 @@ class AvailabilitySolver:
                         # secondary modifier hits another field and only on the condition_occurrence
                         # on the RQuest GUI this is a list that can be created. Assuming this is also an
                         # AND condition for at least one of the selected values to be present
-                        self._add_secondary_modifiers(current_rule)
+                        condition_query = self._add_secondary_modifiers(current_rule, condition_query)
 
                         """"
                         VALUES AS NUMBER
                         """
-                        self._add_range_as_number(current_rule)
+                        measurement_query, observation_query = self._add_range_as_number(
+                            current_rule, measurement_query, observation_query
+                        )
 
                         """"
                         RELATIVE TIME SEARCH SECTION
@@ -253,7 +258,9 @@ class AvailabilitySolver:
                             and (left_value_time != "" or right_value_time != "")
                             and time_category == "TIME"
                         ):
-                            self._add_relative_date(left_value_time, right_value_time)
+                            condition_query, drug_query, measurement_query, observation_query = self._add_relative_date(
+                                left_value_time, right_value_time, condition_query, drug_query, measurement_query, observation_query
+                            )
 
                         """"
                         PREPARING THE LISTS FOR LATER USE
@@ -263,7 +270,7 @@ class AvailabilitySolver:
 
                         # Store the table queries for this rule to be used later in UNION
                         # Union all table queries for this rule
-                        rule_union = union(self.measurement, self.observation, self.condition, self.drug)
+                        rule_union = union(measurement_query, observation_query, condition_query, drug_query)
                         rule_table_queries.append({
                             'union_query': rule_union,
                             'inclusion': inclusion_criteria
@@ -460,22 +467,31 @@ class AvailabilitySolver:
 
         return group_query
 
-    def _add_range_as_number(self, current_rule: Rule) -> None:
+    def _add_range_as_number(
+        self, 
+        current_rule: Rule, 
+        measurement_query: Select[Tuple[int]], 
+        observation_query: Select[Tuple[int]]
+    ) -> tuple[Select[Tuple[int]], Select[Tuple[int]]]:
         if current_rule.min_value is not None and current_rule.max_value is not None:
-            self.measurement = self.measurement.where(
+            measurement_query = measurement_query.where(
                 Measurement.value_as_number.between(
                     float(current_rule.min_value), float(current_rule.max_value)
                 )
             )
-            self.observation = self.observation.where(
+            observation_query = observation_query.where(
                 Observation.value_as_number.between(
                     float(current_rule.min_value), float(current_rule.max_value)
                 )
             )
 
+        return measurement_query, observation_query
+
     def _add_age_constraints(
-        self, left_value_time: str | None, right_value_time: str | None
-    ) -> None:
+        self, left_value_time: str | None, right_value_time: str | None,
+        condition_query: Select[Tuple[int]], drug_query: Select[Tuple[int]],
+        measurement_query: Select[Tuple[int]], observation_query: Select[Tuple[int]]
+    ) -> tuple[Select[Tuple[int]], Select[Tuple[int]], Select[Tuple[int]], Select[Tuple[int]]]:
         """
         This function adds age constraints to the query.
         If the left value is empty it indicates a less than search.
@@ -488,7 +504,7 @@ class AvailabilitySolver:
             None
         """
         if left_value_time is None or right_value_time is None:
-            return
+            return condition_query, drug_query, measurement_query, observation_query
 
         if left_value_time == "":
             comparator = op.lt
@@ -497,34 +513,36 @@ class AvailabilitySolver:
             comparator = op.gt
             age_value = int(left_value_time)
 
-        self.condition = self._apply_age_constraint_to_table(
-            self.condition,
+        condition_query = self._apply_age_constraint_to_table(
+            condition_query,
             ConditionOccurrence.person_id,
             ConditionOccurrence.condition_start_date,
             comparator,
             age_value,
         )
-        self.drug = self._apply_age_constraint_to_table(
-            self.drug,
+        drug_query = self._apply_age_constraint_to_table(
+            drug_query,
             DrugExposure.person_id,
             DrugExposure.drug_exposure_start_date,
             comparator,
             age_value,
         )
-        self.measurement = self._apply_age_constraint_to_table(
-            self.measurement,
+        measurement_query = self._apply_age_constraint_to_table(
+            measurement_query,
             Measurement.person_id,
             Measurement.measurement_date,
             comparator,
             age_value,
         )
-        self.observation = self._apply_age_constraint_to_table(
-            self.observation,
+        observation_query = self._apply_age_constraint_to_table(
+            observation_query,
             Observation.person_id,
             Observation.observation_date,
             comparator,
             age_value,
         )
+
+        return condition_query, drug_query, measurement_query, observation_query
 
     def _apply_age_constraint_to_table(
         self,
@@ -569,7 +587,10 @@ class AvailabilitySolver:
             logger.error(f"Unsupported database dialect: {engine.dialect.name}")
             raise NotImplementedError(f"Unsupported database dialect: {engine.dialect.name}")
 
-    def _add_relative_date(self, left_value_time: str, right_value_time: str) -> None:
+    def _add_relative_date(self, left_value_time: str, right_value_time: str,
+        condition_query: Select[Tuple[int]], drug_query: Select[Tuple[int]],
+        measurement_query: Select[Tuple[int]], observation_query: Select[Tuple[int]]
+    ) -> tuple[Select[Tuple[int]], Select[Tuple[int]], Select[Tuple[int]], Select[Tuple[int]]]:
         time_value_supplied: str
 
         # have to toggle between left and right, given |1 means less than 1 and
@@ -592,31 +613,33 @@ class AvailabilitySolver:
         # therefore the logic is to search for a date that is after the date
         # that was a month ago.
         if left_value_time == "":
-            self.measurement = self.measurement.where(
+            measurement_query = measurement_query.where(
                 Measurement.measurement_date >= relative_date
             )
-            self.observation = self.observation.where(
+            observation_query = observation_query.where(
                 Observation.observation_date >= relative_date
             )
-            self.condition = self.condition.where(
+            condition_query = condition_query.where(
                 ConditionOccurrence.condition_start_date >= relative_date
             )
-            self.drug = self.drug.where(
+            drug_query = drug_query.where(
                 DrugExposure.drug_exposure_start_date >= relative_date
             )
         else:
-            self.measurement = self.measurement.where(
+            measurement_query = measurement_query.where(
                 Measurement.measurement_date <= relative_date
             )
-            self.observation = self.observation.where(
+            observation_query = observation_query.where(
                 Observation.observation_date <= relative_date
             )
-            self.condition = self.condition.where(
+            condition_query = condition_query.where(
                 ConditionOccurrence.condition_start_date <= relative_date
             )
-            self.drug = self.drug.where(
+            drug_query = drug_query.where(
                 DrugExposure.drug_exposure_start_date <= relative_date
             )
+
+        return condition_query, drug_query, measurement_query, observation_query
 
     def _add_person_constraints(
         self,
@@ -672,7 +695,7 @@ class AvailabilitySolver:
 
         return person_constraints_for_group
 
-    def _add_secondary_modifiers(self, current_rule: Rule) -> None:
+    def _add_secondary_modifiers(self, current_rule: Rule, condition_query: Select[Tuple[int]]) -> Select[Tuple[int]]:
         # Not sure where, but even when a secondary modifier is not supplied, an array
         # with a single entry is provided.
         secondary_modifier_list = []
@@ -684,18 +707,22 @@ class AvailabilitySolver:
                 )
 
         if len(secondary_modifier_list) > 0:
-            self.condition = self.condition.where(or_(*secondary_modifier_list))
+            condition_query = condition_query.where(or_(*secondary_modifier_list))
 
-    def _add_standard_concept(self, current_rule: Rule) -> None:
-        self.condition = self.condition.where(
+        return condition_query
+
+    def _add_standard_concept(self, current_rule: Rule, condition_query: Select[Tuple[int]], drug_query: Select[Tuple[int]], measurement_query: Select[Tuple[int]], observation_query: Select[Tuple[int]]) -> tuple[Select[Tuple[int]], Select[Tuple[int]], Select[Tuple[int]], Select[Tuple[int]]]:
+        condition_query = condition_query.where(
             ConditionOccurrence.condition_concept_id == int(current_rule.value)
         )
-        self.drug = self.drug.where(
+        drug_query = drug_query.where(
             DrugExposure.drug_concept_id == int(current_rule.value)
         )
-        self.measurement = self.measurement.where(
+        measurement_query = measurement_query.where(
             Measurement.measurement_concept_id == int(current_rule.value)
         )
-        self.observation = self.observation.where(
+        observation_query = observation_query.where(
             Observation.observation_concept_id == int(current_rule.value)
         )
+
+        return condition_query, drug_query, measurement_query, observation_query
