@@ -1,9 +1,10 @@
 import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-from typing import Any, Callable, TypedDict
+from typing import Any, Callable, TypedDict, Union
 from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy import (
+    CompoundSelect,
     or_,
     and_,
     func,
@@ -14,6 +15,7 @@ from sqlalchemy import (
     text,
     intersect,
     union,
+    literal,
 )
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
@@ -50,6 +52,11 @@ class ResultModifier(TypedDict):
     id: str
     threshold: int | None
     nearest: int | None
+
+
+class RuleTableQuery(TypedDict):
+    union_query: CompoundSelect
+    inclusion: bool
 
 
 settings = Settings()
@@ -156,7 +163,7 @@ class AvailabilitySolver:
 
         with self.db_manager.engine.connect() as con:
             # this is used to store the query for each group, one entry per group
-            all_groups_queries: list[BinaryExpression[bool]] = []
+            all_groups_queries: list[Union[Select[Tuple[int]], CompoundSelect]] = []
 
             # iterate through all the groups specified in the query
             for current_group in self.query.cohort.groups:
@@ -255,7 +262,7 @@ class AvailabilitySolver:
 
                         # Store the table queries for this rule to be used later in UNION
                         if not hasattr(self, 'rule_table_queries'):
-                            self.rule_table_queries = []
+                            self.rule_table_queries: list[RuleTableQuery] = []
 
                         # Union all table queries for this rule
                         rule_union = union(self.measurement, self.observation, self.condition, self.drug)
@@ -277,9 +284,8 @@ class AvailabilitySolver:
                 """
 
                 # Build the group query using UNION approach
-                group_queries = []
-                exclusion_queries = []
-                current_group_index = len(all_groups_queries)
+                group_queries: list[Union[Select[Tuple[int]], CompoundSelect]] = []
+                exclusion_queries: list[Union[Select[Tuple[int]], CompoundSelect]] = []
 
                 # Add person constraints as a separate query
                 if person_constraints_for_group:
@@ -309,7 +315,7 @@ class AvailabilitySolver:
                 if group_queries:
                     if current_group.rules_operator == "AND":
                         # For AND logic, use INTERSECT which is more efficient than joins
-                        group_query = group_queries[0]
+                        group_query: Union[Select[Tuple[int]], CompoundSelect] = group_queries[0]
                         for query in group_queries[1:]:
                             group_query = intersect(group_query, query)
                     else:
@@ -329,7 +335,7 @@ class AvailabilitySolver:
 
                         # Exclude people who match any exclusion criteria
                         group_query = select(Person.person_id).where(
-                            ~Person.person_id.in_(exclusion_union.subquery())
+                            ~Person.person_id.in_(select(exclusion_union.subquery()))
                         )
                         logger.debug("Exclusion queries processed successfully")
                     except Exception as e:
@@ -373,7 +379,7 @@ class AvailabilitySolver:
                         full_query_all_groups = select(func.count()).select_from(final_union.subquery())
                 else:
                     # Fallback to empty query
-                    full_query_all_groups = select(func.count()).where(False)
+                    full_query_all_groups = select(func.count()).where(literal(False))
             else:
                 # For AND logic between groups, use INTERSECT with CTEs
                 if all_groups_queries:
@@ -397,7 +403,7 @@ class AvailabilitySolver:
 
                 else:
                     # Fallback to empty query
-                    full_query_all_groups = select(func.count()).where(False)
+                    full_query_all_groups = select(func.count()).where(literal(False))
 
             if low_number > 0:
                 full_query_all_groups = full_query_all_groups.having(
