@@ -85,8 +85,11 @@ jobs:
           junitxml-path: pytest.xml
   
   run-tests-sqlserver:
-    name: Run Tests (SQL Server)
+    name: Run Tests (SQL Server ${{ matrix.sqlserver-version }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        sqlserver-version: [2019, 2022]
     permissions:
       contents: read
       pull-requests: write
@@ -106,7 +109,7 @@ jobs:
 
     services:
       sqlserver:
-        image: mcr.microsoft.com/mssql/server:2022-latest
+        image: mcr.microsoft.com/mssql/server:${{ matrix.sqlserver-version }}-latest
         env:
           ACCEPT_EULA: "Y"
           MSSQL_SA_PASSWORD: Password123!
