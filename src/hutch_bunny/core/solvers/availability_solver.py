@@ -170,6 +170,8 @@ class AvailabilitySolver:
 
                 # captures all the person constraints for the group
                 person_constraints_for_group: list[ColumnElement[bool]] = []
+                # captures all the rule table queries for the group
+                rule_table_queries: list[RuleTableQuery] = []
 
                 # for each rule in a group
                 for current_rule in current_group.rules:
@@ -261,12 +263,9 @@ class AvailabilitySolver:
                         inclusion_criteria: bool = current_rule.operator == "="
 
                         # Store the table queries for this rule to be used later in UNION
-                        if not hasattr(self, 'rule_table_queries'):
-                            self.rule_table_queries: list[RuleTableQuery] = []
-
                         # Union all table queries for this rule
                         rule_union = union(self.measurement, self.observation, self.condition, self.drug)
-                        self.rule_table_queries.append({
+                        rule_table_queries.append({
                             'union_query': rule_union,
                             'inclusion': inclusion_criteria
                         })
@@ -286,16 +285,13 @@ class AvailabilitySolver:
                 # Build the group query using UNION approach
                 group_query = self._construct_group_query(
                     current_group, 
-                    person_constraints_for_group
+                    person_constraints_for_group,
+                    rule_table_queries
                 )
 
                 # Store the group query for later assembly
                 all_groups_queries.append(group_query)
                 logger.debug(f"Total groups stored: {len(all_groups_queries)}")
-
-                # Reset rule table queries for next group
-                if hasattr(self, 'rule_table_queries'):
-                    delattr(self, 'rule_table_queries')
 
             """
             ALL GROUPS COMPLETED, NOW APPLY LOGIC BETWEEN GROUPS
@@ -392,7 +388,8 @@ class AvailabilitySolver:
     def _construct_group_query(
         self, 
         current_group: Group, 
-        person_constraints_for_group: list[ColumnElement[bool]]
+        person_constraints_for_group: list[ColumnElement[bool]],
+        rule_table_queries: list[RuleTableQuery]
     ) -> Union[Select[Tuple[int]], CompoundSelect]:
         """
         Construct the query for a single group by processing inclusion/exclusion rules.
@@ -400,6 +397,7 @@ class AvailabilitySolver:
         Args:
             current_group: The group to construct a query for
             person_constraints_for_group: Person-level constraints for this group
+            rule_table_queries: List of rule table queries for this group
             
         Returns:
             The constructed group query
@@ -414,9 +412,9 @@ class AvailabilitySolver:
             group_queries.append(person_query)
 
         # Add table queries for each rule
-        if hasattr(self, 'rule_table_queries'):
-            logger.debug(f"Processing {len(self.rule_table_queries)} rule table queries")
-            for i, rule_data in enumerate(self.rule_table_queries):
+        if rule_table_queries:
+            logger.debug(f"Processing {len(rule_table_queries)} rule table queries")
+            for i, rule_data in enumerate(rule_table_queries):
                 union_query = rule_data['union_query']
                 inclusion = rule_data['inclusion']
                 logger.debug(f"Rule {i}: inclusion={inclusion}")
