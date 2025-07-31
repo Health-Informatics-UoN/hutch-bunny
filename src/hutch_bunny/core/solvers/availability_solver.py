@@ -178,20 +178,9 @@ class AvailabilitySolver:
                     # "time" : "|1:TIME:M" in the payload means that
                     # if the | is on the left of the value it was less than 1 month
                     # if it was "1|:TIME:M" it would mean greater than one month
-                    left_value_time: str | None = None
-                    right_value_time: str | None = None
-
-                    # if a time is supplied split the string out to component parts
-                    if current_rule.time:
-                        time_value, time_category, _ = current_rule.time.split(":")
-                        left_value_time, right_value_time = time_value.split("|")
-
-                    # if a number was supplied, it is in the format "value" : "0.0|200.0"
-                    # therefore split to capture min as 0 and max as 200
-                    if current_rule.raw_range and current_rule.raw_range != "":
-                        min_str, max_str = current_rule.raw_range.split("|")
-                        current_rule.min_value = float(min_str) if min_str else None
-                        current_rule.max_value = float(max_str) if max_str else None
+                    left_value_time: str | None = current_rule.left_value_time
+                    right_value_time: str | None = current_rule.right_value_time
+                    time_category: str | None = current_rule.time_category
 
                     # if the rule was not linked to a person variable
                     if current_rule.varcat != "Person":
