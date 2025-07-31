@@ -68,6 +68,25 @@ class ResultModifier(TypedDict):
     nearest: int | None
 
 
+class SQLDialectHandler:
+    @staticmethod
+    def get_year_difference(
+        engine: Engine,
+        start_date: ClauseElement,
+        birth_date: ClauseElement
+    ) -> ColumnElement[int]:
+        if engine.dialect.name == "postgresql":
+            return func.date_part("year", start_date) - func.date_part(
+                "year", birth_date
+            )
+        elif engine.dialect.name == "mssql":
+            return func.DATEPART(text("year"), start_date) - func.DATEPART(
+                text("year"), birth_date
+            )
+        else:
+            raise NotImplementedError("Unsupported database dialect")
+
+
 class OMOPRuleQueryBuilder:
     """Builder for constructing OMOP queries from availability rules."""
 
@@ -160,7 +179,7 @@ class OMOPRuleQueryBuilder:
         Returns:
             The table query with the age constraint applied.
         """
-        age_difference = self._get_year_difference(
+        age_difference = SQLDialectHandler.get_year_difference(
             self.db_manager.engine, table_date_column, Person.birth_datetime
         )
 
@@ -176,23 +195,6 @@ class OMOPRuleQueryBuilder:
                 )
             )
         )
-
-    def _get_year_difference(
-        self,
-        engine: Engine,
-        start_date: ClauseElement,
-        birth_date: ClauseElement
-    ) -> ColumnElement[int]:
-        if engine.dialect.name == "postgresql":
-            return func.date_part("year", start_date) - func.date_part(
-                "year", birth_date
-            )
-        elif engine.dialect.name == "mssql":
-            return func.DATEPART(text("year"), start_date) - func.DATEPART(
-                text("year"), birth_date
-            )
-        else:
-            raise NotImplementedError("Unsupported database dialect")
 
     def add_temporal_constraint(
         self,
@@ -306,11 +308,64 @@ class OMOPRuleQueryBuilder:
             return and_(*table_rule_constraints)
 
 
+class PersonConstraintBuilder:
+    """Builds constraints for Person table queries."""
+
+    def __init__(self, db_manager: SyncDBManager):
+        self.db_manager = db_manager
+
+    def build_constraints(self, rule: Rule, concepts: dict[str, str]) -> list[ColumnElement[bool]]:
+        """Build all constraints for a person-related rule."""
+        if rule.varname == "AGE":
+            return self._build_age_constraints(rule)
+
+        concept_domain = concepts.get(rule.value)
+        if concept_domain == "Gender":
+            return self._build_gender_constraint(rule)
+        elif concept_domain == "Race":
+            return self._build_race_constraint(rule)
+        elif concept_domain == "Ethnicity":
+            return self._build_ethnicity_constraint(rule)
+
+        return []
+
+    def _build_age_constraints(self, rule: Rule) -> list[ColumnElement[bool]]:
+        """Build age range constraints."""
+        if rule.min_value is None or rule.max_value is None:
+            return []
+
+        age = SQLDialectHandler.get_year_difference(
+            self.db_manager,
+            func.current_timestamp(),
+            Person.birth_datetime
+        )
+        return [
+            age >= rule.min_value,
+            age <= rule.max_value
+        ]
+
+    def _build_gender_constraint(self, rule: Rule) -> list[ColumnElement[bool]]:
+        """Build gender constraint."""
+        constraint = Person.gender_concept_id == int(rule.value)
+        return [constraint if rule.operator == "=" else ~constraint]
+
+    def _build_race_constraint(self, rule: Rule) -> list[ColumnElement[bool]]:
+        """Build race constraint."""
+        constraint = Person.race_concept_id == int(rule.value)
+        return [constraint if rule.operator == "=" else ~constraint]
+
+    def _build_ethnicity_constraint(self, rule: Rule) -> list[ColumnElement[bool]]:
+        """Build ethnicity constraint."""
+        constraint = Person.ethnicity_concept_id == int(rule.value)
+        return [constraint if rule.operator == "=" else ~constraint]
+
+
 class AvailabilitySolver():
 
     def __init__(self, db_manager: SyncDBManager, query: AvailabilityQuery) -> None:
         self.db_manager = db_manager
         self.query = query
+        self.person_constraint_builder = PersonConstraintBuilder(db_manager)
 
     @retry(
         stop=stop_after_attempt(3),
@@ -341,17 +396,17 @@ class AvailabilitySolver():
                 group_queries.append(group_query)
 
             final_query = self._combine_groups_and_apply_modifiers(
-                group_queries, 
+                group_queries,
                 self.query.cohort.groups_operator,
-                low_number, 
+                low_number,
                 rounding
             )
 
             output = con.execute(final_query).fetchone()
             count = int(output[0]) if output is not None else 0
-        
+
         return apply_filters(count, results_modifiers)
-    
+
     def _find_concepts(self, groups: list[Group]) -> dict[str, str]:
         """Function that takes all the concept IDs in the cohort definition, looks them up in the OMOP database
         to extract the concept_id and domain and place this within a dictionary for lookup during other query building
@@ -402,18 +457,19 @@ class AvailabilitySolver():
         rule_constraints = []
         person_constraints = []
 
-        for rule in group.rules: 
-            if rule.varcat == "Person": 
-                person_constraints.extend(self._build_person_constraints(rule, concepts))
-            else: 
+        for rule in group.rules:
+            if rule.varcat == "Person":
+                constraints = self.person_constraint_builder.build_constraints(rule, concepts)
+                person_constraints.extend(constraints)
+            else:
                 rule_constraints.append(self._build_rule_constraint(rule))
-            
+
         return self._combine_constraints(rule_constraints, person_constraints, group.rules_operator)
 
     def _combine_constraints(
-        self, 
-        rule_constraints: list, 
-        person_constraints: list, 
+        self,
+        rule_constraints: list,
+        person_constraints: list,
         rules_operator: str
     ) -> ColumnElement[bool]:
         ## if the logic between the rules for each group is AND
@@ -493,14 +549,14 @@ class AvailabilitySolver():
             min=min_val,
             max=max_val
         )
-            
+
     def _combine_groups_and_apply_modifiers(
-        self, 
-        group_queries: list[ColumnElement[bool]], 
-        groups_operator: str, 
-        low_number: int, 
-        rounding: int 
-    ) -> Select[Tuple[int]]: 
+        self,
+        group_queries: list[ColumnElement[bool]],
+        groups_operator: str,
+        low_number: int,
+        rounding: int
+    ) -> Select[Tuple[int]]:
         # construct the query based on the OR/AND logic specified between groups
         if groups_operator == "OR":
             if rounding > 0:
@@ -536,4 +592,4 @@ class AvailabilitySolver():
             )
         )
 
-        return full_query_all_groups 
+        return full_query_all_groups
