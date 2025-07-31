@@ -308,13 +308,10 @@ class AvailabilitySolver:
                 # Create the final group query (without CTEs at this level)
                 if group_queries:
                     if current_group.rules_operator == "AND":
-                        # For AND logic, intersect all queries
+                        # For AND logic, use INTERSECT which is more efficient than joins
                         group_query = group_queries[0]
                         for query in group_queries[1:]:
-                            group_query = select(Person.person_id).where(
-                                Person.person_id.in_(group_query),
-                                Person.person_id.in_(query)
-                            )
+                            group_query = intersect(group_query, query)
                     else:
                         # For OR logic, use UNION
                         group_query = union(*group_queries)
@@ -515,7 +512,8 @@ class AvailabilitySolver:
 
         constraint = operator_func(age_difference, age_value)
 
-        return table_query.where(Person.person_id == table_person_id, constraint)
+        # Use proper join instead of cross-join
+        return table_query.join(Person, Person.person_id == table_person_id).where(constraint)
 
     def _get_year_difference(
         self, engine: Engine, start_date: ClauseElement, birth_date: ClauseElement
