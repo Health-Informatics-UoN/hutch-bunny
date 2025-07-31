@@ -356,74 +356,92 @@ class AvailabilitySolver:
             """
 
             # construct the query based on the OR/AND logic specified between groups using CTEs
-            if self.query.cohort.groups_operator == "OR":
-                # For OR logic between groups, use UNION with CTEs
-                if all_groups_queries:
-                    logger.debug("Creating final union for OR logic")
-                    # Create CTEs for all group queries
-                    group_ctes = []
-                    for i, query in enumerate(all_groups_queries):
-                        cte_name = f"final_group_{i}"
-                        cte = query.cte(name=cte_name)
-                        group_ctes.append(cte)
-
-                    # Union all group CTEs by selecting from them
-                    group_union_queries = [select(cte) for cte in group_ctes]
-                    final_union = union(*group_union_queries)
-
-                    if rounding > 0:
-                        full_query_all_groups = select(
-                            func.round((func.count() / rounding), 0) * rounding
-                        ).select_from(final_union.subquery())
-                    else:
-                        full_query_all_groups = select(func.count()).select_from(final_union.subquery())
-                else:
-                    # Fallback to empty query
-                    full_query_all_groups = select(func.count()).where(literal(False))
-            else:
-                # For AND logic between groups, use INTERSECT with CTEs
-                if all_groups_queries:
-                    # Create CTEs for all group queries
-                    group_ctes = []
-                    for i, query in enumerate(all_groups_queries):
-                        cte_name = f"final_group_{i}"
-                        cte = query.cte(name=cte_name)
-                        group_ctes.append(cte)
-
-                    # Use INTERSECT for AND logic between groups
-                    group_intersect_queries = [select(cte) for cte in group_ctes]
-                    final_intersect = intersect(*group_intersect_queries)
-
-                    if rounding > 0:
-                        full_query_all_groups = select(
-                            func.round((func.count() / rounding), 0) * rounding
-                        ).select_from(final_intersect.subquery())
-                    else:
-                        full_query_all_groups = select(func.count()).select_from(final_intersect.subquery())
-
-                else:
-                    # Fallback to empty query
-                    full_query_all_groups = select(func.count()).where(literal(False))
+            final_query = self._construct_final_query(all_groups_queries, rounding)
 
             if low_number > 0:
-                full_query_all_groups = full_query_all_groups.having(
+                final_query = final_query.having(
                     func.count() >= low_number
                 )
 
             # here for debug, prints the SQL statement created
             logger.debug(
                 str(
-                    full_query_all_groups.compile(
+                    final_query.compile(
                         dialect=self.db_manager.engine.dialect,
                         compile_kwargs={"literal_binds": True},
                     )
                 )
             )
 
-            output = con.execute(full_query_all_groups).fetchone()
+            output = con.execute(final_query).fetchone()
             count = int(output[0]) if output is not None else 0
 
         return apply_filters(count, results_modifier)
+
+    def _construct_final_query(
+        self, 
+        all_groups_queries: list[Union[Select[Tuple[int]], CompoundSelect]], 
+        rounding: int
+    ) -> Select[Tuple[int]]:
+        """
+        Construct the final query by applying OR/AND logic between groups using CTEs.
+        
+        Args:
+            all_groups_queries: List of queries for each group
+            rounding: Rounding factor for the final count
+            
+        Returns:
+            The final query that counts the results with appropriate rounding
+        """
+        if self.query.cohort.groups_operator == "OR":
+            # For OR logic between groups, use UNION with CTEs
+            if all_groups_queries:
+                # Create CTEs for all group queries
+                group_ctes = []
+                for i, query in enumerate(all_groups_queries):
+                    cte_name = f"final_group_{i}"
+                    cte = query.cte(name=cte_name)
+                    group_ctes.append(cte)
+
+                # Union all group CTEs by selecting from them
+                group_union_queries = [select(cte) for cte in group_ctes]
+                final_union = union(*group_union_queries)
+
+                if rounding > 0:
+                    full_query_all_groups = select(
+                        func.round((func.count() / rounding), 0) * rounding
+                    ).select_from(final_union.subquery())
+                else:
+                    full_query_all_groups = select(func.count()).select_from(final_union.subquery())
+            else:
+                # Fallback to empty query
+                full_query_all_groups = select(func.count()).where(literal(False))
+        else:
+            # For AND logic between groups, use INTERSECT with CTEs
+            if all_groups_queries:
+                # Create CTEs for all group queries
+                group_ctes = []
+                for i, query in enumerate(all_groups_queries):
+                    cte_name = f"final_group_{i}"
+                    cte = query.cte(name=cte_name)
+                    group_ctes.append(cte)
+
+                # Use INTERSECT for AND logic between groups
+                group_intersect_queries = [select(cte) for cte in group_ctes]
+                final_intersect = intersect(*group_intersect_queries)
+
+                if rounding > 0:
+                    full_query_all_groups = select(
+                        func.round((func.count() / rounding), 0) * rounding
+                    ).select_from(final_intersect.subquery())
+                else:
+                    full_query_all_groups = select(func.count()).select_from(final_intersect.subquery())
+
+            else:
+                # Fallback to empty query
+                full_query_all_groups = select(func.count()).where(literal(False))
+                
+        return full_query_all_groups
 
     def _add_range_as_number(self, current_rule: Rule) -> None:
         if current_rule.min_value is not None and current_rule.max_value is not None:
