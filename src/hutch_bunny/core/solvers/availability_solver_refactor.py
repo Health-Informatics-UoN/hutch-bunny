@@ -51,14 +51,6 @@ from hutch_bunny.core.rquest_models.rule import Rule
 import operator as op
 
 
-@dataclass
-class TimeConstraint:
-    value: str
-    category: Literal["AGE", "TIME"]
-    left_value: str | None = None
-    right_value: str | None = None
-
-
 class ResultModifier(TypedDict):
     id: str
     threshold: int | None
