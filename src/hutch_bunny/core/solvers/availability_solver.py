@@ -12,13 +12,9 @@ from sqlalchemy import (
     select,
     Select,
     text,
-<<<<<<< HEAD
-    Exists
-=======
     intersect,
     union,
     literal,
->>>>>>> main
 )
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
@@ -258,13 +254,6 @@ class AvailabilitySolver:
                         """"
                         PREPARING THE LISTS FOR LATER USE
                         """
-<<<<<<< HEAD
-
-                        # List of tables and their corresponding foreign keys
-
-
-=======
->>>>>>> main
                         # a switch between whether the criteria are inclusion or exclusion
                         inclusion_criteria: bool = current_rule.operator == "="
 
@@ -289,7 +278,7 @@ class AvailabilitySolver:
                 """
                 # Build the group query using UNION approach
                 group_query = self._construct_group_query(
-                    current_group, 
+                    current_group,
                     person_constraints_for_group,
                     rule_table_queries
                 )
@@ -325,17 +314,17 @@ class AvailabilitySolver:
         return apply_filters(count, results_modifier)
 
     def _construct_final_query(
-        self, 
-        all_groups_queries: list[Union[Select[Tuple[int]], CompoundSelect]], 
+        self,
+        all_groups_queries: list[Union[Select[Tuple[int]], CompoundSelect]],
         rounding: int
     ) -> Select[Tuple[int]]:
         """
         Construct the final query by applying OR/AND logic between groups using CTEs.
-        
+
         Args:
             all_groups_queries: List of queries for each group
             rounding: Rounding factor for the final count
-            
+
         Returns:
             The final query that counts the results with appropriate rounding
         """
@@ -386,23 +375,23 @@ class AvailabilitySolver:
             else:
                 # Fallback to empty query
                 full_query_all_groups = select(func.count()).where(literal(False))
-                
+
         return full_query_all_groups
 
     def _construct_group_query(
-        self, 
-        current_group: Group, 
+        self,
+        current_group: Group,
         person_constraints_for_group: list[ColumnElement[bool]],
         rule_table_queries: list[RuleTableQuery]
     ) -> Union[Select[Tuple[int]], CompoundSelect]:
         """
         Construct the query for a single group by processing inclusion/exclusion rules.
-        
+
         Args:
             current_group: The group to construct a query for
             person_constraints_for_group: Person-level constraints for this group
             rule_table_queries: List of rule table queries for this group
-            
+
         Returns:
             The constructed group query
         """
@@ -468,9 +457,9 @@ class AvailabilitySolver:
         return group_query
 
     def _add_range_as_number(
-        self, 
-        current_rule: Rule, 
-        measurement_query: Select[Tuple[int]], 
+        self,
+        current_rule: Rule,
+        measurement_query: Select[Tuple[int]],
         observation_query: Select[Tuple[int]]
     ) -> tuple[Select[Tuple[int]], Select[Tuple[int]]]:
         if current_rule.min_value is not None and current_rule.max_value is not None:
