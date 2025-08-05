@@ -79,3 +79,14 @@ class TestSQLDialectHandler:
         compiled = str(result.compile(dialect=postgresql.dialect()))
         assert "date_part" in compiled
         assert "year" in compiled
+
+
+class TestOMOPRuleQueryBuilder:
+
+    def test_add_concept_constraint(self):
+        pass
+
+    def add_age_constraint(self):
+        pass
+
+
