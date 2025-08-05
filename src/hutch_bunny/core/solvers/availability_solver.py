@@ -564,8 +564,8 @@ class AvailabilitySolver:
         return table_query.join(Person, Person.person_id == table_person_id).where(constraint)
 
     def _get_year_difference(
-    self, engine: Engine, start_date: ClauseElement, year_of_birth: ClauseElement
-) -> ColumnElement[int]:
+        self, engine: Engine, start_date: ClauseElement, year_of_birth: ClauseElement
+    ) -> ColumnElement[int]:
         if engine.dialect.name in ("postgresql", "postgres"):
             result = func.date_part("year", start_date) - year_of_birth
             return result

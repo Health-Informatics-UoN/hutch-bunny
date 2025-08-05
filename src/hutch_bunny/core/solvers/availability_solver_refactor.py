@@ -364,8 +364,8 @@ class AvailabilitySolver():
     def solve_rules(self, results_modifiers: list[ResultModifier]) -> int:
         """Main query resolution."""
         concepts = self._find_concepts(self.query.cohort.groups)
-        rounding = self._extract_modifier(results_modifiers, "Low Number Suppression")
-        low_number = self._extract_modifier(results_modifiers, "Rounding")
+        low_number = self._extract_modifier(results_modifiers, "Low Number Suppression")
+        rounding = self._extract_modifier(results_modifiers, "Rounding")
 
         with self.db_manager.engine.connect() as con:
             group_queries = []
@@ -417,7 +417,7 @@ class AvailabilitySolver():
 
     def _extract_modifier(
         self,
-        results_modifiers: list[ResultsModifier],
+        results_modifiers: list[ResultModifier],
         result_id: str,
         default_value: int = 10
     ) -> int:
@@ -465,7 +465,7 @@ class AvailabilitySolver():
                 left_value_time=rule.left_value_time,
                 right_value_time=rule.right_value_time
             )
-        elif rule.left_value_time and rule.right_value_time and time_constraint.category == "TIME":
+        elif rule.left_value_time and rule.right_value_time and rule.time_category == "TIME":
             builder.add_temporal_constraint(
                 left_value_time=rule.left_value_time,
                 right_value_time=rule.right_value_time
