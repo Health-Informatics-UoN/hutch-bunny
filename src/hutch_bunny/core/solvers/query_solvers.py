@@ -17,8 +17,10 @@ from hutch_bunny.core.solvers.demographics_solver import (
     DemographicsDistributionQuerySolver,
 )
 from hutch_bunny.core.solvers.distribution_solver import CodeDistributionQuerySolver
+from hutch_bunny.core.services.metadata_service import MetadataService
 
 settings = Settings()
+metadata_service = MetadataService()
 
 
 def solve_availability(
@@ -106,12 +108,18 @@ def solve_distribution(
             size=size,
             type_="BCOS",
         )
+        # Metadata file is only for distribution queries
+        if query.code == DistributionQueryType.GENERIC:
+            metadata_file = metadata_service.generate_metadata()
+        else:
+            metadata_file = None
+
         result = RquestResult(
             uuid=query.uuid,
             status="ok",
             count=count,
             datasets_count=1,
-            files=[result_file],
+            files=[result_file, metadata_file] if metadata_file else [result_file],
             collection_id=query.collection,
         )
     except Exception as e:

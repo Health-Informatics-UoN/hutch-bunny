@@ -187,7 +187,7 @@ class DemographicsDistributionQuerySolver:
             if concept_id in counts_by_gender:
                 count = apply_filters(counts_by_gender[concept_id], results_modifier)
                 name = concept_names.get(concept_id, "Unknown")
-                alternatives += f"{name}|{count}^"
+                alternatives += f"{name.title()}|{count}^"
         return alternatives
 
     def _create_demographics_rows(

@@ -5,8 +5,11 @@ on:
 
 jobs:
   run-tests-postgres:
-    name: Run Tests (Postgres)
+    name: Run Tests (Postgres ${{ matrix.postgres-version }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        postgres-version: [14, 15, 16, 17]
     permissions:
       contents: read
       pull-requests: write
@@ -25,7 +28,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres
+        image: postgres:${{ matrix.postgres-version }}
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: hutch-omop
@@ -37,16 +40,20 @@ jobs:
         ports:
           - 5432:5432
 
-      omop-lite:
-        image: ghcr.io/health-informatics-uon/omop-lite
-        env:
-          DB_HOST: postgres
-          DB_PASSWORD: postgres
-          DB_NAME: hutch-omop
-          SYNTHETIC: true
-
     steps:
       - uses: actions/checkout@v4
+
+      - name: Load synthetic OMOP data
+        run: |
+          docker run \
+            --network host \
+            -e DB_HOST=localhost \
+            -e DB_NAME=hutch-omop \
+            -e DB_PASSWORD=postgres \
+            -e DIALECT=postgresql \
+            -e SYNTHETIC=true \
+            -e SYNTHETIC_NUMBER=1000 \
+            ghcr.io/health-informatics-uon/omop-lite
 
       - name: Setup uv
         uses: astral-sh/setup-uv@f94ec6bedd8674c4426838e6b50417d36b6ab231 # v5.3.1
@@ -78,8 +85,11 @@ jobs:
           junitxml-path: pytest.xml
   
   run-tests-sqlserver:
-    name: Run Tests (SQL Server)
+    name: Run Tests (SQL Server ${{ matrix.sqlserver-version }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        sqlserver-version: [2019, 2022]
     permissions:
       contents: read
       pull-requests: write
@@ -99,7 +109,7 @@ jobs:
 
     services:
       sqlserver:
-        image: mcr.microsoft.com/mssql/server:2022-latest
+        image: mcr.microsoft.com/mssql/server:${{ matrix.sqlserver-version }}-latest
         env:
           ACCEPT_EULA: "Y"
           MSSQL_SA_PASSWORD: Password123!
@@ -107,20 +117,23 @@ jobs:
         ports:
           - 1433:1433
 
-      omop-lite:
-        image: ghcr.io/health-informatics-uon/omop-lite
-        env:
-          DB_HOST: sqlserver
-          DB_NAME: master
-          DB_USER: sa
-          DB_PASSWORD: Password123!
-          DB_PORT: 1433
-          DIALECT: mssql
-          SYNTHETIC: true
-          SCHEMA_NAME: omop
-
     steps:
       - uses: actions/checkout@v4
+
+      - name: Load synthetic OMOP data
+        run: |
+          docker run \
+            --network host \
+            -e DB_HOST=localhost \
+            -e DB_NAME=master \
+            -e DB_USER=sa \
+            -e DB_PASSWORD=Password123! \
+            -e DB_PORT=1433 \
+            -e DIALECT=mssql \
+            -e SCHEMA_NAME=omop \
+            -e SYNTHETIC=true \
+            -e SYNTHETIC_NUMBER=1000 \
+            ghcr.io/health-informatics-uon/omop-lite
 
       - name: Setup uv
         uses: astral-sh/setup-uv@f94ec6bedd8674c4426838e6b50417d36b6ab231 # v5.3.1

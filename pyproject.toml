@@ -1,6 +1,6 @@
 [project]
 name = "hutch-bunny"
-version = "1.0.2"
+version = "1.1.0"
 description = "A Cohort Discovery Task API worker"
 license = { text = "MIT License" }
 readme = "README.md"
@@ -11,6 +11,8 @@ authors = [
   { name = "James Mitchell-White", email = "james.mitchell-white1@nottingham.ac.uk" },
   { name = "Anwar Gaungoo", email = "anwar.gaungoo@nottingham.ac.uk" },
   { name = "Vasiliki Panagi", email = "vasiliki.panagi@nottingham.ac.uk" },
+  { name = "Phil Quinlan", email = "philip.quinlan@nottingham.ac.uk" },
+
 ]
 maintainers = [
   { name = "Jon Couldridge", email = "jonathan.couldridge@nottingham.ac.uk" },

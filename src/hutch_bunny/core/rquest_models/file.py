@@ -9,8 +9,8 @@ class File(BaseModel):
     Specifies the file details of a query.
     """
 
-    name: Literal["demographics.distribution", "code.distribution"] = Field(
-        alias="file_name"
+    name: Literal["demographics.distribution", "code.distribution", "metadata.bcos"] = (
+        Field(alias="file_name")
     )
     """
     Name of the file.

@@ -1,18 +1,20 @@
 import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-from typing import TypedDict
+from typing import Any, Callable, TypedDict, Union
 from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy import (
+    CompoundSelect,
     or_,
-    and_,
     func,
     BinaryExpression,
     ColumnElement,
     select,
     Select,
     text,
-    Exists,
+    intersect,
+    union,
+    literal,
 )
 from hutch_bunny.core.db import BaseDBClient
 from hutch_bunny.core.db.entities import (
@@ -33,7 +35,6 @@ from tenacity import (
 )
 
 from typing import Tuple
-from sqlalchemy import exists
 
 from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.rquest_models.group import Group
@@ -43,12 +44,18 @@ from hutch_bunny.core.logger import logger, INFO
 
 from hutch_bunny.core.settings import Settings
 from hutch_bunny.core.rquest_models.rule import Rule
+import operator as op
 
 
 class ResultModifier(TypedDict):
     id: str
     threshold: int | None
     nearest: int | None
+
+
+class RuleTableQuery(TypedDict):
+    union_query: CompoundSelect
+    inclusion: bool
 
 
 settings = Settings()
@@ -155,15 +162,15 @@ class AvailabilitySolver:
 
         with self.db_client.engine.connect() as con:
             # this is used to store the query for each group, one entry per group
-            all_groups_queries: list[BinaryExpression[bool]] = []
+            all_groups_queries: list[Union[Select[Tuple[int]], CompoundSelect]] = []
 
             # iterate through all the groups specified in the query
             for current_group in self.query.cohort.groups:
-                # this is used to store all constraints for all rules in the group, one entry per rule
-                list_for_rules: list[ColumnElement[bool]] = []
 
                 # captures all the person constraints for the group
                 person_constraints_for_group: list[ColumnElement[bool]] = []
+                # captures all the rule table queries for the group
+                rule_table_queries: list[RuleTableQuery] = []
 
                 # for each rule in a group
                 for current_rule in current_group.rules:
@@ -171,20 +178,9 @@ class AvailabilitySolver:
                     # "time" : "|1:TIME:M" in the payload means that
                     # if the | is on the left of the value it was less than 1 month
                     # if it was "1|:TIME:M" it would mean greater than one month
-                    left_value_time: str | None = None
-                    right_value_time: str | None = None
-
-                    # if a time is supplied split the string out to component parts
-                    if current_rule.time:
-                        time_value, time_category, _ = current_rule.time.split(":")
-                        left_value_time, right_value_time = time_value.split("|")
-
-                    # if a number was supplied, it is in the format "value" : "0.0|200.0"
-                    # therefore split to capture min as 0 and max as 200
-                    if current_rule.raw_range and current_rule.raw_range != "":
-                        min_str, max_str = current_rule.raw_range.split("|")
-                        current_rule.min_value = float(min_str) if min_str else None
-                        current_rule.max_value = float(max_str) if max_str else None
+                    left_value_time: str | None = current_rule.left_value_time
+                    right_value_time: str | None = current_rule.right_value_time
+                    time_category: str | None = current_rule.time_category
 
                     # if the rule was not linked to a person variable
                     if current_rule.varcat != "Person":
@@ -195,14 +191,14 @@ class AvailabilitySolver:
                         # reliable longer term.
 
                         # initial setting for the four tables
-                        self.condition: Select[Tuple[int]] = select(
+                        condition_query: Select[Tuple[int]] = select(
                             ConditionOccurrence.person_id
                         )
-                        self.drug: Select[Tuple[int]] = select(DrugExposure.person_id)
-                        self.measurement: Select[Tuple[int]] = select(
+                        drug_query: Select[Tuple[int]] = select(DrugExposure.person_id)
+                        measurement_query: Select[Tuple[int]] = select(
                             Measurement.person_id
                         )
-                        self.observation: Select[Tuple[int]] = select(
+                        observation_query: Select[Tuple[int]] = select(
                             Observation.person_id
                         )
 
@@ -215,13 +211,16 @@ class AvailabilitySolver:
                         if (
                             left_value_time is not None or right_value_time is not None
                         ) and time_category == "AGE":
-                            self._add_age_constraints(left_value_time, right_value_time)
+                            condition_query, drug_query, measurement_query, observation_query = self._add_age_constraints(
+                                left_value_time, right_value_time, condition_query, drug_query, measurement_query, observation_query
+                            )
 
                         """"
                         STANDARD CONCEPT ID SEARCH
                         """
-
-                        self._add_standard_concept(current_rule)
+                        condition_query, drug_query, measurement_query, observation_query = self._add_standard_concept(
+                            current_rule, condition_query, drug_query, measurement_query, observation_query
+                        )
 
                         """"
                         SECONDARY MODIFIER
@@ -229,12 +228,14 @@ class AvailabilitySolver:
                         # secondary modifier hits another field and only on the condition_occurrence
                         # on the RQuest GUI this is a list that can be created. Assuming this is also an
                         # AND condition for at least one of the selected values to be present
-                        self._add_secondary_modifiers(current_rule)
+                        condition_query = self._add_secondary_modifiers(current_rule, condition_query)
 
                         """"
                         VALUES AS NUMBER
                         """
-                        self._add_range_as_number(current_rule)
+                        measurement_query, observation_query = self._add_range_as_number(
+                            current_rule, measurement_query, observation_query
+                        )
 
                         """"
                         RELATIVE TIME SEARCH SECTION
@@ -246,39 +247,23 @@ class AvailabilitySolver:
                             and (left_value_time != "" or right_value_time != "")
                             and time_category == "TIME"
                         ):
-                            self._add_relative_date(left_value_time, right_value_time)
+                            condition_query, drug_query, measurement_query, observation_query = self._add_relative_date(
+                                left_value_time, right_value_time, condition_query, drug_query, measurement_query, observation_query
+                            )
 
                         """"
                         PREPARING THE LISTS FOR LATER USE
                         """
-
-                        # List of tables and their corresponding foreign keys
-                        table_constraints = [
-                            (self.measurement, Measurement.person_id),
-                            (self.observation, Observation.person_id),
-                            (self.condition, ConditionOccurrence.person_id),
-                            (self.drug, DrugExposure.person_id),
-                        ]
-
                         # a switch between whether the criteria are inclusion or exclusion
                         inclusion_criteria: bool = current_rule.operator == "="
 
-                        # a list for all the conditions for the rule, each rule generates searches
-                        # in four tables, this field captures that
-                        table_rule_constraints: list[ColumnElement[bool]] = []
-
-                        for table, fk in table_constraints:
-                            constraint: Exists = exists(
-                                table.where(fk == Person.person_id)
-                            )
-                            table_rule_constraints.append(
-                                constraint if inclusion_criteria else ~constraint
-                            )
-
-                        if inclusion_criteria:
-                            list_for_rules.append(or_(*table_rule_constraints))
-                        else:
-                            list_for_rules.append(and_(*table_rule_constraints))
+                        # Store the table queries for this rule to be used later in UNION
+                        # Union all table queries for this rule
+                        rule_union = union(measurement_query, observation_query, condition_query, drug_query)
+                        rule_table_queries.append({
+                            'union_query': rule_union,
+                            'inclusion': inclusion_criteria
+                        })
 
                     else:
                         """
@@ -291,198 +276,310 @@ class AvailabilitySolver:
                 """
                 NOTE: all rules done for a single group. Now to apply logic between the rules
                 """
+                # Build the group query using UNION approach
+                group_query = self._construct_group_query(
+                    current_group, 
+                    person_constraints_for_group,
+                    rule_table_queries
+                )
 
-                ## if the logic between the rules for each group is AND
-                if current_group.rules_operator == "AND":
-                    # all person rules are added first
-                    group_query: Select[Tuple[int]] = select(Person.person_id).where(
-                        *person_constraints_for_group
-                    )
-
-                    for current_constraint in list_for_rules:
-                        group_query = group_query.where(current_constraint)
-
-                else:
-                    # this might seem odd, but to add the rules as OR, we have to add them
-                    # all at once, therefore listAllParameters is to create one list with
-                    # everything added. So we can then add as one operation as OR
-                    all_parameters = []
-
-                    # firstly add the person constrains
-                    for all_constraints_for_person in person_constraints_for_group:
-                        all_parameters.append(all_constraints_for_person)
-
-                    # to get all the constraints in one list, we have to unpack the top-level grouping
-                    # list_for_rules contains all the group of constraints for each rule
-                    # therefore, we get each group, then for each group, we get each constraint
-                    for current_expression in list_for_rules:
-                        all_parameters.append(current_expression)
-
-                    # all added as an OR
-                    group_query = select(Person.person_id).where(or_(*all_parameters))
-
-                # store the query for the given group in the list for assembly later across all groups
-                all_groups_queries.append(Person.person_id.in_(group_query))
+                # Store the group query for later assembly
+                all_groups_queries.append(group_query)
+                logger.debug(f"Total groups stored: {len(all_groups_queries)}")
 
             """
             ALL GROUPS COMPLETED, NOW APPLY LOGIC BETWEEN GROUPS
             """
-
-            # construct the query based on the OR/AND logic specified between groups
-            if self.query.cohort.groups_operator == "OR":
-                if rounding > 0:
-                    full_query_all_groups = select(
-                        func.round((func.count() / rounding), 0) * rounding
-                    ).where(or_(*all_groups_queries))
-                else:
-                    full_query_all_groups = select(func.count()).where(
-                        or_(*all_groups_queries)
-                    )
-            else:
-                if rounding > 0:
-                    full_query_all_groups = select(
-                        func.round((func.count() / rounding), 0) * rounding
-                    ).where(*all_groups_queries)
-                else:
-                    full_query_all_groups = select(func.count()).where(
-                        *all_groups_queries
-                    )
+            # construct the query based on the OR/AND logic specified between groups using CTEs
+            final_query = self._construct_final_query(all_groups_queries, rounding)
 
             if low_number > 0:
-                full_query_all_groups = full_query_all_groups.having(
+                final_query = final_query.having(
                     func.count() >= low_number
                 )
 
             # here for debug, prints the SQL statement created
             logger.debug(
                 str(
-                    full_query_all_groups.compile(
+                    final_query.compile(
                         dialect=self.db_client.engine.dialect,
                         compile_kwargs={"literal_binds": True},
                     )
                 )
             )
 
-            output = con.execute(full_query_all_groups).fetchone()
+            output = con.execute(final_query).fetchone()
             count = int(output[0]) if output is not None else 0
 
         return apply_filters(count, results_modifier)
 
-    def _add_range_as_number(self, current_rule: Rule) -> None:
+    def _construct_final_query(
+        self, 
+        all_groups_queries: list[Union[Select[Tuple[int]], CompoundSelect]], 
+        rounding: int
+    ) -> Select[Tuple[int]]:
+        """
+        Construct the final query by applying OR/AND logic between groups using CTEs.
+        
+        Args:
+            all_groups_queries: List of queries for each group
+            rounding: Rounding factor for the final count
+            
+        Returns:
+            The final query that counts the results with appropriate rounding
+        """
+        if self.query.cohort.groups_operator == "OR":
+            # For OR logic between groups, use UNION with CTEs
+            if all_groups_queries:
+                # Create CTEs for all group queries
+                group_ctes = []
+                for i, query in enumerate(all_groups_queries):
+                    cte_name = f"final_group_{i}"
+                    cte = query.cte(name=cte_name)
+                    group_ctes.append(cte)
+
+                # Union all group CTEs by selecting from them
+                group_union_queries = [select(cte) for cte in group_ctes]
+                final_union = union(*group_union_queries)
+
+                if rounding > 0:
+                    full_query_all_groups = select(
+                        func.round((func.count() / rounding), 0) * rounding
+                    ).select_from(final_union.subquery())
+                else:
+                    full_query_all_groups = select(func.count()).select_from(final_union.subquery())
+            else:
+                # Fallback to empty query
+                full_query_all_groups = select(func.count()).where(literal(False))
+        else:
+            # For AND logic between groups, use INTERSECT with CTEs
+            if all_groups_queries:
+                # Create CTEs for all group queries
+                group_ctes = []
+                for i, query in enumerate(all_groups_queries):
+                    cte_name = f"final_group_{i}"
+                    cte = query.cte(name=cte_name)
+                    group_ctes.append(cte)
+
+                # Use INTERSECT for AND logic between groups
+                group_intersect_queries = [select(cte) for cte in group_ctes]
+                final_intersect = intersect(*group_intersect_queries)
+
+                if rounding > 0:
+                    full_query_all_groups = select(
+                        func.round((func.count() / rounding), 0) * rounding
+                    ).select_from(final_intersect.subquery())
+                else:
+                    full_query_all_groups = select(func.count()).select_from(final_intersect.subquery())
+
+            else:
+                # Fallback to empty query
+                full_query_all_groups = select(func.count()).where(literal(False))
+                
+        return full_query_all_groups
+
+    def _construct_group_query(
+        self, 
+        current_group: Group, 
+        person_constraints_for_group: list[ColumnElement[bool]],
+        rule_table_queries: list[RuleTableQuery]
+    ) -> Union[Select[Tuple[int]], CompoundSelect]:
+        """
+        Construct the query for a single group by processing inclusion/exclusion rules.
+        
+        Args:
+            current_group: The group to construct a query for
+            person_constraints_for_group: Person-level constraints for this group
+            rule_table_queries: List of rule table queries for this group
+            
+        Returns:
+            The constructed group query
+        """
+        # Build the group query using UNION approach
+        group_queries: list[Union[Select[Tuple[int]], CompoundSelect]] = []
+        exclusion_queries: list[Union[Select[Tuple[int]], CompoundSelect]] = []
+
+        # Add person constraints as a separate query
+        if person_constraints_for_group:
+            person_query = select(Person.person_id).where(*person_constraints_for_group)
+            group_queries.append(person_query)
+
+        # Add table queries for each rule
+        if rule_table_queries:
+            logger.debug(f"Processing {len(rule_table_queries)} rule table queries")
+            for i, rule_data in enumerate(rule_table_queries):
+                union_query = rule_data['union_query']
+                inclusion = rule_data['inclusion']
+                logger.debug(f"Rule {i}: inclusion={inclusion}")
+
+                if inclusion:
+                    # For inclusion: add the union directly
+                    group_queries.append(union_query)
+                    logger.debug(f"Added inclusion query for rule {i}")
+                else:
+                    # For exclusion: store the union query to exclude people who match
+                    exclusion_queries.append(union_query)
+                    logger.debug(f"Added exclusion query for rule {i}")
+        else:
+            logger.debug("No rule table queries found")
+
+        # Create the final group query (without CTEs at this level)
+        if group_queries:
+            if current_group.rules_operator == "AND":
+                # For AND logic, use INTERSECT which is more efficient than joins
+                group_query: Union[Select[Tuple[int]], CompoundSelect] = group_queries[0]
+                for query in group_queries[1:]:
+                    group_query = intersect(group_query, query)
+            else:
+                # For OR logic, use UNION
+                group_query = union(*group_queries)
+        else:
+            # Start with all people if no inclusion queries
+            group_query = select(Person.person_id)
+
+        # Handle exclusion queries - remove people who match exclusion criteria
+        if exclusion_queries:
+            logger.debug(f"Processing {len(exclusion_queries)} exclusion queries")
+            try:
+                # Union all exclusion queries
+                exclusion_union = union(*exclusion_queries)
+                logger.debug("Exclusion union created successfully")
+
+                # Exclude people who match any exclusion criteria
+                group_query = select(Person.person_id).where(
+                    ~Person.person_id.in_(select(exclusion_union.subquery()))
+                )
+                logger.debug("Exclusion queries processed successfully")
+            except Exception as e:
+                logger.error(f"Error processing exclusion queries: {e}")
+                raise
+
+        return group_query
+
+    def _add_range_as_number(
+        self, 
+        current_rule: Rule, 
+        measurement_query: Select[Tuple[int]], 
+        observation_query: Select[Tuple[int]]
+    ) -> tuple[Select[Tuple[int]], Select[Tuple[int]]]:
         if current_rule.min_value is not None and current_rule.max_value is not None:
-            self.measurement = self.measurement.where(
+            measurement_query = measurement_query.where(
                 Measurement.value_as_number.between(
                     float(current_rule.min_value), float(current_rule.max_value)
                 )
             )
-            self.observation = self.observation.where(
+            observation_query = observation_query.where(
                 Observation.value_as_number.between(
                     float(current_rule.min_value), float(current_rule.max_value)
                 )
             )
 
+        return measurement_query, observation_query
+
     def _add_age_constraints(
-        self, left_value_time: str | None, right_value_time: str | None
-    ) -> None:
+        self, left_value_time: str | None, right_value_time: str | None,
+        condition_query: Select[Tuple[int]], drug_query: Select[Tuple[int]],
+        measurement_query: Select[Tuple[int]], observation_query: Select[Tuple[int]]
+    ) -> tuple[Select[Tuple[int]], Select[Tuple[int]], Select[Tuple[int]], Select[Tuple[int]]]:
+        """
+        This function adds age constraints to the query.
+        If the left value is empty it indicates a less than search.
+
+        Args:
+            left_value_time: The left value of the time constraint.
+            right_value_time: The right value of the time constraint.
+
+        Returns:
+            None
+        """
         if left_value_time is None or right_value_time is None:
-            return
-
-        self.condition = self.condition.join(
-            Person, Person.person_id == ConditionOccurrence.person_id
-        )
-        self.drug = self.drug.join(Person, Person.person_id == DrugExposure.person_id)
-        self.measurement = self.measurement.join(
-            Person, Person.person_id == Measurement.person_id
-        )
-        self.observation = self.observation.join(
-            Person, Person.person_id == Observation.person_id
-        )
-
-        # due to the way the query is expressed and how split above, if the left value is empty
-        # it indicates a less than search
+            return condition_query, drug_query, measurement_query, observation_query
 
         if left_value_time == "":
-            self.condition = self.condition.where(
-                self._get_year_difference(
-                    self.db_client.engine,
-                    ConditionOccurrence.condition_start_datetime,
-                    Person.birth_datetime,
-                )
-                < int(right_value_time)
-            )
-            self.drug = self.drug.where(
-                self._get_year_difference(
-                    self.db_client.engine,
-                    DrugExposure.drug_exposure_start_date,
-                    Person.birth_datetime,
-                )
-                < int(right_value_time)
-            )
-            self.measurement = self.measurement.where(
-                self._get_year_difference(
-                    self.db_client.engine,
-                    Measurement.measurement_date,
-                    Person.birth_datetime,
-                )
-                < int(right_value_time)
-            )
-            self.observation = self.observation.where(
-                self._get_year_difference(
-                    self.db_client.engine,
-                    Observation.observation_date,
-                    Person.birth_datetime,
-                )
-                < int(right_value_time)
-            )
+            comparator = op.lt
+            age_value = int(right_value_time)
         else:
-            self.condition = self.condition.where(
-                self._get_year_difference(
-                    self.db_client.engine,
-                    ConditionOccurrence.condition_start_date,
-                    Person.birth_datetime,
-                )
-                > int(left_value_time)
-            )
-            self.drug = self.drug.where(
-                self._get_year_difference(
-                    self.db_client.engine,
-                    DrugExposure.drug_exposure_start_date,
-                    Person.birth_datetime,
-                )
-                > int(left_value_time)
-            )
-            self.measurement = self.measurement.where(
-                self._get_year_difference(
-                    self.db_client.engine,
-                    Measurement.measurement_date,
-                    Person.birth_datetime,
-                )
-                > int(left_value_time)
-            )
-            self.observation = self.observation.where(
-                self._get_year_difference(
-                    self.db_client.engine,
-                    Observation.observation_date,
-                    Person.birth_datetime,
-                )
-                > int(left_value_time)
-            )
+            comparator = op.gt
+            age_value = int(left_value_time)
+
+        condition_query = self._apply_age_constraint_to_table(
+            condition_query,
+            ConditionOccurrence.person_id,
+            ConditionOccurrence.condition_start_date,
+            comparator,
+            age_value,
+        )
+        drug_query = self._apply_age_constraint_to_table(
+            drug_query,
+            DrugExposure.person_id,
+            DrugExposure.drug_exposure_start_date,
+            comparator,
+            age_value,
+        )
+        measurement_query = self._apply_age_constraint_to_table(
+            measurement_query,
+            Measurement.person_id,
+            Measurement.measurement_date,
+            comparator,
+            age_value,
+        )
+        observation_query = self._apply_age_constraint_to_table(
+            observation_query,
+            Observation.person_id,
+            Observation.observation_date,
+            comparator,
+            age_value,
+        )
+
+        return condition_query, drug_query, measurement_query, observation_query
+
+    def _apply_age_constraint_to_table(
+        self,
+        table_query: Select[Tuple[int]],
+        table_person_id: ClauseElement,
+        table_date_column: ClauseElement,
+        operator_func: Callable[[Any, Any], BinaryExpression[bool]],
+        age_value: int,
+    ) -> Select[Tuple[int]]:
+        """
+        Helper method to apply age constraints to a table query.
+
+        Args:
+            table_query: The table query to apply the age constraint to.
+            table_person_id: The person_id column in the table.
+            table_date_column: The date column in the table.
+            operator_func: The operator function to use in the constraint.
+            age_value: The age value to use in the constraint.
+
+        Returns:
+            The table query with the age constraint applied.
+        """
+        age_difference = self._get_year_difference(
+            self.db_client.engine, table_date_column, Person.year_of_birth
+        )
+
+        constraint = operator_func(age_difference, age_value)
+
+        # Use proper join instead of cross-join
+        return table_query.join(Person, Person.person_id == table_person_id).where(constraint)
 
     def _get_year_difference(
-        self, engine: Engine, start_date: ClauseElement, birth_date: ClauseElement
-    ) -> ColumnElement[int]:
-        if engine.dialect.name == "postgresql":
-            return func.date_part("year", start_date) - func.date_part(
-                "year", birth_date
-            )
+    self, engine: Engine, start_date: ClauseElement, year_of_birth: ClauseElement
+) -> ColumnElement[int]:
+        if engine.dialect.name in ("postgresql", "postgres"):
+            result = func.date_part("year", start_date) - year_of_birth
+            return result
         elif engine.dialect.name == "mssql":
-            return func.DATEPART(text("year"), start_date) - func.DATEPART(
-                text("year"), birth_date
-            )
+            result = func.DATEPART(text("year"), start_date) - year_of_birth
+            return result
         else:
-            raise NotImplementedError("Unsupported database dialect")
+            logger.error(f"Unsupported database dialect: {engine.dialect.name}")
+            raise NotImplementedError(f"Unsupported database dialect: {engine.dialect.name}")
 
-    def _add_relative_date(self, left_value_time: str, right_value_time: str) -> None:
+    def _add_relative_date(self, left_value_time: str, right_value_time: str,
+        condition_query: Select[Tuple[int]], drug_query: Select[Tuple[int]],
+        measurement_query: Select[Tuple[int]], observation_query: Select[Tuple[int]]
+    ) -> tuple[Select[Tuple[int]], Select[Tuple[int]], Select[Tuple[int]], Select[Tuple[int]]]:
         time_value_supplied: str
 
         # have to toggle between left and right, given |1 means less than 1 and
@@ -505,31 +602,33 @@ class AvailabilitySolver:
         # therefore the logic is to search for a date that is after the date
         # that was a month ago.
         if left_value_time == "":
-            self.measurement = self.measurement.where(
+            measurement_query = measurement_query.where(
                 Measurement.measurement_date >= relative_date
             )
-            self.observation = self.observation.where(
+            observation_query = observation_query.where(
                 Observation.observation_date >= relative_date
             )
-            self.condition = self.condition.where(
+            condition_query = condition_query.where(
                 ConditionOccurrence.condition_start_date >= relative_date
             )
-            self.drug = self.drug.where(
+            drug_query = drug_query.where(
                 DrugExposure.drug_exposure_start_date >= relative_date
             )
         else:
-            self.measurement = self.measurement.where(
+            measurement_query = measurement_query.where(
                 Measurement.measurement_date <= relative_date
             )
-            self.observation = self.observation.where(
+            observation_query = observation_query.where(
                 Observation.observation_date <= relative_date
             )
-            self.condition = self.condition.where(
+            condition_query = condition_query.where(
                 ConditionOccurrence.condition_start_date <= relative_date
             )
-            self.drug = self.drug.where(
+            drug_query = drug_query.where(
                 DrugExposure.drug_exposure_start_date <= relative_date
             )
+
+        return condition_query, drug_query, measurement_query, observation_query
 
     def _add_person_constraints(
         self,
@@ -548,7 +647,7 @@ class AvailabilitySolver:
                 return person_constraints_for_group
 
             age = self._get_year_difference(
-                self.db_client.engine, func.current_timestamp(), Person.birth_datetime
+                self.db_client.engine, func.current_timestamp(), Person.year_of_birth
             )
             person_constraints_for_group.append(age >= min_value)
             person_constraints_for_group.append(age <= max_value)
@@ -585,7 +684,7 @@ class AvailabilitySolver:
 
         return person_constraints_for_group
 
-    def _add_secondary_modifiers(self, current_rule: Rule) -> None:
+    def _add_secondary_modifiers(self, current_rule: Rule, condition_query: Select[Tuple[int]]) -> Select[Tuple[int]]:
         # Not sure where, but even when a secondary modifier is not supplied, an array
         # with a single entry is provided.
         secondary_modifier_list = []
@@ -597,18 +696,22 @@ class AvailabilitySolver:
                 )
 
         if len(secondary_modifier_list) > 0:
-            self.condition = self.condition.where(or_(*secondary_modifier_list))
+            condition_query = condition_query.where(or_(*secondary_modifier_list))
 
-    def _add_standard_concept(self, current_rule: Rule) -> None:
-        self.condition = self.condition.where(
+        return condition_query
+
+    def _add_standard_concept(self, current_rule: Rule, condition_query: Select[Tuple[int]], drug_query: Select[Tuple[int]], measurement_query: Select[Tuple[int]], observation_query: Select[Tuple[int]]) -> tuple[Select[Tuple[int]], Select[Tuple[int]], Select[Tuple[int]], Select[Tuple[int]]]:
+        condition_query = condition_query.where(
             ConditionOccurrence.condition_concept_id == int(current_rule.value)
         )
-        self.drug = self.drug.where(
+        drug_query = drug_query.where(
             DrugExposure.drug_concept_id == int(current_rule.value)
         )
-        self.measurement = self.measurement.where(
+        measurement_query = measurement_query.where(
             Measurement.measurement_concept_id == int(current_rule.value)
         )
-        self.observation = self.observation.where(
+        observation_query = observation_query.where(
             Observation.observation_concept_id == int(current_rule.value)
         )
+
+        return condition_query, drug_query, measurement_query, observation_query

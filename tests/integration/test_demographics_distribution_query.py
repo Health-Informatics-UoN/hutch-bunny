@@ -2,10 +2,12 @@ import pytest
 from hutch_bunny.core.solvers.query_solvers import solve_distribution
 from hutch_bunny.core.rquest_models.result import RquestResult
 from hutch_bunny.core.rquest_models.file import File
+from hutch_bunny.core.rquest_models.distribution import DistributionQuery
+from hutch_bunny.core.db_manager import SyncDBManager
 
 
 @pytest.fixture
-def distribution_example():
+def distribution_example() -> RquestResult:
     return RquestResult(
         uuid="unique_id",
         status="ok",
@@ -29,7 +31,9 @@ def distribution_example():
 
 
 @pytest.fixture
-def distribution_result(db_manager, distribution_query):
+def distribution_result(
+    db_manager: SyncDBManager, distribution_query: DistributionQuery
+) -> RquestResult:
     db_manager.list_tables()
     return solve_distribution(
         results_modifier=[], db_manager=db_manager, query=distribution_query
@@ -37,27 +41,29 @@ def distribution_result(db_manager, distribution_query):
 
 
 @pytest.mark.integration
-def test_solve_distribution_returns_result(distribution_result):
+def test_solve_distribution_returns_result(distribution_result: RquestResult) -> None:
     assert isinstance(distribution_result, RquestResult)
 
 
 @pytest.mark.integration
-def test_solve_distribution_is_ok(distribution_result):
+def test_solve_distribution_is_ok(distribution_result: RquestResult) -> None:
     assert distribution_result.status == "ok"
 
 
 @pytest.mark.integration
-def test_solve_distribution_files_count(distribution_result):
-    assert len(distribution_result.files) == 1
+def test_solve_distribution_files_count(distribution_result: RquestResult) -> None:
+    assert len(distribution_result.files) == 1  # Result file + metadata file
 
 
 @pytest.mark.integration
-def test_solve_distribution_files_type(distribution_result):
+def test_solve_distribution_files_type(distribution_result: RquestResult) -> None:
     assert isinstance(distribution_result.files[0], File)
 
 
 @pytest.mark.integration
-def test_solve_distribution_match_query(distribution_result, distribution_example):
+def test_solve_distribution_match_query(
+    distribution_result: RquestResult, distribution_example: RquestResult
+) -> None:
     assert distribution_result.files[0].name == distribution_example.files[0].name
     assert distribution_result.files[0].type_ == distribution_example.files[0].type_
     assert (
