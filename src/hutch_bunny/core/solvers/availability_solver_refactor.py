@@ -16,7 +16,7 @@ from sqlalchemy import (
     text,
     intersect,
     union,
-    Exists
+    literal
 )
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
@@ -25,8 +25,7 @@ from hutch_bunny.core.entities import (
     Measurement,
     Observation,
     Person,
-    DrugExposure,
-    ProcedureOccurrence,
+    DrugExposure
 )
 from tenacity import (
     retry,
@@ -36,7 +35,7 @@ from tenacity import (
     after_log,
 )
 
-from typing import Tuple, Literal
+from typing import Tuple 
 from sqlalchemy import exists
 
 from hutch_bunny.core.obfuscation import apply_filters
@@ -45,7 +44,6 @@ from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from sqlalchemy.engine import Engine
 from hutch_bunny.core.logger import logger, INFO
 
-from hutch_bunny.core.settings import Settings
 from hutch_bunny.core.rquest_models.rule import Rule
 import operator as op
 
@@ -191,14 +189,35 @@ class OMOPRuleQueryBuilder:
 
     def add_temporal_constraint(
         self,
-        left_value_time: str,
-        right_value_time: str
+        left_value_time: int | str,
+        right_value_time: int | str
     ) -> 'OMOPRuleQueryBuilder':
         """
-        Add temporal constraints relative to current date.
+        Adds a temporal constraint to OMOP queries relative to the current date,
+        using pre-parsed time values representing months.
+
+        Exactly one of `left_value_time` or `right_value_time` should be provided as
+        a numeric string (e.g., "6"), representing months. The other should be an
+        empty string.
+
+        The method filters events to either before or after the computed relative
+        date based on which time value is supplied:
+        - If `left_value_time` is given, events before (<=) that relative date are included.
+        - If `left_value_time` is empty, events after (>=) the `right_value_time` relative date are included.
 
         Args:
+            left_value_time (str): Left-side time bound in months as a numeric string,
+                or empty string if unused.
+            right_value_time (str): Right-side time bound in months as a numeric string,
+                or empty string if unused.
 
+        Returns:
+            OMOPRuleQueryBuilder: The current instance with updated query filters.
+
+        Notes:
+        - This method assumes the input strings have already been parsed and
+          validated (e.g., "|6" converted to "6") before being passed in.
+        - The time values represent months relative to the current date.
         """
         if left_value_time == "":
             time_value_supplied = right_value_time
@@ -256,7 +275,7 @@ class OMOPRuleQueryBuilder:
         )
         return self
 
-    def add_secondary_modifiers(self, secondary_modifiers: list[int]) -> 'QueryBuilder':
+    def add_secondary_modifiers(self, secondary_modifiers: list[int]) -> 'OMOPRuleQueryBuilder':
         """Add secondary modifier constraints (only applies to conditions)."""
         if not secondary_modifiers:
             return self
@@ -452,7 +471,7 @@ class AvailabilitySolver():
 
         return self._construct_group_query(group, person_constraints, rule_table_queries)
 
-    def _build_rule_query(self, rule: Rule) -> ColumnElement[bool]:
+    def _build_rule_query(self, rule: Rule) -> CompoundSelect:
         """Build query for a single non-Person rule."""
         builder = OMOPRuleQueryBuilder(self.db_manager)
 
