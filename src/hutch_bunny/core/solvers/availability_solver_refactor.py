@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from datetime import datetime
 
 import pandas as pd
@@ -272,7 +271,7 @@ class OMOPRuleQueryBuilder:
 
         return self
 
-    def build(self) -> ColumnElement[bool]:
+    def build(self) -> CompoundSelect:
         """
         Build UNION query across all tables for this rule.
 
