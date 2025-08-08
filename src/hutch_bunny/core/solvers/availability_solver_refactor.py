@@ -189,8 +189,8 @@ class OMOPRuleQueryBuilder:
 
     def add_temporal_constraint(
         self,
-        left_value_time: int | str,
-        right_value_time: int | str
+        left_value_time: str, 
+        right_value_time: str 
     ) -> 'OMOPRuleQueryBuilder':
         """
         Adds a temporal constraint to OMOP queries relative to the current date,
@@ -219,6 +219,20 @@ class OMOPRuleQueryBuilder:
           validated (e.g., "|6" converted to "6") before being passed in.
         - The time values represent months relative to the current date.
         """
+
+        if not left_value_time and not right_value_time:
+            raise ValueError(
+                "Temporal constraint requires exactly one time value. "
+                "Both left_value_time and right_value_time are empty."
+            )
+        
+        if left_value_time and right_value_time:
+            raise ValueError(
+                "Temporal constraint requires exactly one time value. "
+                f"Both values were provided: left='{left_value_time}', right='{right_value_time}'. "
+                "One must be an empty string."
+            )
+
         if left_value_time == "":
             time_value_supplied = right_value_time
         else:
