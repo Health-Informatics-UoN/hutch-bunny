@@ -277,18 +277,46 @@ class OMOPRuleQueryBuilder:
         min_value: float = None,
         max_value: float = None
     ) -> 'OMOPRuleQueryBuilder':
-        self.measurement_query = self.measurement_query.where(
-            Measurement.value_as_number.between(
-                float(min_value), float(max_value)
+        """
+        Add numeric range constraints to measurement and observation queries.
+        
+        Args:
+            min_value: Minimum value (inclusive)
+            max_value: Maximum value (inclusive)
+            
+        Returns:
+            Self for method chaining
+            
+        Raises:
+            ValueError: If only one bound is provided or if min > max
+        """
+        if min_value is None and max_value is None:
+            return self
+        
+        if min_value is None or max_value is None:
+            raise ValueError(
+                "Both min_value and max_value must be provided for numeric range. "
+                f"Got min_value={min_value}, max_value={max_value}"
             )
+        
+        min_val = float(min_value)
+        max_val = float(max_value)
+
+        if min_val > max_val:
+            raise ValueError(
+                f"min_value must be less than or equal to max_value. "
+                f"Got min_value={min_val}, max_value={max_val}"
+            )
+
+        self.measurement_query = self.measurement_query.where(
+        Measurement.value_as_number.between(min_val, max_val)
         )
         self.observation_query = self.observation_query.where(
-            Observation.value_as_number.between(
-                float(min_value), float(max_value)
-            )
+            Observation.value_as_number.between(min_val, max_val)
         )
-        return self
 
+        return self
+    
     def add_secondary_modifiers(self, secondary_modifiers: list[int]) -> 'OMOPRuleQueryBuilder':
         """Add secondary modifier constraints (only applies to conditions)."""
         if not secondary_modifiers:
