@@ -109,7 +109,19 @@ class OMOPRuleQueryBuilder:
         left_value_time: str | None,
         right_value_time: str | None
     ) -> 'OMOPRuleQueryBuilder':
-        """Add age-at-event constraints."""
+        """
+        Apply age-at-event constraints to condition, drug, measurement, and observation queries.
+
+        Depending on which boundary is provided (left or right), this method applies a greater-than or less-than
+        comparator to filter records where the person's age at the event date satisfies the constraint.
+
+        Args:
+            left_value_time (str | None): Lower age bound as a string, or None if not specified.
+            right_value_time (str | None): Upper age bound as a string, or None if not specified.
+
+        Returns:
+            OMOPRuleQueryBuilder: The current instance with updated queries reflecting the age constraints.
+        """
         if left_value_time is None or right_value_time is None:
             return self
         if left_value_time == "":
@@ -318,7 +330,26 @@ class OMOPRuleQueryBuilder:
         return self
     
     def add_secondary_modifiers(self, secondary_modifiers: list[int]) -> 'OMOPRuleQueryBuilder':
-        """Add secondary modifier constraints (only applies to conditions)."""
+        """
+        Filter the condition query by condition_type_concept_id values.
+
+        Adds an OR-combined filter to `condition_query` so that only condition
+        occurrences whose `condition_type_concept_id` matches one of the given
+        secondary modifier IDs are included. Has no effect on other table queries.
+
+        Args:
+            secondary_modifiers (list[int]): List of `condition_type_concept_id` values
+                to filter by. If empty or None, no filter is applied.
+
+        Returns:
+            OMOPRuleQueryBuilder: The current instance for method chaining.
+        """   
+        if not isinstance(secondary_modifiers, list):
+            raise TypeError(f"Expected list[int], got {type(secondary_modifiers).__name__}")
+
+        if any(not isinstance(mod, int) for mod in secondary_modifiers):
+            raise TypeError("All secondary modifier IDs must be integers")
+        
         if not secondary_modifiers:
             return self
 
