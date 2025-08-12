@@ -379,13 +379,25 @@ class OMOPRuleQueryBuilder:
 
 
 class PersonConstraintBuilder:
-    """Builds constraints for Person table queries."""
+    """
+    Constructs SQLAlchemy filter constraints for querying the Person table
+    based on provided rules and concept mappings.
+    """
 
     def __init__(self, db_manager: SyncDBManager):
         self.db_manager = db_manager
 
     def build_constraints(self, rule: Rule, concepts: dict[str, str]) -> list[ColumnElement[bool]]:
-        """Build all constraints for a person-related rule."""
+        """
+        Generate SQL constraints for a given person-related rule.
+
+        Args:
+            rule (Rule): The rule defining the constraint parameters.
+            concepts (dict[str, str]): Mapping of concept IDs to their domains.
+
+        Returns:
+            List of SQLAlchemy boolean expressions representing the constraints.
+        """
         if rule.varname == "AGE":
             return self._build_age_constraints(rule)
 
@@ -405,7 +417,7 @@ class PersonConstraintBuilder:
             return []
 
         age = SQLDialectHandler.get_year_difference(
-            self.db_manager,
+            self.db_manager.engine,
             func.current_timestamp(),
             Person.birth_datetime
         )
