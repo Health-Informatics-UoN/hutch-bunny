@@ -64,19 +64,16 @@ class SQLDialectHandler:
     def get_year_difference(
         engine: Engine,
         start_date: ClauseElement,
-        birth_date: ClauseElement
+        year_of_birth: ClauseElement  # Changed from birth_date
     ) -> ColumnElement[int]:
         if engine.dialect.name == "postgresql":
-            return func.date_part("year", start_date) - func.date_part(
-                "year", birth_date
-            )
+            # When using year_of_birth, just subtract directly
+            return func.date_part("year", start_date) - year_of_birth
         elif engine.dialect.name == "mssql":
-            return func.DATEPART(text("year"), start_date) - func.DATEPART(
-                text("year"), birth_date
-            )
+            return func.DATEPART(text("year"), start_date) - year_of_birth
         else:
             raise NotImplementedError("Unsupported database dialect")
-
+        
 
 class OMOPRuleQueryBuilder:
     """Builder for constructing OMOP queries from availability rules."""
@@ -183,21 +180,18 @@ class OMOPRuleQueryBuilder:
             The table query with the age constraint applied.
         """
         age_difference = SQLDialectHandler.get_year_difference(
-            self.db_manager.engine, table_date_column, Person.birth_datetime
+            self.db_manager.engine, 
+            table_date_column, 
+            Person.year_of_birth  
         )
 
         constraint = operator_func(age_difference, age_value)
 
-        return table_query.where(
-            exists(
-                select(1).where(
-                    and_(
-                        Person.person_id == table_person_id,
-                        constraint,
-                    )
-                )
-            )
-        )
+        # Use JOIN instead of EXISTS for better performance
+        return table_query.join(
+            Person, 
+            Person.person_id == table_person_id
+        ).where(constraint)
 
     def add_temporal_constraint(
         self,
@@ -419,7 +413,7 @@ class PersonConstraintBuilder:
         age = SQLDialectHandler.get_year_difference(
             self.db_manager.engine,
             func.current_timestamp(),
-            Person.birth_datetime
+            Person.year_of_birth  # Changed from Person.birth_datetime
         )
         return [
             age >= rule.min_value,
@@ -467,8 +461,8 @@ class AvailabilitySolver():
     def solve_rules(self, results_modifiers: list[ResultModifier]) -> int:
         """Main query resolution."""
         concepts = self._find_concepts(self.query.cohort.groups)
-        low_number = self._extract_modifier(results_modifiers, "Low Number Suppression")
-        rounding = self._extract_modifier(results_modifiers, "Rounding")
+        low_number = self._extract_modifier(results_modifiers, "Low Number Suppression", "threshold", 10)
+        rounding = self._extract_modifier(results_modifiers, "Rounding", "nearest", 10)
 
         with self.db_manager.engine.connect() as con:
             group_queries = []
@@ -522,13 +516,14 @@ class AvailabilitySolver():
         self,
         results_modifiers: list[ResultModifier],
         result_id: str,
+        key: str,                  # new parameter for the key to extract
         default_value: int = 10
     ) -> int:
         return next(
             (
-                item["threshold"] if item["threshold"] is not None else 10
+                item[key] if item.get(key) is not None else default_value
                 for item in results_modifiers
-                if item["id"] == result_id
+                if item.get("id") == result_id
             ),
             default_value,
         )
