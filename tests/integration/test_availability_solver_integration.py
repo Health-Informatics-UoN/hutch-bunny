@@ -79,7 +79,7 @@ class TestBuildRuleQuery:
         
         mock_query = Mock(spec=AvailabilityQuery)
         availability_solver = AvailabilitySolver(db_manager, mock_query)
-        
+
         query = availability_solver._build_rule_query(rule)
         
         with db_manager.engine.connect() as conn:
@@ -106,6 +106,33 @@ class TestBuildRuleQuery:
             person_ids_no_age = {row[0] for row in result_no_age}
             
             assert len(person_ids) < len(person_ids_no_age)
+    
+    @pytest.mark.freeze_time("2025-08-13")
+    def test_time_relative_constraint(self, db_manager: SyncDBManager) -> None:
+        """Test time-relative constraints (within last X months)."""
+        rule = Rule(
+            varname="OMOP",
+            varcat="Condition",
+            type_="TEXT",
+            operator="=",
+            value="260139",
+            time="1|:TIME:M"  # Within last month
+        )
+
+        mock_query = Mock(spec=AvailabilityQuery)
+        availability_solver = AvailabilitySolver(db_manager, mock_query)
+        
+        query = availability_solver._build_rule_query(rule)
+        
+        with db_manager.engine.connect() as conn:
+            result = conn.execute(query)
+            person_ids = {row[0] for row in result}
+            assert len(person_ids) > 0
+            
+            sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
+            # Should have date comparison
+            assert "condition_start_date" in sql_str
+            assert "2025-07" in sql_str  # One month back from frozen time
 
 
 @pytest.mark.integration
