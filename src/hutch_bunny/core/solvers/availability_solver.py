@@ -29,7 +29,7 @@ from hutch_bunny.core.rquest_models.group import Group
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.logger import logger, INFO
 from hutch_bunny.core.rquest_models.rule import Rule
-from hutch_bunny.core.solvers.query_builders import OMOPRuleQueryBuilder, PersonConstraintBuilder
+from hutch_bunny.core.solvers.rule_query_builders import OMOPRuleQueryBuilder, PersonConstraintBuilder
 
 
 class ResultModifier(TypedDict):
