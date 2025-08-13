@@ -327,7 +327,7 @@ class OMOPRuleQueryBuilder:
             )
 
         self.measurement_query = self.measurement_query.where(
-        Measurement.value_as_number.between(min_val, max_val)
+            Measurement.value_as_number.between(min_val, max_val)
         )
         self.observation_query = self.observation_query.where(
             Observation.value_as_number.between(min_val, max_val)
