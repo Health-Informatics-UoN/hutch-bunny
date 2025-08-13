@@ -29,12 +29,27 @@ from hutch_bunny.core.rquest_models.rule import Rule
 
 
 class SQLDialectHandler:
+    """Handles SQL dialect-specific operations for cross-database compatibility."""
     @staticmethod
     def get_year_difference(
         engine: Engine,
         start_date: ClauseElement,
         year_of_birth: ClauseElement 
     ) -> ColumnElement[int]:
+        """
+        Calculate year difference between a date and year of birth using dialect-specific SQL.
+        
+        Args:
+            engine: SQLAlchemy engine to determine the SQL dialect.
+            start_date: Date column to calculate age from.
+            year_of_birth: Year of birth column.
+            
+        Returns:
+            SQLAlchemy expression for year difference calculation.
+            
+        Raises:
+            NotImplementedError: If the database dialect is not supported.
+        """
         if engine.dialect.name == "postgresql":
             return func.date_part("year", start_date) - year_of_birth
         elif engine.dialect.name == "mssql":
@@ -44,7 +59,17 @@ class SQLDialectHandler:
         
 
 class OMOPRuleQueryBuilder:
-    """Builder for constructing OMOP queries from availability rules."""
+    """
+    Builder for constructing OMOP CDM queries from RQuest availability rules.
+    
+    This class implements a fluent interface pattern to progressively build
+    complex SQL queries across multiple OMOP tables (Condition, Drug, Measurement,
+    and Observation) based on various constraints including concept IDs, age at
+    event, temporal windows, numeric ranges, and secondary modifiers.
+    
+    The builder maintains separate queries for each OMOP table and combines them
+    using UNION operations to find all persons matching the specified criteria.
+    """
 
     def __init__(self, db_manager: SyncDBManager):
         self.db_manager = db_manager
@@ -54,7 +79,18 @@ class OMOPRuleQueryBuilder:
         self.observation_query: Select[Tuple[int]] = select(Observation.person_id)
 
     def add_concept_constraint(self, concept_id: int) -> 'OMOPRuleQueryBuilder':
-        """Add standard concept ID constraints to all relevant tables."""
+        """
+        Add OMOP concept ID constraints to filter records across all tables.
+        
+        Applies WHERE clauses to each table query to filter for records matching
+        the specified concept ID in the appropriate concept column for each table.
+        
+        Args:
+            concept_id: OMOP concept identifier to filter by.
+            
+        Returns:
+            Self for method chaining.
+        """
         self.condition_query = self.condition_query.where(
             ConditionOccurrence.condition_concept_id == concept_id
         )
@@ -258,6 +294,9 @@ class OMOPRuleQueryBuilder:
     ) -> 'OMOPRuleQueryBuilder':
         """
         Add numeric range constraints to measurement and observation queries.
+
+        Applies BETWEEN constraint to value_as_number columns in measurement
+        and observation tables. Used for lab value ranges, vital signs, etc.
         
         Args:
             min_value: Minimum value (inclusive)
@@ -332,10 +371,18 @@ class OMOPRuleQueryBuilder:
 
     def build(self) -> CompoundSelect:
         """
-        Build UNION query across all tables for this rule.
-
+        Combine all table queries into a single UNION query.
+        
+        Creates a UNION of person_id selections from all four OMOP tables
+        (measurement, observation, condition, drug) with all applied constraints.
+        This returns all unique person_ids that match the criteria in any table.
+        
         Returns:
-            CompoundSelect: UNION of all table queries
+            CompoundSelect query that unions results from all tables.
+            
+        Note:
+            The UNION operation automatically deduplicates person_ids that
+            appear in multiple tables.
         """
         return union(
             self.measurement_query,
@@ -347,8 +394,13 @@ class OMOPRuleQueryBuilder:
 
 class PersonConstraintBuilder:
     """
-    Constructs SQLAlchemy filter constraints for querying the Person table
-    based on provided rules and concept mappings.
+    Builder for constructing Person table constraints from RQuest rules.
+    
+    This class translates person-level rules (demographics like age, gender,
+    race, ethnicity) into SQLAlchemy filter expressions that can be applied
+    to queries on the Person table. It handles concept domain mapping to
+    determine the appropriate Person table column for each concept.
+
     """
 
     def __init__(self, db_manager: SyncDBManager):
@@ -356,14 +408,22 @@ class PersonConstraintBuilder:
 
     def build_constraints(self, rule: Rule, concepts: dict[str, str]) -> list[ColumnElement[bool]]:
         """
-        Generate SQL constraints for a given person-related rule.
-
+        Generate SQLAlchemy filter expressions for Person table based on a rule.
+        
+        Analyzes the rule type and concept domain to determine the appropriate
+        constraint type (age range, gender, race, or ethnicity) and generates
+        the corresponding SQL filter expressions.
+        
         Args:
-            rule (Rule): The rule defining the constraint parameters.
-            concepts (dict[str, str]): Mapping of concept IDs to their domains.
-
+            rule: RQuest rule containing constraint parameters including varname,
+                value, operator, and numeric ranges.
+            concepts: Mapping of concept IDs to their OMOP domains (e.g., 
+                {'8507': 'Gender', '8516': 'Race'}). Used to determine which
+                Person column to filter.
+                
         Returns:
-            List of SQLAlchemy boolean expressions representing the constraints.
+            List of SQLAlchemy boolean expressions to be applied as WHERE clauses.
+            Empty list if the rule doesn't apply to Person table.
         """
         if rule.varname == "AGE":
             return self._build_age_constraints(rule)
