@@ -1,4 +1,4 @@
-from unittest.mock import Mock 
+from unittest.mock import Mock, patch
 import pytest 
 
 from hutch_bunny.core.rquest_models.rule import Rule
@@ -107,7 +107,6 @@ class TestBuildRuleQuery:
             
             assert len(person_ids) < len(person_ids_no_age)
     
-    @pytest.mark.freeze_time("2025-08-13")
     def test_time_relative_constraint(self, db_manager: SyncDBManager) -> None:
         """Test time-relative constraints (within last X months)."""
         rule = Rule(
@@ -122,6 +121,33 @@ class TestBuildRuleQuery:
         mock_query = Mock(spec=AvailabilityQuery)
         availability_solver = AvailabilitySolver(db_manager, mock_query)
         
+        with patch("hutch_bunny.core.solvers.availability_solver.SQLDialectHandler.get_year_difference") as mock_date: 
+            query = availability_solver._build_rule_query(rule)
+        
+        with db_manager.engine.connect() as conn:
+            result = conn.execute(query)
+            person_ids = {row[0] for row in result}
+            assert len(person_ids) > 0
+            
+            sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
+
+            assert "condition_start_date" in sql_str
+            assert "2025-07" in sql_str  # One month back from frozen time
+    
+    def test_measurement_with_range_and_time(self, db_manager: SyncDBManager) -> None:
+        """Test measurement with both numeric range and temporal constraint."""
+        rule = Rule(
+            varname="OMOP=46236952",
+            varcat="Measurement",
+            type_="NUM",
+            operator="=",
+            value="1.0|3.0",
+            time="|6:TIME:M"  # More than 6 months ago
+        )
+        
+        mock_query = Mock(spec=AvailabilityQuery)
+        availability_solver = AvailabilitySolver(db_manager, mock_query)
+
         query = availability_solver._build_rule_query(rule)
         
         with db_manager.engine.connect() as conn:
@@ -130,9 +156,29 @@ class TestBuildRuleQuery:
             assert len(person_ids) > 0
             
             sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
-            # Should have date comparison
-            assert "condition_start_date" in sql_str
-            assert "2025-07" in sql_str  # One month back from frozen time
+            assert "value_as_number BETWEEN" in sql_str
+            assert "measurement_date" in sql_str
+
+    def test_condition_with_age_and_modifiers(self, db_manager: SyncDBManager) -> None:
+        """Test condition with age constraint and secondary modifiers."""
+        rule = Rule(
+            varname="OMOP",
+            varcat="Condition",
+            type_="TEXT",
+            operator="=",
+            value="432867",
+            time="|50:AGE:Y",  # Before age 50
+            secondary_modifier=[32020]
+        )
+        
+        mock_query = Mock(spec=AvailabilityQuery)
+        availability_solver = AvailabilitySolver(db_manager, mock_query)
+
+        query = availability_solver._build_rule_query(rule)
+        
+        sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
+        assert "condition_type_concept_id" in sql_str
+        assert "year_of_birth" in sql_str
 
 
 @pytest.mark.integration
