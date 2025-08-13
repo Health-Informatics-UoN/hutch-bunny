@@ -7,7 +7,6 @@ from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy import (
     CompoundSelect,
     or_,
-    and_,
     func,
     BinaryExpression,
     ColumnElement,
@@ -34,9 +33,7 @@ from tenacity import (
     before_sleep_log,
     after_log,
 )
-
 from typing import Tuple 
-from sqlalchemy import exists
 
 from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.rquest_models.group import Group
