@@ -33,7 +33,7 @@ def save_to_output(result: RquestResult, destination: str) -> None:
         logger.error(str(e), exc_info=True)
 
 
-def main(argv: list[str] = None) -> None:
+def main(argv = None) -> None:
     settings: Settings = Settings()
     configure_logger(settings)
     logger.info(f"Starting Bunny version: {version('hutch_bunny')}")

@@ -119,14 +119,19 @@ class OMOPRuleQueryBuilder:
         Returns:
             OMOPRuleQueryBuilder: The current instance with updated queries reflecting the age constraints.
         """
-        if left_value_time is None or right_value_time is None:
+        if not left_value_time and not right_value_time: 
             return self
-        if left_value_time == "":
+        
+        if not left_value_time:
             comparator = op.lt
             age_value = int(right_value_time)
-        else:
+        elif not right_value_time:
             comparator = op.gt
             age_value = int(left_value_time)
+        else:
+            # Both values present - this would be a range
+            # Currently we instead apply lower and upper constraints independently
+            raise ValueError(f"Age constraint with both boundaries not implemented: {left_value_time}|{right_value_time}")
 
         self.condition_query = self._apply_age_constraint_to_table(
             self.condition_query,
@@ -447,19 +452,16 @@ class AvailabilitySolver():
         stop=stop_after_attempt(3),
         wait=wait_fixed(60),
         before_sleep=before_sleep_log(logger, INFO),
-        after=after_log(logger, INFO),
+        after=after_log(logger, INFO)
     )
-    def solve_query(self, results_modifier: list[ResultModifier]) -> int:
+    def solve_query(self, results_modifiers: list[ResultModifier]) -> int:
         """
-        This is the start of the process that begins to run the queries.
-        (1) call solve_rules that takes each group and adds those results to the sub_queries list
-        (2) this function then iterates through the list of groups to resolve the logic (AND/OR) between groups
+        Solve the availability query by:
+        1. Finding concepts and extracting modifiers
+        2. Building queries for each group
+        3. Combining groups with AND/OR logic
+        4. Executing the final query and applying filters
         """
-        # resolve within the group
-        return self.solve_rules(results_modifier)
-
-    def solve_rules(self, results_modifiers: list[ResultModifier]) -> int:
-        """Main query resolution."""
         concepts = self._find_concepts(self.query.cohort.groups)
         low_number = self._extract_modifier(results_modifiers, "Low Number Suppression", "threshold", 10)
         rounding = self._extract_modifier(results_modifiers, "Rounding", "nearest", 10)
@@ -473,8 +475,8 @@ class AvailabilitySolver():
 
             final_query = self._construct_final_query(
                 group_queries,
-                low_number,
-                rounding
+                rounding, 
+                low_number
             )
 
             output = con.execute(final_query).fetchone()
@@ -558,12 +560,13 @@ class AvailabilitySolver():
         if rule.value:
             builder.add_concept_constraint(int(rule.value))
 
-        if rule.left_value_time and rule.right_value_time and rule.time_category == "AGE":
+        valid_time_constraint = rule.left_value_time or rule.right_value_time
+        if valid_time_constraint and rule.time_category == "AGE":
             builder.add_age_constraint(
                 left_value_time=rule.left_value_time,
                 right_value_time=rule.right_value_time
             )
-        elif rule.left_value_time and rule.right_value_time and rule.time_category == "TIME":
+        elif valid_time_constraint and rule.time_category == "TIME":
             builder.add_temporal_constraint(
                 left_value_time=rule.left_value_time,
                 right_value_time=rule.right_value_time
