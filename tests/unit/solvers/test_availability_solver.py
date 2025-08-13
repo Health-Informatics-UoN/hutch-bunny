@@ -7,7 +7,7 @@ from sqlalchemy.sql import CompoundSelect
 from sqlalchemy.sql.elements import literal_column
 from sqlalchemy.dialects import postgresql
 
-from hutch_bunny.core.solvers.availability_solver_refactor import SQLDialectHandler, OMOPRuleQueryBuilder, PersonConstraintBuilder
+from hutch_bunny.core.solvers.rule_query_builders import SQLDialectHandler, OMOPRuleQueryBuilder, PersonConstraintBuilder
 
 
 class TestSQLDialectHandler:
@@ -40,16 +40,16 @@ class TestSQLDialectHandler:
         test_table = Table(
             "test", metadata,
             Column("start_date", Date),
-            Column("birth_date", Date),
+            Column("year_of_birth", Date),
         )
 
         start_date = test_table.c.start_date
-        birth_date = test_table.c.birth_date
+        year_of_birth = test_table.c.year_of_birth
 
-        result = SQLDialectHandler.get_year_difference(engine, start_date, birth_date)
+        result = SQLDialectHandler.get_year_difference(engine, start_date, year_of_birth)
 
         assert str(result) == str(
-            func.date_part("year", start_date) - func.date_part("year", birth_date)
+            func.date_part("year", start_date) - year_of_birth
         )
 
     def test_get_year_difference_mssql(self) -> None:
@@ -61,16 +61,16 @@ class TestSQLDialectHandler:
         test_table = Table(
             "test", metadata,
             Column("start_date", Date),
-            Column("birth_date", Date),
+            Column("year_of_birth", Date),
         )
 
         start_date = test_table.c.start_date
-        birth_date = test_table.c.birth_date
+        year_of_birth = test_table.c.year_of_birth
 
-        result = SQLDialectHandler.get_year_difference(engine, start_date, birth_date)
+        result = SQLDialectHandler.get_year_difference(engine, start_date, year_of_birth)
 
         assert str(result) == str(
-            func.DATEPART(text("year"), start_date) - func.DATEPART(text("year"), birth_date)
+            func.DATEPART(text("year"), start_date) - year_of_birth
         )
 
     def test_get_year_difference_with_actual_column_elements(self) -> None:
@@ -117,7 +117,7 @@ class TestOMOPRuleQueryBuilder():
 
         assert "WHERE condition_occurrence.condition_concept_id = 111" in sql_str
 
-    @patch("hutch_bunny.core.solvers.availability_solver_refactor.SQLDialectHandler.get_year_difference")
+    @patch("hutch_bunny.core.solvers.rule_query_builders.SQLDialectHandler.get_year_difference")
     def test_add_age_constraint(self, mock_get_year_diff: Mock) -> None:
         mock_get_year_diff.return_value = literal_column("25")
 
@@ -143,7 +143,7 @@ class TestOMOPRuleQueryBuilder():
         expected_date_str = relative_date.strftime("%Y-%m-%d %H:%M:%S")
         expected_sql_fragment = f"condition_occurrence.condition_start_date <= '{expected_date_str}'"
 
-        with patch("hutch_bunny.core.solvers.availability_solver_refactor.datetime") as mock_datetime: 
+        with patch("hutch_bunny.core.solvers.rule_query_builders.datetime") as mock_datetime: 
             mock_datetime.now.return_value = fixed_now
 
             mock_db_manager = Mock()
@@ -170,7 +170,7 @@ class TestOMOPRuleQueryBuilder():
         expected_date_str = relative_date.strftime("%Y-%m-%d %H:%M:%S")
         expected_sql_fragment = f"condition_occurrence.condition_start_date >= '{expected_date_str}'"
 
-        with patch("hutch_bunny.core.solvers.availability_solver_refactor.datetime") as mock_datetime: 
+        with patch("hutch_bunny.core.solvers.rule_query_builders.datetime") as mock_datetime: 
             mock_datetime.now.return_value = fixed_now
 
             mock_db_manager = Mock()
@@ -408,7 +408,7 @@ class TestPersonQueryConstraintBuilder:
         rule.min_value = 18.0
         rule.max_value = 65.0
 
-        with patch("hutch_bunny.core.solvers.availability_solver_refactor.SQLDialectHandler.get_year_difference") as mock_diff: 
+        with patch("hutch_bunny.core.solvers.rule_query_builders.SQLDialectHandler.get_year_difference") as mock_diff: 
             mock_diff.return_value = literal_column("25")
             constraints = builder._build_age_constraints(rule)
 
@@ -503,7 +503,7 @@ class TestPersonQueryConstraintBuilder:
                 # Age rule (min/max)
                 (
                     {"varname": "AGE", "min_value": 18.0, "max_value": 65.0},
-                    ["person.birth_datetime", ">=", "18.0"]
+                    ["person.year_of_birth", ">=", "18.0"]
                 ),
                 # Gender inclusion
                 (
