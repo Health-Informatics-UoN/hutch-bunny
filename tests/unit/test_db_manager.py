@@ -33,7 +33,7 @@ def test_check_tables_exist_all_tables_present(
     ]
 
     # Create a SyncDBClient instance with mocked dependencies
-    with patch("hutch_bunny.core.db_manager.inspect", return_value=mock_inspector):
+    with patch("hutch_bunny.core.db.sync.inspect", return_value=mock_inspector):
         db_client = SyncDBClient(
             username="test_user",
             password="test_password",
@@ -42,8 +42,8 @@ def test_check_tables_exist_all_tables_present(
             database="test_db",
             drivername="postgresql+psycopg",
         )
-        db_client.engine = mock_engine
-        db_client.inspector = mock_inspector
+        db_client._engine = mock_engine
+        db_client._inspector = mock_inspector
 
         # Assert the inspector was called with the correct schema
         mock_inspector.get_table_names.assert_called_once_with(schema=None)
@@ -63,7 +63,7 @@ def test_check_tables_exist_missing_tables(
     ]
 
     # Create a SyncDBClient instance with mocked dependencies
-    with patch("hutch_bunny.core.db_manager.inspect", return_value=mock_inspector):
+    with patch("hutch_bunny.core.db.sync.inspect", return_value=mock_inspector):
         with pytest.raises(RuntimeError) as exc_info:
             SyncDBClient(
                 username="test_user",
@@ -97,7 +97,7 @@ def test_check_tables_exist_with_schema(
     ]
 
     # Create a SyncDBClient instance with mocked dependencies and a schema
-    with patch("hutch_bunny.core.db_manager.inspect", return_value=mock_inspector):
+    with patch("hutch_bunny.core.db.sync.inspect", return_value=mock_inspector):
         db_client = SyncDBClient(
             username="test_user",
             password="test_password",
@@ -107,8 +107,8 @@ def test_check_tables_exist_with_schema(
             drivername="postgresql+psycopg",
             schema="test_schema",
         )
-        db_client.engine = mock_engine
-        db_client.inspector = mock_inspector
+        db_client._engine = mock_engine
+        db_client._inspector = mock_inspector
 
         # Assert the inspector was called with the correct schema
         mock_inspector.get_table_names.assert_called_once_with(schema="test_schema")
@@ -132,7 +132,7 @@ def test_check_tables_exist_with_views(
     ]
 
     # Act
-    with patch("hutch_bunny.core.db_manager.inspect", return_value=mock_inspector):
+    with patch("hutch_bunny.core.db.sync.inspect", return_value=mock_inspector):
         db_client = SyncDBClient(
             username="test_user",
             password="test_password",
@@ -141,8 +141,8 @@ def test_check_tables_exist_with_views(
             database="test_db",
             drivername="postgresql+psycopg",
         )
-        db_client.engine = mock_engine
-        db_client.inspector = mock_inspector
+        db_client._engine = mock_engine
+        db_client._inspector = mock_inspector
 
         # Assert
         mock_inspector.get_table_names.assert_called_once_with(schema=None)
@@ -158,8 +158,8 @@ def test_check_indexes_exist_missing_indexes(
     mock_inspector.get_indexes.return_value = []
 
     # Create a SyncDBClient instance with mocked dependencies
-    with patch("hutch_bunny.core.db_manager.inspect", return_value=mock_inspector):
-        with patch("hutch_bunny.core.db_manager.logger") as mock_logger:
+    with patch("hutch_bunny.core.db.sync.inspect", return_value=mock_inspector):
+        with patch("hutch_bunny.core.db.sync.logger") as mock_logger:
             # Mock _check_tables_exist to prevent it from running
             with patch.object(SyncDBClient, "_check_tables_exist"):
                 db_client = SyncDBClient(
@@ -170,8 +170,8 @@ def test_check_indexes_exist_missing_indexes(
                     database="test_db",
                     drivername="postgresql+psycopg",
                 )
-                db_client.engine = mock_engine
-                db_client.inspector = mock_inspector
+                db_client._engine = mock_engine
+                db_client._inspector = mock_inspector
 
                 # Assert a warning was logged
                 mock_logger.warning.assert_called_once()
