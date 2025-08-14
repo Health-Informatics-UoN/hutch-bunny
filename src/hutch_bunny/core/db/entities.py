@@ -9,9 +9,13 @@ from sqlalchemy import (
     DateTime,
     Text,
 )
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    """Base class for all models."""
+
+    pass
 
 
 class Concept(Base):

@@ -1,6 +1,6 @@
 [project]
 name = "hutch-bunny"
-version = "1.1.0"
+version = "1.2.0"
 description = "A Cohort Discovery Task API worker"
 license = { text = "MIT License" }
 readme = "README.md"
@@ -29,6 +29,7 @@ dependencies = [
   "pymssql>=2.3.2", # for SQL Server
   "pydantic-settings>=2.7.1",
   "tenacity>=9.1.2", # for retry
+  "azure-identity>=1.23.0",
 ]
 
 [project.scripts]

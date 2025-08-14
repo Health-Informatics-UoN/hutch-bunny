@@ -7,13 +7,20 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-class Settings(BaseSettings):  # type: ignore
+class Settings(BaseSettings):
     """
     Settings for the application
     """
 
     DATASOURCE_USE_TRINO: bool = Field(
         description="Whether to use Trino as the datasource", default=False
+    )
+    DATASOURCE_USE_AZURE_MANAGED_IDENTITY: bool = Field(
+        description="Whether to use Azure managed identity for authentication",
+        default=False,
+    )
+    DATASOURCE_AZURE_MANAGED_IDENTITY_CLIENT_ID: str | None = Field(
+        description="The client ID for Azure managed identity", default=None
     )
     LOW_NUMBER_SUPPRESSION_THRESHOLD: int = Field(
         description="The threshold for low numbers", default=10
@@ -60,7 +67,7 @@ class Settings(BaseSettings):  # type: ignore
         return self.model_dump(exclude={"DATASOURCE_DB_PASSWORD"})
 
 
-class DaemonSettings(Settings):  # type: ignore
+class DaemonSettings(Settings):
     """
     Settings for the daemon
     """

@@ -16,8 +16,8 @@ from sqlalchemy import (
     union,
     literal,
 )
-from hutch_bunny.core.db_manager import SyncDBManager
-from hutch_bunny.core.entities import (
+from hutch_bunny.core.db import BaseDBClient
+from hutch_bunny.core.db.entities import (
     Concept,
     ConditionOccurrence,
     Measurement,
@@ -74,8 +74,8 @@ class AvailabilitySolver:
         "Procedure": ProcedureOccurrence,
     }
 
-    def __init__(self, db_manager: SyncDBManager, query: AvailabilityQuery) -> None:
-        self.db_manager = db_manager
+    def __init__(self, db_client: BaseDBClient, query: AvailabilityQuery) -> None:
+        self.db_client = db_client
         self.query = query
 
     @retry(
@@ -116,7 +116,7 @@ class AvailabilitySolver:
             .where(Concept.concept_id.in_(concept_ids))
             .distinct()
         )
-        with self.db_manager.engine.connect() as con:
+        with self.db_client.engine.connect() as con:
             concepts_df = pd.read_sql_query(concept_query, con=con)
         concept_dict = {
             str(concept_id): domain_id for concept_id, domain_id in concepts_df.values
@@ -160,7 +160,7 @@ class AvailabilitySolver:
             10,
         )
 
-        with self.db_manager.engine.connect() as con:
+        with self.db_client.engine.connect() as con:
             # this is used to store the query for each group, one entry per group
             all_groups_queries: list[Union[Select[Tuple[int]], CompoundSelect]] = []
 
@@ -302,7 +302,7 @@ class AvailabilitySolver:
             logger.debug(
                 str(
                     final_query.compile(
-                        dialect=self.db_manager.engine.dialect,
+                        dialect=self.db_client.engine.dialect,
                         compile_kwargs={"literal_binds": True},
                     )
                 )
@@ -555,7 +555,7 @@ class AvailabilitySolver:
             The table query with the age constraint applied.
         """
         age_difference = self._get_year_difference(
-            self.db_manager.engine, table_date_column, Person.year_of_birth
+            self.db_client.engine, table_date_column, Person.year_of_birth
         )
 
         constraint = operator_func(age_difference, age_value)
@@ -647,7 +647,7 @@ class AvailabilitySolver:
                 return person_constraints_for_group
 
             age = self._get_year_difference(
-                self.db_manager.engine, func.current_timestamp(), Person.year_of_birth
+                self.db_client.engine, func.current_timestamp(), Person.year_of_birth
             )
             person_constraints_for_group.append(age >= min_value)
             person_constraints_for_group.append(age <= max_value)

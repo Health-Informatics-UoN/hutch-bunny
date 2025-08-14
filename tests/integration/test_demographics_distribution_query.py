@@ -3,7 +3,7 @@ from hutch_bunny.core.solvers.query_solvers import solve_distribution
 from hutch_bunny.core.rquest_models.result import RquestResult
 from hutch_bunny.core.rquest_models.file import File
 from hutch_bunny.core.rquest_models.distribution import DistributionQuery
-from hutch_bunny.core.db_manager import SyncDBManager
+from hutch_bunny.core.db import SyncDBClient
 
 
 @pytest.fixture
@@ -32,11 +32,11 @@ def distribution_example() -> RquestResult:
 
 @pytest.fixture
 def distribution_result(
-    db_manager: SyncDBManager, distribution_query: DistributionQuery
+    db_client: SyncDBClient, distribution_query: DistributionQuery
 ) -> RquestResult:
-    db_manager.list_tables()
+    db_client.list_tables()
     return solve_distribution(
-        results_modifier=[], db_manager=db_manager, query=distribution_query
+        results_modifier=[], db_client=db_client, query=distribution_query
     )
 
 
