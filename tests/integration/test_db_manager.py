@@ -96,7 +96,7 @@ def test_check_indexes_exist_with_missing_indexes(db_client: SyncDBClient) -> No
         "get_indexes",
         side_effect=mock_inspector.get_indexes,
     ):
-        with patch("hutch_bunny.core.db_manager.logger") as mock_logger:
+        with patch("hutch_bunny.core.db.sync.logger") as mock_logger:
             # Call the method directly
             db_client._check_indexes_exist()
 
