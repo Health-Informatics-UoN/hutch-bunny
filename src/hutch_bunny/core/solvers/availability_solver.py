@@ -8,7 +8,8 @@ from sqlalchemy import (
     Select,
     intersect,
     union,
-    literal
+    literal, 
+    or_
 )
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.entities import (
@@ -205,7 +206,12 @@ class AvailabilitySolver():
 
         # Add person constraints as a separate query
         if person_constraints_for_group:
-            person_query = select(Person.person_id).where(*person_constraints_for_group)
+            if current_group.rules_operator == "OR" and len(person_constraints_for_group) > 1:
+                # For OR logic, combine Person constraints with OR
+                person_query = select(Person.person_id).where(or_(*person_constraints_for_group))
+            else:
+                # For AND logic or single constraint, use AND (default)
+                person_query = select(Person.person_id).where(*person_constraints_for_group)
             inclusion_queries.append(person_query)
 
         # Add table queries for each rule
