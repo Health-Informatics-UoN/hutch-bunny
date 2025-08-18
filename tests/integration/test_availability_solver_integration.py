@@ -1,4 +1,5 @@
 from unittest.mock import Mock, patch
+from datetime import datetime
 import pytest 
 
 from hutch_bunny.core.rquest_models.rule import Rule
@@ -121,7 +122,9 @@ class TestBuildRuleQuery:
         mock_query = Mock(spec=AvailabilityQuery)
         availability_solver = AvailabilitySolver(db_manager, mock_query)
         
-        with patch("hutch_bunny.core.solvers.availability_solver.SQLDialectHandler.get_year_difference") as mock_date: 
+        with patch("hutch_bunny.core.solvers.rule_query_builders.datetime") as mock_datetime: 
+            fixed_now = datetime(2025, 8, 7, 12, 0, 0)
+            mock_datetime.now.return_value = fixed_now
             query = availability_solver._build_rule_query(rule)
         
         with db_manager.engine.connect() as conn:
@@ -133,31 +136,82 @@ class TestBuildRuleQuery:
 
             assert "condition_start_date" in sql_str
             assert "2025-07" in sql_str  # One month back from frozen time
-    
-    def test_measurement_with_range_and_time(self, db_manager: SyncDBManager) -> None:
-        """Test measurement with both numeric range and temporal constraint."""
-        rule = Rule(
-            varname="OMOP=46236952",
-            varcat="Measurement",
-            type_="NUM",
-            operator="=",
-            value="1.0|3.0",
-            time="|6:TIME:M"  # More than 6 months ago
-        )
         
+    def test_secondary_modifier_single(self, db_manager: SyncDBManager) -> None:
+        """Test secondary modifier for condition provenance."""
+        rule = Rule(
+            varname="OMOP",
+            varcat="Condition",
+            type_="TEXT",
+            operator="=",
+            value="260139",
+            secondary_modifier=[32020]  # EHR encounter diagnosis
+        )
+
         mock_query = Mock(spec=AvailabilityQuery)
         availability_solver = AvailabilitySolver(db_manager, mock_query)
-
         query = availability_solver._build_rule_query(rule)
         
         with db_manager.engine.connect() as conn:
             result = conn.execute(query)
             person_ids = {row[0] for row in result}
-            assert len(person_ids) > 0
-            
+            assert len(person_ids) > 1 
+
             sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
-            assert "value_as_number BETWEEN" in sql_str
-            assert "measurement_date" in sql_str
+            assert "condition_type_concept_id" in sql_str
+            assert "32020" in sql_str
+    
+    def test_secondary_modifier_multiple(self, db_manager: SyncDBManager) -> None:
+        """Test multiple secondary modifiers with OR logic."""
+        rule = Rule(
+            varname="OMOP",
+            varcat="Condition",
+            type_="TEXT",
+            operator="=",
+            value="260139",
+            secondary_modifier=[32020, 32021, 32022]
+        )
+        
+        mock_query = Mock(spec=AvailabilityQuery)
+        availability_solver = AvailabilitySolver(db_manager, mock_query)
+        query = availability_solver._build_rule_query(rule)
+        
+        sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
+        assert sql_str.count("condition_type_concept_id") >= 3
+        assert "OR" in sql_str
+
+        with db_manager.engine.connect() as conn:
+            result = conn.execute(query)
+            person_ids = {row[0] for row in result}
+            assert len(person_ids) > 1 
+    
+    def test_measurement_with_range_and_time(self, db_manager: SyncDBManager) -> None:
+        """Test measurement with both numeric range and temporal constraint."""
+        rule = Rule(
+            varname="OMOP=4078285",
+            varcat="Measurement",
+            type_="NUM",
+            operator="=",
+            value="1.0|6.0",
+            time="|6:TIME:M"  # Less than 6 months ago
+        )
+        
+        mock_query = Mock(spec=AvailabilityQuery)
+        availability_solver = AvailabilitySolver(db_manager, mock_query)
+        
+        with patch("hutch_bunny.core.solvers.rule_query_builders.datetime") as mock_datetime: 
+            fixed_now = datetime(2015, 10, 2, 12, 0, 0)
+            mock_datetime.now.return_value = fixed_now
+            query = availability_solver._build_rule_query(rule)
+            with db_manager.engine.connect() as conn:
+                result = conn.execute(query)
+                person_ids = {row[0] for row in result}
+
+                assert len(person_ids) > 1 
+
+                sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
+                assert "value_as_number BETWEEN" in sql_str
+                assert "measurement_date" in sql_str
 
     def test_condition_with_age_and_modifiers(self, db_manager: SyncDBManager) -> None:
         """Test condition with age constraint and secondary modifiers."""
