@@ -1,9 +1,11 @@
 from unittest.mock import Mock, patch
 from datetime import datetime
 import pytest 
+from sqlalchemy import select 
 
 from hutch_bunny.core.rquest_models.rule import Rule
 from hutch_bunny.core.rquest_models.group import Group
+from hutch_bunny.core.entities import Person 
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
@@ -319,6 +321,67 @@ class TestBuildGroupQuery:
             sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
             assert "person.gender_concept_id != 8507" in sql_str
     
+    def test_multiple_exclusions_person_rule_with_and(
+        self,
+        db_manager: SyncDBManager,
+        availability_solver: AvailabilitySolver,
+        concepts_dict: dict[str, str]
+    ) -> None:
+        """Test multiple Person exclusions with AND logic."""
+        group = Group(
+            rules=[
+                Rule(
+                    varname="OMOP",
+                    varcat="Person",
+                    type_="TEXT",
+                    operator="!=",  # Not male
+                    value="8507"
+                ),
+                Rule(
+                    varname="OMOP",
+                    varcat="Person",
+                    type_="TEXT",
+                    operator="!=",  # Not Black race
+                    value="8516"
+                )
+            ],
+            rules_operator="AND"
+        )
+        
+        query = availability_solver._build_group_query(group, concepts_dict)
+        
+        with db_manager.engine.connect() as conn:
+            result = conn.execute(query)
+            person_ids = {row[0] for row in result}
+            
+            # Should get females who are not Black
+            # This is the intersection of "not male" AND "not Black"
+            
+            # Get females
+            female_query = select(Person.person_id).where(
+                Person.gender_concept_id == 8532
+            )
+            female_result = conn.execute(female_query)
+            female_ids = {row[0] for row in female_result}
+            
+            # Get Black individuals
+            black_query = select(Person.person_id).where(
+                Person.race_concept_id == 8516
+            )
+            black_result = conn.execute(black_query)
+            black_ids = {row[0] for row in black_result}
+            
+            assert len(person_ids) < len(female_ids)  # Less than all females
+            assert len(person_ids) > 400  # But still substantial
+            
+            # No males in result
+            male_query = select(Person.person_id).where(
+                Person.gender_concept_id == 8507
+            )
+            male_result = conn.execute(male_query)
+            male_ids = {row[0] for row in male_result}
+            assert len(person_ids.intersection(male_ids)) == 0
+    
     def test_single_inclusion_omop_rule(
         self, 
         db_manager: SyncDBManager,
@@ -499,7 +562,21 @@ class TestBuildGroupQuery:
             person_ids = {row[0] for row in result}
             # Should get all people (male OR female)
             assert len(person_ids) > 1100  # ~1130 total
-    
+
+            # Compare with individual queries
+            male_query = select(Person.person_id).where(Person.gender_concept_id == 8507)
+            female_query = select(Person.person_id).where(Person.gender_concept_id == 8532)
+            
+            male_result = conn.execute(male_query)
+            female_result = conn.execute(female_query)
+            
+            male_ids = {row[0] for row in male_result}
+            female_ids = {row[0] for row in female_result}
+            
+            # OR should give us the union of both sets
+            expected = male_ids.union(female_ids)
+            assert person_ids == expected
+
     def test_inclusion_and_exclusion_and_logic(
         self, 
         db_manager: SyncDBManager,
@@ -549,4 +626,203 @@ class TestBuildGroupQuery:
             
             assert len(person_ids) < len(all_females)
             assert len(person_ids) > 400  # Most females won't have hyperlipidemia
+    
+    def test_complex_mixed_rules(
+        self, 
+        db_manager: SyncDBManager,
+        availability_solver: AvailabilitySolver, 
+        concepts_dict: dict[str, str]
+    ) -> None:
+        """Test complex group with multiple inclusion and exclusion rules."""
+        group = Group(
+            rules=[
+                Rule(
+                    varname="OMOP",
+                    varcat="Person",
+                    type_="TEXT",
+                    operator="=",
+                    value="8532"  # Female
+                ),
+                Rule(
+                    varname="OMOP",
+                    varcat="Condition",
+                    type_="TEXT",
+                    operator="=",
+                    value="260139"  # Acute Bronchitis
+                ),
+                Rule(
+                    varname="OMOP",
+                    varcat="Drug",
+                    type_="TEXT",
+                    operator="!=",
+                    value="19115351"  # NOT Diazepam
+                )
+            ],
+            rules_operator="AND"
+        )
 
+        query = availability_solver._build_group_query(group, concepts_dict)
+        
+        with db_manager.engine.connect() as conn:
+            result = conn.execute(query)
+            person_ids = {row[0] for row in result}
+            
+            # Females with bronchitis but not on Diazepam
+            assert len(person_ids) > 150
+            assert len(person_ids) < 250
+    
+    def test_group_with_age_constraints(
+        self, 
+        db_manager: SyncDBManager,
+        availability_solver: AvailabilitySolver, 
+        concepts_dict: dict[str, str]
+    ) -> None:
+        """Test group with age-constrained rules."""
+        group = Group(
+            rules=[
+                Rule(
+                    varname="OMOP",
+                    varcat="Person",
+                    type_="TEXT",
+                    operator="=",
+                    value="8532"  # Female
+                ),
+                Rule(
+                    varname="OMOP",
+                    varcat="Condition",
+                    type_="TEXT",
+                    operator="=",
+                    value="432867",  # Hyperlipidemia
+                    time="50|:AGE:Y"  # After age 50
+                )
+            ],
+            rules_operator="AND"
+        )
+        
+        query = availability_solver._build_group_query(group, concepts_dict)
+        
+        with db_manager.engine.connect() as conn:
+            result = conn.execute(query)
+            person_ids = {row[0] for row in result}
+            
+            # Females with late-onset hyperlipidemia
+            assert len(person_ids) < 50  # Should be relatively rare
+            
+            sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
+            assert "year_of_birth" in sql_str or "date_part" in sql_str.lower()
+
+    def test_group_with_time_constraints(
+        self, 
+        db_manager: SyncDBManager,
+        availability_solver: AvailabilitySolver, 
+        concepts_dict: dict[str, str]
+    ) -> None:
+        """Test group with time-relative constraints."""
+        group = Group(
+            rules=[
+                Rule(
+                    varname="OMOP",
+                    varcat="Condition",
+                    type_="TEXT",
+                    operator="=",
+                    value="260139",  # Acute Bronchitis
+                    time="1|:TIME:M"  # Greater than a month (ago)
+                ),
+                Rule(
+                    varname="OMOP",
+                    varcat="Condition",
+                    type_="TEXT",
+                    operator="=",
+                    value="260139",  # Same condition
+                    time="|1:TIME:M"  # Less than a month ago 
+                )
+            ],
+            rules_operator="OR"  # Either recent or old
+        )
+        
+        with patch("hutch_bunny.core.solvers.rule_query_builders.datetime") as mock_datetime: 
+            fixed_now = datetime(2015, 10, 2, 12, 0, 0)
+            mock_datetime.now.return_value = fixed_now
+            query = availability_solver._build_group_query(group, concepts_dict)
+        
+        with db_manager.engine.connect() as conn:
+            result = conn.execute(query)
+            person_ids = {row[0] for row in result}
+            
+            # Should get people with bronchitis at any time
+            assert len(person_ids) > 400
+    
+    def test_group_with_measurement_ranges(
+        self, 
+        db_manager: SyncDBManager,
+        availability_solver: AvailabilitySolver, 
+        concepts_dict: dict[str, str]
+    ) -> None:
+        """Test group with measurement value ranges."""
+        group = Group(
+            rules=[
+                Rule(
+                    varname="OMOP=46236952",  # Glomerular filtration
+                    varcat="Measurement",
+                    type_="NUM",
+                    operator="=",
+                    value="1.0|3.0"  # Range
+                ),
+                Rule(
+                    varname="OMOP",
+                    varcat="Person",
+                    type_="TEXT",
+                    operator="=",
+                    value="8507"  # Male
+                )
+            ],
+            rules_operator="AND"
+        )
+        
+        query = availability_solver._build_group_query(group, concepts_dict)
+        
+        with db_manager.engine.connect() as conn:
+            result = conn.execute(query)
+            person_ids = {row[0] for row in result}
+            
+            # Males with specific GFR range
+            assert len(person_ids) > 0
+            
+            sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
+            assert "value_as_number BETWEEN" in sql_str
+    
+    def test_empty_group_results(
+        self, 
+        db_manager: SyncDBManager,
+        availability_solver: AvailabilitySolver, 
+        concepts_dict: dict[str, str]
+    ) -> None:
+        """Test group that produces no results."""
+        group = Group(
+            rules=[
+                Rule(
+                    varname="OMOP",
+                    varcat="Person",
+                    type_="TEXT",
+                    operator="=",
+                    value="8507"  # Male
+                ),
+                Rule(
+                    varname="OMOP",
+                    varcat="Person",
+                    type_="TEXT",
+                    operator="=",
+                    value="8532"  # Female
+                )
+            ],
+            rules_operator="AND"  # Impossible: Male AND Female
+        )
+        
+        query = availability_solver._build_group_query(group, concepts_dict)
+        
+        with db_manager.engine.connect() as conn:
+            result = conn.execute(query)
+            person_ids = {row[0] for row in result}
+            
+            assert len(person_ids) == 0
+    
