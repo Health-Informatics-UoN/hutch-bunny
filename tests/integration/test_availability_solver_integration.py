@@ -3,6 +3,7 @@ from datetime import datetime
 import pytest 
 
 from hutch_bunny.core.rquest_models.rule import Rule
+from hutch_bunny.core.rquest_models.group import Group
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
@@ -237,4 +238,315 @@ class TestBuildRuleQuery:
 
 @pytest.mark.integration
 class TestBuildGroupQuery: 
-    pass
+    @pytest.fixture
+    def availability_solver(self, db_manager: SyncDBManager) -> AvailabilitySolver:
+        """Create an AvailabilitySolver with a real database connection."""
+        mock_query = Mock(spec=AvailabilityQuery)
+        return AvailabilitySolver(db_manager, mock_query)
+
+    @pytest.fixture
+    def concepts_dict(self) -> dict[str, str]:
+        """Common concepts mapping for tests."""
+        return {
+            "8507": "Gender",      # Male
+            "8532": "Gender",      # Female
+            "260139": "Condition", # Acute Bronchitis
+            "432867": "Condition", # Hyperlipidemia
+            "19115351": "Drug",    # Diazepam
+            "8516": "Race",        # Black or African American
+            "38003563": "Ethnicity" # Hispanic or Latino
+        }
+
+    def test_single_inclusion_person_rule(
+        self, 
+        db_manager: SyncDBManager,
+        availability_solver: AvailabilitySolver, 
+        concepts_dict: dict[str, str]
+    ) -> None:
+        """Test group with single Person inclusion rule."""
+        group = Group(
+            rules=[
+                Rule(
+                    varname="OMOP",
+                    varcat="Person",
+                    type_="TEXT",
+                    operator="=",
+                    value="8507"  # Male
+                )
+            ],
+            rules_operator="AND"
+        )
+        
+        query = availability_solver._build_group_query(group, concepts_dict)
+        
+        with db_manager.engine.connect() as conn:
+            result = conn.execute(query)
+            person_ids = {row[0] for row in result}
+            
+            assert len(person_ids) > 0
+            
+            sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
+            assert "person.gender_concept_id = 8507" in sql_str
+    
+    def test_single_exclusion_person_rule(
+        self, 
+        db_manager: SyncDBManager,
+        availability_solver: AvailabilitySolver, 
+        concepts_dict: dict[str, str]
+    ) -> None:
+        """Test group with single Person exclusion rule."""
+        group = Group(
+            rules=[
+                Rule(
+                    varname="OMOP",
+                    varcat="Person",
+                    type_="TEXT",
+                    operator="!=",  # Exclusion
+                    value="8507"  # Not Male
+                )
+            ],
+            rules_operator="AND"
+        )
+        
+        query = availability_solver._build_group_query(group, concepts_dict)
+        
+        with db_manager.engine.connect() as conn:
+            result = conn.execute(query)
+            person_ids = {row[0] for row in result}
+            
+            assert len(person_ids) > 0
+            
+            sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
+            assert "person.gender_concept_id != 8507" in sql_str
+    
+    def test_single_inclusion_omop_rule(
+        self, 
+        db_manager: SyncDBManager,
+        availability_solver: AvailabilitySolver, 
+        concepts_dict: dict[str, str]
+    ) -> None:
+        """Test group with single OMOP inclusion rule."""
+        group = Group(
+            rules=[
+                Rule(
+                    varname="OMOP",
+                    varcat="Condition",
+                    type_="TEXT",
+                    operator="=",
+                    value="260139"  # Acute Bronchitis
+                )
+            ],
+            rules_operator="AND"
+        )
+        
+        query = availability_solver._build_group_query(group, concepts_dict)
+        
+        with db_manager.engine.connect() as conn:
+            result = conn.execute(query)
+            person_ids = {row[0] for row in result}
+            
+            assert len(person_ids) > 400  # ~442 expected
+            assert len(person_ids) < 500
+            
+            sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
+            assert "UNION" in sql_str  # OMOP rules create UNIONs
+
+    def test_single_exclusion_omop_rule(
+        self, 
+        db_manager: SyncDBManager,
+        availability_solver: AvailabilitySolver, 
+        concepts_dict: dict[str, str]
+    ) -> None:
+        """Test group with single OMOP exclusion rule."""
+        group = Group(
+            rules=[
+                Rule(
+                    varname="OMOP",
+                    varcat="Condition",
+                    type_="TEXT",
+                    operator="!=",  
+                    value="35626061"  # Some rare condition
+                )
+            ],
+            rules_operator="AND"
+        )
+        
+        query = availability_solver._build_group_query(group, concepts_dict)
+        
+        with db_manager.engine.connect() as conn:
+            result = conn.execute(query)
+            person_ids = {row[0] for row in result}
+            
+            # Should exclude people with this condition
+            # Most people won't have it, so should be close to total
+            assert len(person_ids) > 1000
+
+    def test_two_person_rules_and(
+        self, 
+        db_manager: SyncDBManager,
+        availability_solver: AvailabilitySolver, 
+        concepts_dict: dict[str, str]
+    ) -> None:
+        """Test group with two Person rules combined with AND."""
+        group = Group(
+            rules=[
+                Rule(
+                    varname="OMOP",
+                    varcat="Person",
+                    type_="TEXT",
+                    operator="=",
+                    value="8532"  # Female
+                ),
+                Rule(
+                    varname="OMOP",
+                    varcat="Person",
+                    type_="TEXT",
+                    operator="=",
+                    value="8516"  # Black or African American
+                )
+            ],
+            rules_operator="AND"
+        )
+        
+        query = availability_solver._build_group_query(group, concepts_dict)
+        
+        with db_manager.engine.connect() as conn:
+            result = conn.execute(query)
+            person_ids = {row[0] for row in result}
+            
+            # Should get only Black females - a subset
+            assert len(person_ids) < 100  # Small intersection
+            
+            sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
+            assert "gender_concept_id = 8532" in sql_str
+            assert "race_concept_id = 8516" in sql_str
+
+    def test_multiple_omop_rules_and(
+        self, 
+        db_manager: SyncDBManager,
+        availability_solver: AvailabilitySolver, 
+        concepts_dict: dict[str, str]
+    ) -> None:
+        """Test group with multiple OMOP rules combined with AND."""
+        group = Group(
+            rules=[
+                Rule(
+                    varname="OMOP",
+                    varcat="Condition",
+                    type_="TEXT",
+                    operator="=",
+                    value="260139"  # Acute Bronchitis
+                ),
+                Rule(
+                    varname="OMOP",
+                    varcat="Condition",
+                    type_="TEXT",
+                    operator="=",
+                    value="432867"  # Hyperlipidemia
+                )
+            ],
+            rules_operator="AND"
+        )
+        
+        query = availability_solver._build_group_query(group, concepts_dict)
+        
+        with db_manager.engine.connect() as conn:
+            result = conn.execute(query)
+            person_ids = {row[0] for row in result}
+            
+            # People with both conditions - should be small
+            assert len(person_ids) > 0 
+            assert len(person_ids) < 100
+            
+            sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
+            assert "INTERSECT" in sql_str
+
+    def test_two_person_rules_or(
+        self, 
+        db_manager: SyncDBManager,
+        availability_solver: AvailabilitySolver, 
+        concepts_dict: dict[str, str]
+    ) -> None:
+        """Test group with two Person rules combined with OR."""
+        group = Group(
+            rules=[
+                Rule(
+                    varname="OMOP",
+                    varcat="Person",
+                    type_="TEXT",
+                    operator="=",
+                    value="8507"  # Male
+                ),
+                Rule(
+                    varname="OMOP",
+                    varcat="Person",
+                    type_="TEXT",
+                    operator="=",
+                    value="8532"  # Female
+                )
+            ],
+            rules_operator="OR"
+        )
+        
+        query = availability_solver._build_group_query(group, concepts_dict)
+
+        sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
+        assert "gender_concept_id = 8507 OR" in sql_str or "(person.gender_concept_id = 8507) OR (person.gender_concept_id = 8532)" in sql_str
+        assert "gender_concept_id = 8507 AND person.gender_concept_id = 8532" not in sql_str
+        
+        with db_manager.engine.connect() as conn:
+            result = conn.execute(query)
+            person_ids = {row[0] for row in result}
+            # Should get all people (male OR female)
+            assert len(person_ids) > 1100  # ~1130 total
+    
+    def test_inclusion_and_exclusion_and_logic(
+        self, 
+        db_manager: SyncDBManager,
+        availability_solver: AvailabilitySolver, 
+        concepts_dict: dict[str, str]
+    ) -> None:
+        """Test group with inclusion and exclusion rules with AND."""
+        group = Group(
+            rules=[
+                Rule(
+                    varname="OMOP",
+                    varcat="Person",
+                    type_="TEXT",
+                    operator="=",  # Inclusion
+                    value="8532"  # Female
+                ),
+                Rule(
+                    varname="OMOP",
+                    varcat="Condition",
+                    type_="TEXT",
+                    operator="!=",  # Exclusion
+                    value="432867"  # NOT Hyperlipidemia
+                )
+            ],
+            rules_operator="AND"
+        )
+        
+        query = availability_solver._build_group_query(group, concepts_dict)
+        
+        with db_manager.engine.connect() as conn:
+            result = conn.execute(query)
+            person_ids = {row[0] for row in result}
+            
+            # Females without hyperlipidemia
+            # Should be less than total females
+            result_all_females = conn.execute(
+                availability_solver._build_group_query(
+                    Group(
+                        rules=[Rule(varname="OMOP", varcat="Person", 
+                                  type_="TEXT", operator="=", value="8532")],
+                        rules_operator="AND"
+                    ),
+                    concepts_dict
+                )
+            )
+            all_females = {row[0] for row in result_all_females}
+            
+            assert len(person_ids) < len(all_females)
+            assert len(person_ids) > 400  # Most females won't have hyperlipidemia
+
