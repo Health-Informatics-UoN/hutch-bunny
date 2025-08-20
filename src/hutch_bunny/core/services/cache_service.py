@@ -51,7 +51,7 @@ class DistributionCacheService:
         expiry_time = file_time + timedelta(hours=self.ttl_hours)
         return datetime.now() < expiry_time
     
-    def get(self, query_dict: dict[str, str], modifiers: list) -> Optional[dict]: 
+    def get(self, query_dict: dict[str, object], modifiers: list) -> Optional[dict]: 
         """Retrieve cached result if available and valid."""
         if not self.enabled: 
             return None 
@@ -71,7 +71,7 @@ class DistributionCacheService:
         
         return None 
     
-    def set(self, query_dict: dict[str, str], modifiers: list, result: dict) -> None: 
+    def set(self, query_dict: dict[str, object], modifiers: list, result: dict) -> None: 
         """Store result in cache."""
         if not self.enabled:
             return
