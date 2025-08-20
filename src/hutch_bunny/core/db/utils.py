@@ -6,7 +6,7 @@ DEFAULT_TRINO_PORT = 8080
 POSTGRES_SHORT_NAME = "postgresql"
 MSSQL_SHORT_NAME = "mssql"
 DEFAULT_POSTGRES_DRIVER = f"{POSTGRES_SHORT_NAME}+psycopg"
-DEFAULT_MSSQL_DRIVER = f"{MSSQL_SHORT_NAME}+pymssql"
+DEFAULT_MSSQL_DRIVER = "{ODBC Driver 18 for SQL Server}"
 
 
 def expand_short_drivers(drivername: str) -> str:
