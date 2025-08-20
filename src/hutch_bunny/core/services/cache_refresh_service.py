@@ -60,4 +60,41 @@ class CacheRefreshService:
 
     def _refresh_cache(self) -> None: 
         """Refresh all common distribution queries."""
-        pass 
+        db_manager = get_db_manager()
+
+        queries = [
+            {
+                "code": "DEMOGRAPHICS",
+                "analysis": "DISTRIBUTION", 
+                "uuid": "cache_refresh",
+                "collection": self.settings.COLLECTION_ID,
+                "owner": "system"
+            },
+            {
+                "code": "GENERIC",
+                "analysis": "DISTRIBUTION",
+                "uuid": "cache_refresh", 
+                "collection": self.settings.COLLECTION_ID,
+                "owner": "system"
+            }
+        ]
+
+        modifier_sets = [
+            results_modifiers(
+                low_number_suppression_threshold=self.settings.LOW_NUMBER_SUPPRESSION_THRESHOLD,
+                rounding_target=self.settings.ROUNDING_TARGET
+            )
+        ]
+
+        for query in queries:
+            for modifiers in modifier_sets:
+                try:
+                    logger.debug(f"Refreshing {query['code']} with modifiers {modifiers}")
+                    execute_query(
+                        query, 
+                        modifiers, 
+                        db_manager=db_manager,
+                        settings=self.settings
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to refresh cache for {query['code']}: {e}")
