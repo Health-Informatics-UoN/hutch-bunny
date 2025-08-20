@@ -16,7 +16,7 @@ class CacheRefreshService:
         self.settings = settings
         self.running = False 
         self.thread: Optional[threading.Thread] = None 
-        self.last_refresh = datetime.now()
+        self.last_refresh = None 
 
     def start(self) -> None: 
         """Start the cache refresh background thread."""
@@ -27,6 +27,16 @@ class CacheRefreshService:
         if self.settings.CACHE_TTL_HOURS <= 0:
             logger.info("Cache TTL is 0 (no expiration), not starting refresh service")
             return
+        
+        if self.settings.CACHE_REFRESH_ON_STARTUP:
+            logger.info("Populating cache on startup...")
+            try:
+                self._refresh_cache()
+                self.last_refresh = datetime.now()
+                logger.info("Initial cache population completed")
+            except Exception as e:
+                logger.error(f"Failed to populate cache on startup: {e}")
+                # Continue anyway - don't fail startup due to cache issues
 
         self.running = True
         self.thread = threading.Thread(target=self._refresh_loop, daemon=True)
@@ -43,6 +53,11 @@ class CacheRefreshService:
         """Main loop that refreshes the cache at intervals."""
         while self.running: 
             try:
+                if self.last_refresh is None:
+                    self._refresh_cache()
+                    self.last_refresh = datetime.now()
+                    continue
+
                 next_refresh = self.last_refresh + timedelta(hours=self.settings.CACHE_TTL_HOURS)
 
                 if datetime.now() >= next_refresh:
