@@ -14,7 +14,7 @@ class AzureManagedIdentityDBClient(SyncDBClient):
         port: int,
         database: str,
         drivername: str,
-        managed_identity_client_id: str,
+        managed_identity_client_id: str | None = None,
         schema: str | None = None,
     ) -> None:
         """Constructor method for AzureManagedIdentityDBClient.

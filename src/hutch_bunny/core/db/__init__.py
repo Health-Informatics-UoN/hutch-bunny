@@ -54,12 +54,7 @@ def get_db_client() -> BaseDBClient:
 
         try:
             if settings.DATASOURCE_USE_AZURE_MANAGED_IDENTITY:
-                if not settings.DATASOURCE_AZURE_MANAGED_IDENTITY_CLIENT_ID:
-                    raise ValueError(
-                        "DATASOURCE_AZURE_MANAGED_IDENTITY_CLIENT_ID must be set when using Azure managed identity"
-                    )
                 return AzureManagedIdentityDBClient(
-                    username=settings.DATASOURCE_DB_USERNAME,
                     host=settings.DATASOURCE_DB_HOST,
                     port=int(datasource_db_port)
                     if datasource_db_port is not None
