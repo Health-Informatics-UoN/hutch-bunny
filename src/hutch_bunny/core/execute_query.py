@@ -43,8 +43,9 @@ def execute_query(
         if settings is None: 
             settings = Settings()
         
+        cache_service = DistributionCacheService(settings)
+        
         if settings.CACHE_ENABLED:
-            cache_service = DistributionCacheService(settings)
             cached_result = cache_service.get(query_dict, results_modifier)
             if cached_result: 
                 logger.info("Returning cached distribution result")
@@ -63,6 +64,8 @@ def execute_query(
             result = query_solvers.solve_distribution(
                 results_modifier, db_manager=db_manager, query=distribution_query
             )
+
+            cache_service.set(query_dict, results_modifier, result.to_dict())
 
             return result
         except TypeError as te:  # raised if the distribution query json format is wrong
