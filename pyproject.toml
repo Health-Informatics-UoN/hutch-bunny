@@ -30,6 +30,7 @@ dependencies = [
   "tenacity>=9.1.2", # for retry
   "azure-identity>=1.23.0",
   "pyodbc>=5.2.0",
+  "pymssql>=2.3.7",
 ]
 
 [project.scripts]

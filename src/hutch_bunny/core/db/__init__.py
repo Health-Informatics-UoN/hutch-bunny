@@ -49,7 +49,8 @@ def get_db_client() -> BaseDBClient:
     else:
         datasource_db_port = settings.DATASOURCE_DB_PORT
         datasource_db_drivername = expand_short_drivers(
-            settings.DATASOURCE_DB_DRIVERNAME
+            settings.DATASOURCE_DB_DRIVERNAME,
+            use_azure_managed_identity=settings.DATASOURCE_USE_AZURE_MANAGED_IDENTITY,
         )
 
         try:

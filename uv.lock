@@ -203,6 +203,7 @@ dependencies = [
     { name = "pandas" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic-settings" },
+    { name = "pymssql" },
     { name = "pyodbc" },
     { name = "python-dotenv" },
     { name = "requests" },
@@ -231,6 +232,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2.3" },
     { name = "pydantic-settings", specifier = ">=2.7.1" },
+    { name = "pymssql", specifier = ">=2.3.7" },
     { name = "pyodbc", specifier = ">=5.2.0" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "requests", specifier = ">=2.32.3" },
@@ -561,6 +563,22 @@ wheels = [
 [package.optional-dependencies]
 crypto = [
     { name = "cryptography" },
+]
+
+[[package]]
+name = "pymssql"
+version = "2.3.7"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ad/97/4e2b350ccc301a2ba38fe3af246f7cbff0f9d454beb30b57a73570789330/pymssql-2.3.7.tar.gz", hash = "sha256:5e6d79c7b1cec40aebec4b099c6e445ccaac24519e5e767b49a4e6f48c087e50", size = 184995 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0f/f2/91db1c61558ac797766011ebaaae94a2764f43cd6a8e1337d797d81cd3fa/pymssql-2.3.7-cp313-cp313-macosx_13_0_x86_64.whl", hash = "sha256:456d7d8b1bf24a611643a67546f2b2188e645250d2c6943bc59093ca03fd33e8", size = 2900668 },
+    { url = "https://files.pythonhosted.org/packages/68/ad/7d5f2892a86992f81bc36b54105ec400f0d5afb8009d2027761a2b9ab52a/pymssql-2.3.7-cp313-cp313-macosx_14_0_arm64.whl", hash = "sha256:2cbea08bd03acb103b553b9cfccda93d5ffe4bd836f89071af2616e0b04e776e", size = 3119006 },
+    { url = "https://files.pythonhosted.org/packages/88/6a/1f6614352e59b79e59329774ef159bbd0447b172e62b32ffeea9ef396021/pymssql-2.3.7-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:b9b9eceea38fd2f389fb325513cb99964f9465facc35b72174c6cfd93ef3e510", size = 2475555 },
+    { url = "https://files.pythonhosted.org/packages/b1/87/f4dc8f9bff8de57f6d6256ff89f7e2e424155c81ac0caea470a391e97e0b/pymssql-2.3.7-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:69e6feb6916d9e9c37b00538e8cdaf489788244b3111c3cc6e9efffe0e492405", size = 2814496 },
+    { url = "https://files.pythonhosted.org/packages/24/3b/a75181f0e42432c795651654802a237152403048e0b4265dd2c5f378ad4a/pymssql-2.3.7-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:a30c31db155c45aafb355e39ede10593fe6c3f18e98117289cb611611901d608", size = 3717450 },
+    { url = "https://files.pythonhosted.org/packages/38/a9/d4cdbaa63a271e88380d1a99b749c99d6b5be1c4800777a9f9d4a0832f11/pymssql-2.3.7-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:37c16bc48a2ca88f1719bac6d2ebbbe7e2b821749bc1d04284975f1628300f13", size = 3463013 },
+    { url = "https://files.pythonhosted.org/packages/b0/29/ecacbacf81a5d8c186da77a1fe4f5cc948caf192f15371ead3bf7c95be65/pymssql-2.3.7-cp313-cp313-win32.whl", hash = "sha256:ef769e7c9427cb97143e61c70ec594834bf1954b0f89285b448bb2e3b7e8c2a3", size = 1306860 },
+    { url = "https://files.pythonhosted.org/packages/a3/9e/913aec491c17ccdd60603fd98661c993cd74e13526e62f0e07d3d489fa5a/pymssql-2.3.7-cp313-cp313-win_amd64.whl", hash = "sha256:ee3fdfe37e40ead646a622af3a8b405f6aa8d6f48e9b7a412a47dcf3be8b703e", size = 1988939 },
 ]
 
 [[package]]

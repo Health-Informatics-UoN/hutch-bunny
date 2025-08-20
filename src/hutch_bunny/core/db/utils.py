@@ -6,10 +6,13 @@ DEFAULT_TRINO_PORT = 8080
 POSTGRES_SHORT_NAME = "postgresql"
 MSSQL_SHORT_NAME = "mssql"
 DEFAULT_POSTGRES_DRIVER = f"{POSTGRES_SHORT_NAME}+psycopg"
-DEFAULT_MSSQL_DRIVER = "{ODBC Driver 18 for SQL Server}"
+DEFAULT_MSSQL_DRIVER = f"{MSSQL_SHORT_NAME}+pyodbc"
+DEFAULT_MSSQL_ODBC_DRIVER = "{ODBC Driver 18 for SQL Server}"
 
 
-def expand_short_drivers(drivername: str) -> str:
+def expand_short_drivers(
+    drivername: str, use_azure_managed_identity: bool = False
+) -> str:
     """
     Expand unqualified "short" db driver names when necessary so we can override sqlalchemy
     e.g. when using psycopg3, expand `postgresql` explicitly rather than use sqlalchemy's default of psycopg2
@@ -18,6 +21,8 @@ def expand_short_drivers(drivername: str) -> str:
         return DEFAULT_POSTGRES_DRIVER
 
     if drivername == MSSQL_SHORT_NAME:
+        if use_azure_managed_identity:
+            return DEFAULT_MSSQL_ODBC_DRIVER
         return DEFAULT_MSSQL_DRIVER
 
     # Add other explicit driver qualification as needed ...
