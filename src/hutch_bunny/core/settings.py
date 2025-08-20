@@ -42,11 +42,12 @@ class Settings(BaseSettings):
         default="postgresql",
         pattern="^(postgresql|mssql)$",
     )
-    DATASOURCE_DB_USERNAME: str = Field(
-        description="The username for the datasource database", default="trino-user"
+    DATASOURCE_DB_USERNAME: str | None = Field(
+        description="The username for the datasource database. Not required when using Azure managed identity.",
+        default="trino-user",
     )
-    DATASOURCE_DB_PASSWORD: str = Field(
-        description="The password for the datasource database"
+    DATASOURCE_DB_PASSWORD: str | None = Field(
+        description="The password for the datasource database. Not required when using Azure managed identity."
     )
     DATASOURCE_DB_HOST: str = Field(description="The host for the datasource database")
     DATASOURCE_DB_PORT: int = Field(description="The port for the datasource database")
