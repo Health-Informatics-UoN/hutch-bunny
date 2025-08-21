@@ -54,6 +54,7 @@ class BaseDBClient:
         """
         raise NotImplementedError
 
+    @abstractmethod
     def execute_and_fetch(self, stmnt: Executable) -> Sequence[Row[Any]]:
         """Execute a statement against the database and fetch the result.
 
@@ -68,6 +69,7 @@ class BaseDBClient:
         """
         raise NotImplementedError
 
+    @abstractmethod
     def execute(self, stmnt: Executable) -> None:
         """Execute a statement against the database and don't fetch any results.
 
@@ -79,6 +81,7 @@ class BaseDBClient:
         """
         raise NotImplementedError
 
+    @abstractmethod
     def list_tables(self) -> list[str]:
         """List the tables in the database.
 
