@@ -50,10 +50,10 @@ def test_start_with_zero_ttl(mock_settings: Mock) -> None:
 @patch('hutch_bunny.core.services.cache_refresh_service.get_db_manager')
 @patch('hutch_bunny.core.services.cache_refresh_service.execute_query')
 def test_cache_populates_on_startup(
-    mock_execute, 
-    mock_get_db, 
-    service, 
-    mock_settings
+    mock_execute: Mock, 
+    mock_get_db: Mock, 
+    service: CacheRefreshService, 
+    mock_settings: Mock 
 ) -> None:
     mock_settings.CACHE_REFRESH_ON_STARTUP = True
     
@@ -66,4 +66,3 @@ def test_cache_populates_on_startup(
     assert service.thread is not None
     
     service.stop()
-
