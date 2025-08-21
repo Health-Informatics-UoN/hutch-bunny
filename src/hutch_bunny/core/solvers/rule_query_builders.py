@@ -14,8 +14,8 @@ from sqlalchemy import (
     text, 
     union
 )
-from hutch_bunny.core.db_manager import SyncDBManager
-from hutch_bunny.core.entities import (
+from hutch_bunny.core.db import BaseDBClient
+from hutch_bunny.core.db.entities import (
     ConditionOccurrence,
     Measurement,
     Observation,
@@ -71,8 +71,8 @@ class OMOPRuleQueryBuilder:
     using UNION operations to find all persons matching the specified criteria.
     """
 
-    def __init__(self, db_manager: SyncDBManager):
-        self.db_manager = db_manager
+    def __init__(self, db_client: BaseDBClient):
+        self.db_client = db_client
         self.condition_query: Select[Tuple[int]] = select(ConditionOccurrence.person_id)
         self.drug_query: Select[Tuple[int]] = select(DrugExposure.person_id)
         self.measurement_query: Select[Tuple[int]] = select(Measurement.person_id)
@@ -189,7 +189,7 @@ class OMOPRuleQueryBuilder:
             The table query with the age constraint applied.
         """
         age_difference = SQLDialectHandler.get_year_difference(
-            self.db_manager.engine, 
+            self.db_client.engine, 
             table_date_column, 
             Person.year_of_birth  
         )
@@ -403,8 +403,8 @@ class PersonConstraintBuilder:
 
     """
 
-    def __init__(self, db_manager: SyncDBManager):
-        self.db_manager = db_manager
+    def __init__(self, db_client: BaseDBClient):
+        self.db_client = db_client
 
     def build_constraints(self, rule: Rule, concepts: dict[str, str]) -> list[ColumnElement[bool]]:
         """
@@ -444,7 +444,7 @@ class PersonConstraintBuilder:
             return []
 
         age = SQLDialectHandler.get_year_difference(
-            self.db_manager.engine,
+            self.db_client.engine,
             func.current_timestamp(),
             Person.year_of_birth 
         )
