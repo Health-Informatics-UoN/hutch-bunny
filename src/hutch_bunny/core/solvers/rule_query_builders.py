@@ -289,8 +289,8 @@ class OMOPRuleQueryBuilder:
 
     def add_numeric_range(
         self,
-        min_value: float = None,
-        max_value: float = None
+        min_value: float | None = None,
+        max_value: float | None = None
     ) -> 'OMOPRuleQueryBuilder':
         """
         Add numeric range constraints to measurement and observation queries.
