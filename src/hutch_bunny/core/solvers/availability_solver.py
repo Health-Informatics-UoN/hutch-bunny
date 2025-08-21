@@ -11,8 +11,8 @@ from sqlalchemy import (
     literal, 
     or_
 )
-from hutch_bunny.core.db_manager import SyncDBManager
-from hutch_bunny.core.entities import (
+from hutch_bunny.core.db import BaseDBClient
+from hutch_bunny.core.db.entities import (
     Concept,
     Person
 )
@@ -46,10 +46,10 @@ class RuleTableQuery(TypedDict):
 
 class AvailabilitySolver():
 
-    def __init__(self, db_manager: SyncDBManager, query: AvailabilityQuery) -> None:
-        self.db_manager = db_manager
+    def __init__(self, db_client: BaseDBClient, query: AvailabilityQuery) -> None:
+        self.db_client = db_client
         self.query = query
-        self.person_constraint_builder = PersonConstraintBuilder(db_manager)
+        self.person_constraint_builder = PersonConstraintBuilder(db_client)
 
     @retry(
         stop=stop_after_attempt(3),
@@ -69,7 +69,7 @@ class AvailabilitySolver():
         low_number = self._extract_modifier(results_modifiers, "Low Number Suppression", "threshold", 10)
         rounding = self._extract_modifier(results_modifiers, "Rounding", "nearest", 10)
 
-        with self.db_manager.engine.connect() as con:
+        with self.db_client.engine.connect() as con:
             group_queries = []
 
             for group in self.query.cohort.groups:
@@ -110,7 +110,7 @@ class AvailabilitySolver():
             .where(Concept.concept_id.in_(concept_ids))
             .distinct()
         )
-        with self.db_manager.engine.connect() as con:
+        with self.db_client.engine.connect() as con:
             concepts_df = pd.read_sql_query(concept_query, con=con)
         concept_dict = {
             str(concept_id): domain_id for concept_id, domain_id in concepts_df.values
@@ -158,7 +158,7 @@ class AvailabilitySolver():
 
     def _build_rule_query(self, rule: Rule) -> CompoundSelect:
         """Build query for a single non-Person rule."""
-        builder = OMOPRuleQueryBuilder(self.db_manager)
+        builder = OMOPRuleQueryBuilder(self.db_client)
 
         if rule.value:
             builder.add_concept_constraint(int(rule.value))
@@ -340,7 +340,7 @@ class AvailabilitySolver():
         logger.debug(
             str(
                 full_query_all_groups.compile(
-                    dialect=self.db_manager.engine.dialect,
+                    dialect=self.db_client.engine.dialect,
                     compile_kwargs={"literal_binds": True},
                 )
             )
