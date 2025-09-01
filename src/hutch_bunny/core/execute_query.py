@@ -1,5 +1,6 @@
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.solvers import query_solvers
+from hutch_bunny.core.db import BaseDBClient
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.rquest_models.distribution import (
     DistributionQuery,
@@ -7,15 +8,14 @@ from hutch_bunny.core.rquest_models.distribution import (
 )
 from hutch_bunny.core.rquest_models.result import RquestResult
 from hutch_bunny.core.settings import Settings 
-from hutch_bunny.core.db_manager import SyncDBManager
 from hutch_bunny.core.services.cache_service import DistributionCacheService
 
 
 def execute_query(
     query_dict: dict[str, object],
     results_modifier: list[dict[str, str | int]],
-    db_manager: SyncDBManager,
-    settings: Settings = None 
+    db_client: BaseDBClient,
+    settings: Settings | None = None
 ) -> RquestResult:
     """
     Executes either an availability query or a distribution query, and returns results filtered by modifiers. 
@@ -62,7 +62,7 @@ def execute_query(
                 )
 
             result = query_solvers.solve_distribution(
-                results_modifier, db_manager=db_manager, query=distribution_query
+                results_modifier, db_client=db_client, query=distribution_query
             )
 
             cache_service.set(query_dict, results_modifier, result.to_dict())
@@ -81,7 +81,7 @@ def execute_query(
             availability_query = AvailabilityQuery.model_validate(query_dict)
 
             result = query_solvers.solve_availability(
-                results_modifier, db_manager=db_manager, query=availability_query
+                results_modifier, db_client=db_client, query=availability_query
             )
             return result
         except TypeError as te:  # raised if the distribution query json format is wrong
