@@ -115,7 +115,34 @@ def test_different_modifiers_different_cache(
     distribution_query: dict[str, str], 
     mock_settings: Mock 
 ) -> None:
-    pass 
+    mock_db_manager = Mock()
+        
+    result_with_rounding_10 = RquestResult(
+        uuid="test", 
+        status="ok", 
+        collection_id="test", 
+        count=90  # Already rounded to nearest 10
+    )
+    result_with_rounding_100 = RquestResult(
+        uuid="test", 
+        status="ok", 
+        collection_id="test", 
+        count=100  # Already rounded to nearest 100
+    )
+    
+    mock_solve.side_effect = [result_with_rounding_10, result_with_rounding_100]
+    
+    modifiers1 = [{"id": "Rounding", "nearest": 10}]
+    modifiers2 = [{"id": "Rounding", "nearest": 100}]
+    
+    res1 = execute_query(distribution_query, modifiers1, mock_db_manager, mock_settings)
+    assert res1.count == 90
+    
+    res2 = execute_query(distribution_query, modifiers2, mock_db_manager, mock_settings)
+    assert res2.count == 100
+    
+    # Both queries should have been computed (not cached)
+    assert mock_solve.call_count == 2
 
 
 @patch('hutch_bunny.core.execute_query.query_solvers.solve_distribution')
