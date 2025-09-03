@@ -1,7 +1,7 @@
 import tempfile
 from datetime import datetime, timedelta 
 import pytest 
-from unittest.mock import Mock, MagicMock, patch 
+from unittest.mock import Mock, patch 
 
 from hutch_bunny.core.services.cache_refresh_service import CacheRefreshService 
 
