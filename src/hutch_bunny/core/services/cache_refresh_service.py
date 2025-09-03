@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.settings import DaemonSettings
-from hutch_bunny.core.db import get_db_manager
+from hutch_bunny.core.db import get_db_client
 from hutch_bunny.core.execute_query import execute_query
 from hutch_bunny.core.results_modifiers import results_modifiers
 
@@ -75,7 +75,7 @@ class CacheRefreshService:
 
     def _refresh_cache(self) -> None: 
         """Refresh all common distribution queries."""
-        db_manager = get_db_manager()
+        db_client = get_db_client()
 
         queries = [
             {
@@ -108,7 +108,7 @@ class CacheRefreshService:
                     execute_query(
                         query, 
                         modifiers, 
-                        db_manager=db_manager,
+                        db_client=db_client, 
                         settings=self.settings
                     )
                 except Exception as e:
