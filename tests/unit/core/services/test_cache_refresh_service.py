@@ -59,7 +59,6 @@ def test_cache_populates_on_startup(
     
     service.start()
     
-    # Verify initial cache population
     assert mock_execute.call_count > 0
     assert service.last_refresh is not None
     assert service.running is True
@@ -124,7 +123,7 @@ def test_refresh_loop_timing(
         assert mock_execute.call_count > 0
 
 
-def test_thread_is_daemon(service: CacheRefreshService, settings: Mock) -> None: 
+def test_thread_is_daemon(service: CacheRefreshService, mock_settings: Mock) -> None: 
     with patch.object(service, "_refresh_cache"): 
         service.start() 
 
@@ -134,10 +133,39 @@ def test_thread_is_daemon(service: CacheRefreshService, settings: Mock) -> None:
         service.stop() 
 
 
-def test_stop_method() -> None: 
-    pass 
+def test_stop_method(service: CacheRefreshService) -> None: 
+    with patch("time.sleep", return_value=None):
+        with patch.object(service, '_refresh_cache'):
+            service.start()
+            assert service.running is True
+            
+            service.stop()
+            assert service.running is False
+            
+            assert not service.thread.is_alive()
 
 
-def test_refresh_cache_content() -> None:
-    pass  
-    
+@patch('hutch_bunny.core.services.cache_refresh_service.get_db_client')
+@patch('hutch_bunny.core.services.cache_refresh_service.execute_query')
+@patch('hutch_bunny.core.services.cache_refresh_service.results_modifiers')
+def test_refresh_cache_content(
+    mock_modifiers: Mock, 
+    mock_execute: Mock, 
+    mock_get_db_client: Mock, 
+    service: CacheRefreshService, 
+    mock_settings: Mock
+) -> None:
+    mock_modifiers.return_value = [{"id": "test", "value": 10}]
+
+    service._refresh_cache()
+
+    calls = mock_execute.call_args_list
+    query_codes = [call[0][0]['code'] for call in calls]
+
+    assert 'DEMOGRAPHICS' in query_codes
+    assert 'GENERIC' in query_codes
+
+    mock_modifiers.assert_called_with(
+        low_number_suppression_threshold=mock_settings.LOW_NUMBER_SUPPRESSION_THRESHOLD,
+        rounding_target=mock_settings.ROUNDING_TARGET
+    )
