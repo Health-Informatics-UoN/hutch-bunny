@@ -49,7 +49,7 @@ def execute_query(
             cached_result = cache_service.get(query_dict, results_modifier)
             if cached_result: 
                 logger.info("Returning cached distribution result")
-                return RquestResult.model_validate(cached_result)
+                return cached_result
 
         try:
             distribution_query = DistributionQuery.model_validate(query_dict)
@@ -65,7 +65,7 @@ def execute_query(
                 results_modifier, db_client=db_client, query=distribution_query
             )
 
-            cache_service.set(query_dict, results_modifier, result.to_dict())
+            cache_service.set(query_dict, results_modifier, result)
 
             return result
         except TypeError as te:  # raised if the distribution query json format is wrong

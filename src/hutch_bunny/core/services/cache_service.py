@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.settings import Settings
+from hutch_bunny.core.rquest_models.result import RquestResult 
 
 
 class DistributionCacheService: 
@@ -51,7 +52,7 @@ class DistributionCacheService:
         expiry_time = file_time + timedelta(hours=self.ttl_hours)
         return datetime.now() < expiry_time
     
-    def get(self, query_dict: dict[str, object], modifiers: list) -> Optional[dict]: 
+    def get(self, query_dict: dict[str, object], modifiers: list) -> Optional[RquestResult]: 
         """Retrieve cached result if available and valid."""
         if not self.enabled: 
             return None 
@@ -64,14 +65,14 @@ class DistributionCacheService:
                 with open(cache_path, 'r') as f:
                     cached_data = json.load(f)
                 logger.info(f"Cache hit for distribution query: {cache_key}")
-                return cached_data
+                return RquestResult.model_validate(cached_data)
             except Exception as e:
                 logger.error(f"Error reading cache: {e}")
                 return None
         
         return None 
     
-    def set(self, query_dict: dict[str, object], modifiers: list, result: dict) -> None: 
+    def set(self, query_dict: dict[str, object], modifiers: list, result: RquestResult) -> None: 
         """Store result in cache."""
         if not self.enabled:
             return
@@ -79,9 +80,10 @@ class DistributionCacheService:
         cache_key = self._generate_cache_key(query_dict, modifiers)
         cache_path = self._get_cache_path(cache_key)
 
-        try:
+        try: 
+            cache_data = result.model_dump(mode="json")
             with open(cache_path, 'w') as f:
-                json.dump(result, f)
+                json.dump(cache_data, f)
             logger.info(f"Cached distribution query result: {cache_key}")
         except Exception as e:
             logger.error(f"Error writing cache: {e}")

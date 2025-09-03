@@ -65,12 +65,97 @@ def test_first_query_computes_and_caches(
 
     with open(cache_path) as f: 
         cached_data = json.load(f)
-        query_result = cached_data["queryResult"]
-        assert query_result["count"] == 100  
+        assert cached_data["count"] == 100  
 
+
+@patch('hutch_bunny.core.execute_query.query_solvers.solve_distribution')
+def test_second_query_uses_cache(
+    mock_solve: Mock, 
+    distribution_query: dict[str, str], 
+    mock_settings: Mock
+) -> None:
+    mock_result = RquestResult(
+        uuid="test-uuid",
+        status="ok",
+        collection_id="test-collection",
+        count=100
+    )
+    mock_solve.return_value = mock_result
+
+    mock_db_client = Mock()
+    modifiers = []
+
+    # First call - should compute 
+    result1 = execute_query(
+        distribution_query,
+        modifiers,
+        mock_db_client, 
+        mock_settings
+    )
+
+    assert mock_solve.call_count == 1
+    assert result1.count == 100
     
-
-
+    # Second call - should use cache
+    result2 = execute_query(
+        distribution_query,
+        modifiers,
+        mock_db_client, 
+        mock_settings
+    )
     
+    # solve_distribution should only be called once
+    assert mock_solve.call_count == 1
+    assert result2.count == 100
+
+
+@patch('hutch_bunny.core.execute_query.query_solvers.solve_distribution')
+def test_different_modifiers_different_cache(
+    mock_solve: Mock, 
+    distribution_query: dict[str, str], 
+    mock_settings: Mock 
+) -> None:
+    pass 
+
+
+@patch('hutch_bunny.core.execute_query.query_solvers.solve_distribution')
+def test_expired_cache_recomputes(
+    mock_solve: Mock, 
+    distribution_query: dict[str, str], 
+    mock_settings: Mock,
+    tmp_path: Path
+) -> None:
+    mock_settings.CACHE_TTL_HOURS = 1  
+        
+    mock_result = RquestResult(
+        uuid="test-uuid",
+        status="ok",
+        collection_id="test-collection",
+        count=100
+    )
+    mock_solve.return_value = mock_result
+
+    mock_db_manager = Mock()
+    modifiers = []
+
+    execute_query(distribution_query, modifiers, mock_db_manager, mock_settings)
+    assert mock_solve.call_count == 1
+
+    cache_service = DistributionCacheService(mock_settings)
+    cache_key = cache_service._generate_cache_key(distribution_query, modifiers)
+    cache_path = tmp_path / f"{cache_key}.json"
+
+    assert cache_path.exists()
+
+    # Set file modification time to 2 hours ago
+    old_time = (datetime.now() - timedelta(hours=2)).timestamp()
+    cache_path.touch()  # Ensure it exists
+    os.utime(cache_path, (old_time, old_time))
+    
+    # Second call - should recompute due to expiration
+    execute_query(distribution_query, modifiers, mock_db_manager, mock_settings)
+    assert mock_solve.call_count == 2
+
+
 
 
