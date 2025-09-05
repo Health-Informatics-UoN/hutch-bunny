@@ -7,15 +7,20 @@ from hutch_bunny.core.rquest_models.distribution import (
     DistributionQueryType,
 )
 from hutch_bunny.core.rquest_models.result import RquestResult
+from hutch_bunny.core.settings import Settings 
+from hutch_bunny.core.services.cache_service import DistributionCacheService
 
 
 def execute_query(
     query_dict: dict[str, object],
     results_modifier: list[dict[str, str | int]],
     db_client: BaseDBClient,
+    settings: Settings | None = None
 ) -> RquestResult:
     """
-    Executes either an availability query or a distribution query, and returns results filtered by modifiers
+    Executes either an availability query or a distribution query, and returns results filtered by modifiers. 
+
+    Caching support is enabled for distribution queries. 
 
     Parameters
     ----------
@@ -34,6 +39,18 @@ def execute_query(
 
     if "analysis" in query_dict.keys():
         logger.debug("Processing distribution query...")
+
+        if settings is None: 
+            settings = Settings()
+        
+        cache_service = DistributionCacheService(settings)
+        
+        if settings.CACHE_ENABLED:
+            cached_result = cache_service.get(query_dict, results_modifier)
+            if cached_result: 
+                logger.info("Returning cached distribution result")
+                return cached_result
+
         try:
             distribution_query = DistributionQuery.model_validate(query_dict)
 
@@ -47,6 +64,8 @@ def execute_query(
             result = query_solvers.solve_distribution(
                 results_modifier, db_client=db_client, query=distribution_query
             )
+
+            cache_service.set(query_dict, results_modifier, result)
 
             return result
         except TypeError as te:  # raised if the distribution query json format is wrong
