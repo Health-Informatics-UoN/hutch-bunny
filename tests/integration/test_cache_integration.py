@@ -1,13 +1,18 @@
 import os
+import time 
+import threading
 import pytest
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from hutch_bunny.core.execute_query import execute_query
 from hutch_bunny.core.services.cache_service import DistributionCacheService
+from hutch_bunny.core.services.cache_refresh_service import CacheRefreshService 
 from hutch_bunny.core.rquest_models.result import RquestResult
-
+from hutch_bunny.core.upstream.polling_service import PollingService
+from hutch_bunny.core.upstream.task_handler import handle_task
+ 
 
 @pytest.fixture
 def mock_settings(tmp_path: Path) -> Mock:
@@ -15,6 +20,9 @@ def mock_settings(tmp_path: Path) -> Mock:
     settings.CACHE_ENABLED = True
     settings.CACHE_DIR = str(tmp_path)
     settings.CACHE_TTL_HOURS = 24
+    settings.INITIAL_BACKOFF = 1
+    settings.MAX_BACKOFF = 5
+    settings.POLLING_INTERVAL = 0.01 
     settings.LOW_NUMBER_SUPPRESSION_THRESHOLD = 10
     settings.ROUNDING_TARGET = 10
     return settings
@@ -182,6 +190,66 @@ def test_expired_cache_recomputes(
     # Second call - should recompute due to expiration
     execute_query(distribution_query, modifiers, mock_db_manager, mock_settings)
     assert mock_solve.call_count == 2
+
+
+@patch('hutch_bunny.core.services.cache_refresh_service.get_db_client')
+@patch('hutch_bunny.core.services.cache_refresh_service.execute_query')
+def test_cache_service_with_polling(mock_execute: Mock, mock_get_db_client: Mock, mock_settings: Mock) -> None:
+    cache_service = CacheRefreshService(mock_settings)
+    cache_service.start()
+
+    task_calls = []
+    def mock_handler(task_data) -> None:
+        task_calls.append(task_data)
+
+    polling_service = PollingService(mock_get_db_client, mock_handler, mock_settings)
+        
+    polling_thread = threading.Thread(
+        target=lambda: polling_service.poll_for_tasks(max_iterations=5)
+    )
+    polling_thread.start()
+
+    time.sleep(0.5)
+
+    assert cache_service.running is True
+    assert mock_get_db_client.get.call_count >= 5
+    
+    cache_service.stop()
+    polling_thread.join(timeout=2)
+
+
+@patch('hutch_bunny.core.execute_query.query_solvers.solve_distribution')
+def test_task_handler_uses_cache(mock_solve: Mock, mock_settings: Mock) -> None:
+    mock_result = RquestResult(
+        uuid="task-uuid",
+        status="ok",
+        collection_id="test_collection",
+        count=150
+    )
+    mock_solve.return_value = mock_result
+        
+    mock_db_manager = Mock()
+    mock_api_client = Mock()
+    
+    distribution_task = {
+        "code": "DEMOGRAPHICS",
+        "analysis": "DISTRIBUTION",
+        "uuid": "task-uuid",
+        "collection": "test_collection",
+        "owner": "user1"
+    }
+
+    handle_task(distribution_task, mock_db_manager, mock_settings, mock_api_client)
+    assert mock_solve.call_count == 1
+    assert mock_api_client.send_results.call_count == 1
+
+    # Second identical task - should use cache
+    handle_task(distribution_task, mock_db_manager, mock_settings, mock_api_client)
+    assert mock_solve.call_count == 1  # Still 1, used cache
+    assert mock_api_client.send_results.call_count == 2
+
+
+
 
 
 
