@@ -60,13 +60,10 @@ def execute_query(
                 raise NotImplementedError(
                     "ICD-MAIN queries are not yet supported. See: https://github.com/Health-Informatics-UoN/hutch-bunny/issues/30"
                 )
-
             result = query_solvers.solve_distribution(
                 results_modifier, db_client=db_client, query=distribution_query
             )
-
             cache_service.set(query_dict, results_modifier, result)
-
             return result
         except TypeError as te:  # raised if the distribution query json format is wrong
             logger.error(str(te), exc_info=True)

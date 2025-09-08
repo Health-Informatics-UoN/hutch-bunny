@@ -249,6 +249,53 @@ def test_task_handler_uses_cache(mock_solve: Mock, mock_settings: Mock) -> None:
     assert mock_api_client.send_results.call_count == 2
 
 
+@patch('hutch_bunny.core.execute_query.DistributionCacheService.get')
+@patch('hutch_bunny.core.services.cache_refresh_service.get_db_client')
+@patch('hutch_bunny.core.execute_query.query_solvers.solve_distribution')
+def test_background_refresh_updates_cache(
+    mock_solve: Mock, 
+    mock_get_db_client: Mock, 
+    mock_cache_get: Mock, 
+    mock_settings: Mock
+) -> None:
+    mock_cache_get.return_value = None
+    mock_settings.COLLECTION_ID = "test_collection"
+
+    results = [
+        RquestResult(uuid="1", status="ok", collection_id="test", count=100),
+        RquestResult(uuid="2", status="ok", collection_id="test", count=110),  
+    ]
+    mock_solve.side_effect = results * 10
+
+    mock_settings.CACHE_TTL_HOURS = 0.0167  # 1 minute
+        
+    # Start cache service
+    cache_service = CacheRefreshService(mock_settings)
+
+    with patch('time.sleep'):  # Speed up test
+        # Initial population
+        cache_service._refresh_cache()
+        initial_time = datetime.now()
+        cache_service.last_refresh = initial_time
+
+        with patch('hutch_bunny.core.services.cache_refresh_service.datetime') as mock_datetime:
+            # First check - not time yet
+            mock_datetime.now.return_value = initial_time + timedelta(seconds=30)
+            cache_service.running = True
+
+            should_refresh = mock_datetime.now() >= cache_service.last_refresh + timedelta(hours=mock_settings.CACHE_TTL_HOURS)
+            assert not should_refresh
+
+            mock_datetime.now.return_value = initial_time + timedelta(minutes=2)
+            should_refresh = mock_datetime.now() >= cache_service.last_refresh + timedelta(hours=mock_settings.CACHE_TTL_HOURS)
+            assert should_refresh
+
+            cache_service._refresh_cache()
+
+            assert mock_solve.call_count >= 2
+
+
+
 
 
 
