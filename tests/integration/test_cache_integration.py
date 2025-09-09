@@ -295,9 +295,56 @@ def test_background_refresh_updates_cache(
             assert mock_solve.call_count >= 2
 
 
+@patch('hutch_bunny.core.services.cache_refresh_service.execute_query')
+@patch('hutch_bunny.core.services.cache_refresh_service.get_db_client')
+def test_system_stable_with_cache_errors(
+    mock_get_db: Mock, 
+    mock_execute: Mock, 
+    mock_settings: Mock
+) -> None:
+    mock_execute.side_effect = Exception("Execution of query has failed")
+    
+    cache_service = CacheRefreshService(mock_settings)
+    
+    try:
+        cache_service._refresh_cache()
+    except Exception:
+        pytest.fail("Cache refresh should handle errors gracefully")
+    
+    # Start service - should continue despite errors
+    cache_service.start()
+    assert cache_service.running is True
+    
+    mock_task_handler = Mock()
+    mock_client = Mock()
+    mock_client.get.return_value.status_code = 204
+    
+    polling_service = PollingService(mock_client, mock_task_handler, mock_settings)
+    
+    # Should work even with cache failures
+    polling_thread = threading.Thread(
+        target=lambda: polling_service.poll_for_tasks(max_iterations=3)
+    )
+    polling_thread.start()
+    polling_thread.join(timeout=2)
+    
+    assert mock_client.get.call_count >= 3
+    
+    cache_service.stop()
 
 
+def test_resource_cleanup(mock_settings: Mock) -> None:
+    with patch('hutch_bunny.core.services.cache_refresh_service.get_db_client'):  
+        with patch('hutch_bunny.core.services.cache_refresh_service.execute_query'): 
+            with patch('time.sleep', return_value=None):
+                cache_service = CacheRefreshService(mock_settings)
+                cache_service.start()
+                
+                initial_thread = cache_service.thread
+                assert initial_thread.is_alive()
 
-
-
-
+                cache_service.stop()
+                
+                time.sleep(0.1)
+                assert not initial_thread.is_alive()
+                assert cache_service.running is False
