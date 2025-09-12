@@ -97,7 +97,7 @@ def _create_sync_client() -> SyncDBClient:
 
 @retry(
     stop=stop_after_attempt(3),
-    wait=wait_fixed(1),
+    wait=wait_fixed(60),
     before_sleep=before_sleep_log(logger, INFO),
     after=after_log(logger, INFO),
 )
