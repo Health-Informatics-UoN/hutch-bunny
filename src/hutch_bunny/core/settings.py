@@ -65,9 +65,6 @@ class Settings(BaseSettings):
         description="The database for the datasource database. Optional if using duckdb.",
         default=None,
     )
-    DATASOURCE_DB_SCHEMA: str = Field(
-        description="The schema for the datasource database"
-    )   
     DATASOURCE_DB_CATALOG: str = Field(
         description="The catalog for the datasource database", default="hutch"
     )
