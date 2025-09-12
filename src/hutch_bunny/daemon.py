@@ -16,10 +16,10 @@ def main() -> None:
     configure_logger(settings)
     logger.info(f"Starting Bunny version {version('hutch_bunny')} ")
     logger.debug("Settings: %s", settings.safe_model_dump())
-
+    
     # Setting database connection
     db_client = get_db_client()
-
+    
     cache_refresh = CacheRefreshService(settings)
     cache_refresh.start()
 

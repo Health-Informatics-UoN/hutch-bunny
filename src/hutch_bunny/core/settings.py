@@ -13,28 +13,19 @@ class Settings(BaseSettings):
     """
     CACHE_ENABLED: bool = Field(
         description="Enable caching of distribution query results",
-        default=False,
-        alias="BUNNY_CACHE_ENABLED"
+        default=False
     )
     CACHE_DIR: str = Field(
         description="Directory to store cached distribution results",
-        default="/tmp/bunny_cache",  # need to change to within the repo 
-        alias="BUNNY_CACHE_DIR"
+        default="/app/cache"
     )
-    CACHE_TTL_HOURS: int = Field(
+    CACHE_TTL_HOURS: float = Field(
         description="Cache validity (time-to-live) period in hours (0 = never expires)",
-        default=24,
-        alias="BUNNY_CACHE_TTL_HOURS"
-    )
-    CACHE_REFRESH_INTERVAL_HOURS: int = Field(
-        description="How often to proactively refresh cache in hours (0 = no auto-refresh)",
-        default=24,  # need to change I think  
-        alias="BUNNY_CACHE_REFRESH_INTERVAL_HOURS"  
+        default=24.0
     )
     CACHE_REFRESH_ON_STARTUP: bool = Field(
         description="Refresh cache when daemon starts",
-        default=True,
-        alias="BUNNY_CACHE_REFRESH_ON_STARTUP"
+        default=True
     )
     DATASOURCE_USE_TRINO: bool = Field(
         description="Whether to use Trino as the datasource", default=False
