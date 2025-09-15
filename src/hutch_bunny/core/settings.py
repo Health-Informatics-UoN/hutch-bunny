@@ -75,7 +75,7 @@ class DaemonSettings(Settings):
     """
 
     TASK_API_ENFORCE_HTTPS: bool = Field(
-        description="Whether to enforce HTTPS for the task API", default=True
+        description="Whether to enforce HTTPS for the task API", default=False 
     )
     TASK_API_BASE_URL: str = Field(description="The base URL of the task API")
     TASK_API_USERNAME: str = Field(description="The username for the task API")
