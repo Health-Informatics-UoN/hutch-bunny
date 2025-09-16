@@ -14,6 +14,7 @@ from .base import BaseDBClient
 from .sync import SyncDBClient
 from .trino import TrinoDBClient
 from .azure import AzureManagedIdentityDBClient
+from .duckdb import DuckDBClient
 from .utils import (
     DEFAULT_TRINO_PORT,
     expand_short_drivers,
@@ -59,6 +60,15 @@ def _create_azure_client() -> AzureManagedIdentityDBClient:
         schema=settings.DATASOURCE_DB_SCHEMA,
     )
 
+def _create_duckdb_client() -> DuckDBClient:
+    """Create an DuckDB client."""
+
+    return DuckDBClient(
+        path_to_db=settings.DATASOURCE_DUCKDB_PATH_TO_DB,
+        duckdb_memory_limit=settings.DATASOURCE_DUCKDB_MEMORY_LIMIT,
+        schema=settings.DATASOURCE_DB_SCHEMA,
+    )
+
 
 def _create_sync_client() -> SyncDBClient:
     """Create a regular synchronous database client."""
@@ -100,6 +110,8 @@ def get_db_client() -> BaseDBClient:
             return _create_trino_client()
         elif settings.DATASOURCE_USE_AZURE_MANAGED_IDENTITY:
             return _create_azure_client()
+        elif settings.DATASOURCE_DB_DRIVERNAME == "duckdb":
+            return _create_duckdb_client()
         else:
             return _create_sync_client()
     except TypeError as e:
