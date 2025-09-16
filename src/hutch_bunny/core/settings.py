@@ -74,6 +74,9 @@ class Settings(BaseSettings):
     DATASOURCE_DUCKDB_MEMORY_LIMIT: str = Field(
         description="The memory limit for DuckDB (e.g. '1000mb', '2gb')", default="1000mb"
     )
+    DATASOURCE_DUCKDB_TEMP_DIRECTORY: str = Field(
+        description="The temporary directory for DuckDB - used as a swap fir larger-than-memory processing.", default="/tmp"
+    )
 
     def safe_model_dump(self) -> dict[str, object]:
         """
