@@ -15,6 +15,7 @@ from .sync import SyncDBClient
 from .trino import TrinoDBClient
 from .azure import AzureManagedIdentityDBClient
 from .duckdb import DuckDBClient
+from .duckdb import DuckDBClient
 from .utils import (
     DEFAULT_TRINO_PORT,
     expand_short_drivers,
@@ -68,6 +69,15 @@ def _create_duckdb_client() -> DuckDBClient:
         duckdb_memory_limit=settings.DATASOURCE_DUCKDB_MEMORY_LIMIT,
         schema=settings.DATASOURCE_DB_SCHEMA,
         duckdb_temp_directory=settings.DATASOURCE_DUCKDB_TEMP_DIRECTORY,
+    )
+
+def _create_duckdb_client() -> DuckDBClient:
+    """Create an DuckDB client."""
+
+    return DuckDBClient(
+        path_to_db=settings.DATASOURCE_DUCKDB_PATH_TO_DB,
+        duckdb_memory_limit=settings.DATASOURCE_DUCKDB_MEMORY_LIMIT,
+        schema=settings.DATASOURCE_DB_SCHEMA,
     )
 
 
