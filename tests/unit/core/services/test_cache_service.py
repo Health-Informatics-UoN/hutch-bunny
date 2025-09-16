@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch 
 from datetime import datetime, timedelta 
 
+from hutch_bunny.core.rquest_models.result import RquestResult 
 from hutch_bunny.core.services.cache_service import DistributionCacheService 
 
 @pytest.fixture 
@@ -37,12 +38,16 @@ def test_cache_get_set(mock_settings: Mock) -> None:
     service = DistributionCacheService(mock_settings)
     query = {"code": "DEMOGRAPHICS"}
     modifiers = []
-    result = {"status": "ok", "count": 100}
+    result = RquestResult(
+        uuid="test", 
+        status="ok", 
+        collection_id="test", 
+        count=100  
+    )
 
     assert service.get(query, modifiers) is None
 
     service.set(query, modifiers, result)
-
     cached = service.get(query, modifiers)
     assert cached == result
 
@@ -52,7 +57,12 @@ def test_cache_ttl_expiration(mock_settings: Mock) -> None:
     service = DistributionCacheService(mock_settings)
     
     query = {"code": "DEMOGRAPHICS"}
-    result = {"status": "ok"}
+    result = RquestResult(
+        uuid="test", 
+        status="ok", 
+        collection_id="test", 
+        count=100  
+    )
 
     service.set(query, [], result)
     cache_path = service._get_cache_path(service._generate_cache_key(query, []))
@@ -66,7 +76,12 @@ def test_cache_clear(mock_settings: Mock) -> None:
     service = DistributionCacheService(mock_settings)
     query = {"code": "DEMOGRAPHICS"}
     modifiers = []
-    result = {"status": "ok", "count": 100}
+    result = RquestResult(
+        uuid="test", 
+        status="ok", 
+        collection_id="test", 
+        count=100  
+    )
     
     service.set(query, modifiers, result)
     cached = service.get(query, modifiers)
