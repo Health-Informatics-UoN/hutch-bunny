@@ -18,7 +18,7 @@ def mock_settings() -> Mock:
 
 def test_cache_service_initialisation(mock_settings: Mock) -> None: 
     service = DistributionCacheService(mock_settings)
-    assert service.enabled == True
+    assert service.enabled
     assert Path(service.cache_dir).exists()
 
 
@@ -65,8 +65,6 @@ def test_cache_ttl_expiration(mock_settings: Mock) -> None:
     )
 
     service.set(query, [], result)
-    cache_path = service._get_cache_path(service._generate_cache_key(query, []))
-
     fake_stat = Mock(st_mtime=(datetime.now() - timedelta(hours=2)).timestamp())
     with patch("hutch_bunny.core.services.cache_service.Path.stat", return_value=fake_stat):
         assert service.get(query, []) is None
