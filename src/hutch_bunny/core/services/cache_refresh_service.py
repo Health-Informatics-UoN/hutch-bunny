@@ -61,7 +61,7 @@ class CacheRefreshService:
                 next_refresh = self.last_refresh + timedelta(hours=self.settings.CACHE_TTL_HOURS)
 
                 if datetime.now() >= next_refresh:
-                    logger.info("Starting scheduled cache refresh")
+                    logger.info(f"{datetime.now() - self.last_refresh} elapsed since last refresh: Starting scheduled cache refresh")
                     self._refresh_cache()
                     self.last_refresh = datetime.now()
                     logger.info("Cache refresh completed")
