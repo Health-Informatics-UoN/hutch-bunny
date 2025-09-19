@@ -44,7 +44,8 @@ def test_handle_task_success(mock_db_manager, mock_settings, mock_task_api_clien
         mock_execute_query.assert_called_once_with(
             task_data,
             expected_result_modifier,
-            db_client=mock_db_manager,
+            db_client=mock_db_manager, 
+            settings=mock_settings
         )
         mock_task_api_client.send_results.assert_called_once_with(mock_result)
 
