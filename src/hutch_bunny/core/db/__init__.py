@@ -67,8 +67,8 @@ def _create_duckdb_client() -> DuckDBClient:
         path_to_db=settings.DATASOURCE_DUCKDB_PATH_TO_DB,
         duckdb_memory_limit=settings.DATASOURCE_DUCKDB_MEMORY_LIMIT,
         schema=settings.DATASOURCE_DB_SCHEMA,
+        duckdb_temp_directory=settings.DATASOURCE_DUCKDB_TEMP_DIRECTORY,
     )
-
 
 def _create_sync_client() -> SyncDBClient:
     """Create a regular synchronous database client."""
