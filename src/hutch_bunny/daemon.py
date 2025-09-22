@@ -14,9 +14,10 @@ def main() -> None:
     """
     settings = DaemonSettings()
 
+    configure_logger(settings)
+
     setup_telemetry(settings)
 
-    configure_logger(settings)
     logger.info(f"Starting Bunny version {version('hutch_bunny')} ")
     logger.debug("Settings: %s", settings.safe_model_dump())
 
