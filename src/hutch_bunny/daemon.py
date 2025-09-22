@@ -5,6 +5,7 @@ from hutch_bunny.core.db import get_db_client
 from hutch_bunny.core.upstream.polling_service import PollingService
 from importlib.metadata import version
 from hutch_bunny.core.upstream.task_handler import handle_task
+from hutch_bunny.core.telemetry import setup_telemetry
 
 
 def main() -> None:
@@ -12,6 +13,9 @@ def main() -> None:
     Main function to start the daemon process.
     """
     settings = DaemonSettings()
+
+    setup_telemetry(settings)
+
     configure_logger(settings)
     logger.info(f"Starting Bunny version {version('hutch_bunny')} ")
     logger.debug("Settings: %s", settings.safe_model_dump())
