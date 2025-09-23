@@ -1,4 +1,3 @@
-import os
 from opentelemetry import trace, metrics
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -31,27 +30,7 @@ def setup_telemetry(settings: Settings) -> None:
             SERVICE_VERSION: version("hutch-bunny"),
         })
 
-        trace_provider = TracerProvider(resource=resource)
-        trace.set_tracer_provider(trace_provider)
-
-        trace_exporter = OTLPSpanExporter(
-            endpoint=settings.OTEL_EXPORTER_OTLP_ENDPOINT
-        )
-        trace_provider.add_span_processor(BatchSpanProcessor(trace_exporter))
-
-        metric_exporter = OTLPMetricExporter(
-            endpoint=settings.OTEL_EXPORTER_OTLP_ENDPOINT
-        )
-        metric_reader = PeriodicExportingMetricReader(metric_exporter, export_interval_millis=10000)
-        metric_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
-        metrics.set_meter_provider(metric_provider)
-
-        log_provider = LoggerProvider(resource=resource)
-        set_logger_provider(log_provider)
-        log_exporter = OTLPLogExporter(endpoint=settings.OTEL_EXPORTER_OTLP_ENDPOINT)
-        log_provider.add_log_record_processor(BatchLogRecordProcessor(log_exporter))
-        otel_handler = LoggingHandler(logger_provider=log_provider)
-        logger.addHandler(otel_handler)
+        _setup_logging_integration(resource, settings)
 
         SQLAlchemyInstrumentor().instrument()
         RequestsInstrumentor().instrument()
@@ -60,6 +39,39 @@ def setup_telemetry(settings: Settings) -> None:
         
     except Exception as e:
         print(f"OpenTelemetry setup failed: {e}")
+
+
+def _setup_tracing(resource: Resource, settings: Settings) -> None:
+    """Setup distributed tracing."""
+    trace_provider = TracerProvider(resource=resource)
+    trace.set_tracer_provider(trace_provider)
+
+    trace_exporter = OTLPSpanExporter(
+        endpoint=settings.OTEL_EXPORTER_OTLP_ENDPOINT
+    )
+    trace_provider.add_span_processor(BatchSpanProcessor(trace_exporter))
+
+
+def _setup_metrics(resource: Resource, settings: Settings) -> None: 
+    """Setup metrics collection."""
+    metric_exporter = OTLPMetricExporter(
+        endpoint=settings.OTEL_EXPORTER_OTLP_ENDPOINT
+    )
+    metric_reader = PeriodicExportingMetricReader(metric_exporter, export_interval_millis=10000)
+    metric_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
+    metrics.set_meter_provider(metric_provider)
+
+
+def _setup_logging_integration(resource: Resource, settings: Settings) -> None: 
+    """Setup logging integration with existing Bunny logger."""
+    log_provider = LoggerProvider(resource=resource)
+    set_logger_provider(log_provider)
+
+    log_exporter = OTLPLogExporter(endpoint=settings.OTEL_EXPORTER_OTLP_ENDPOINT)
+    log_provider.add_log_record_processor(BatchLogRecordProcessor(log_exporter))
+
+    otel_handler = LoggingHandler(logger_provider=log_provider)
+    logger.addHandler(otel_handler)
 
 
 

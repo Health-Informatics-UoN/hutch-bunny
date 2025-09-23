@@ -1,0 +1,49 @@
+# Complete minimal observability stack
+
+version: '3.8'
+
+services:
+  # === OBSERVABILITY STACK ===
+  
+  # Grafana - Single UI for logs, traces, and metrics
+  grafana:
+    image: grafana/grafana:10.1.0
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+    restart: unless-stopped
+    depends_on:
+      - loki
+
+  # Loki - Logs
+  loki:
+    image: grafana/loki:2.9.0
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki-data:/tmp/loki
+    restart: unless-stopped
+
+  # OpenTelemetry Collector - Routes everything
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.88.0
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+    volumes:
+      - ./config/otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+volumes:
+  grafana-data:
+  loki-data:
