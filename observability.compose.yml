@@ -20,6 +20,7 @@ services:
     restart: unless-stopped
     depends_on:
       - loki
+      - tempo
 
   # Loki - Logs
   loki:
@@ -29,6 +30,17 @@ services:
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
       - loki-data:/tmp/loki
+    restart: unless-stopped
+
+  # Tempo - Distributed Tracing
+  tempo:
+    image: grafana/tempo:2.2.0
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./config/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/tmp/tempo
+    ports:
+      - "3200:3200"   # Tempo
     restart: unless-stopped
 
   # OpenTelemetry Collector - Routes everything
@@ -42,8 +54,10 @@ services:
       - ./config/otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
     depends_on:
       - loki
+      - tempo
     restart: unless-stopped
 
 volumes:
   grafana-data:
   loki-data:
+  tempo-data: 

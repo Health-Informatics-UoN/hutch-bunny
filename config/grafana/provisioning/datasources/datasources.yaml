@@ -1,0 +1,18 @@
+# Auto-configure all datasources in Grafana
+
+apiVersion: 1
+
+datasources:
+  # Loki for logs
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: false
+  
+  # Tempo for traces  
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    isDefault: false
