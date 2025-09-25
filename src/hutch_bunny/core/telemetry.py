@@ -1,5 +1,5 @@
 from opentelemetry import trace, metrics
-from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace import TracerProvider, ReadableSpan 
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
@@ -51,7 +51,7 @@ def _setup_tracing(resource: Resource, settings: Settings) -> None:
     trace_exporter = OTLPSpanExporter(
         endpoint=settings.OTEL_EXPORTER_OTLP_ENDPOINT
     )
-    trace_provider.add_span_processor(BatchSpanProcessor(trace_exporter))
+    trace_provider.add_span_processor(DropPollingSpansProcessor(trace_exporter))
 
 
 def _setup_metrics(resource: Resource, settings: Settings) -> None: 
@@ -76,5 +76,14 @@ def _setup_logging_integration(resource: Resource, settings: Settings) -> None:
     logger.addHandler(otel_handler)
 
 
+class DropPollingSpansProcessor(BatchSpanProcessor):
+    def on_end(self, span: ReadableSpan) -> None:
+        attributes = span.attributes
+        if attributes is None:
+            return 
+        url_value = attributes.get("http.url")
+        if isinstance(url_value, str) and "/task/nextjob/" in url_value:
+            return  
+        super().on_end(span)
 
 

@@ -22,10 +22,8 @@ exporters:
     endpoint: tempo:4317
     tls:
       insecure: true
-
   loki:
     endpoint: "http://loki:3100/loki/api/v1/push"
-    
   debug:
     verbosity: basic
 
