@@ -1,3 +1,5 @@
+from opentelemetry import trace 
+
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.solvers import query_solvers
 from hutch_bunny.core.db import BaseDBClient
@@ -7,6 +9,9 @@ from hutch_bunny.core.rquest_models.distribution import (
     DistributionQueryType,
 )
 from hutch_bunny.core.rquest_models.result import RquestResult
+
+
+tracer = trace.get_tracer("hutch-bunny.execute_query")
 
 
 def execute_query(
@@ -28,47 +33,49 @@ def execute_query(
     Returns
         RquestResult
     """
+    with tracer.start_as_current_span("execute_query", kind=trace.SpanKind.CLIENT) as span:
+        span.set_attribute("db.system", "postgresql")
 
-    logger.info("Processing query...")
-    logger.debug(query_dict)
+        logger.info("Processing query...")
+        logger.debug(query_dict)
 
-    if "analysis" in query_dict.keys():
-        logger.debug("Processing distribution query...")
-        try:
-            distribution_query = DistributionQuery.model_validate(query_dict)
+        if "analysis" in query_dict.keys():
+            logger.debug("Processing distribution query...")
+            try:
+                distribution_query = DistributionQuery.model_validate(query_dict)
 
-            # Check for ICD-MAIN queries before calling the solver
-            # So we dont return results upstream
-            if distribution_query.code == DistributionQueryType.ICD_MAIN:
-                raise NotImplementedError(
-                    "ICD-MAIN queries are not yet supported. See: https://github.com/Health-Informatics-UoN/hutch-bunny/issues/30"
+                # Check for ICD-MAIN queries before calling the solver
+                # So we dont return results upstream
+                if distribution_query.code == DistributionQueryType.ICD_MAIN:
+                    raise NotImplementedError(
+                        "ICD-MAIN queries are not yet supported. See: https://github.com/Health-Informatics-UoN/hutch-bunny/issues/30"
+                    )
+
+                result = query_solvers.solve_distribution(
+                    results_modifier, db_client=db_client, query=distribution_query
                 )
 
-            result = query_solvers.solve_distribution(
-                results_modifier, db_client=db_client, query=distribution_query
-            )
+                return result
+            except TypeError as te:  # raised if the distribution query json format is wrong
+                logger.error(str(te), exc_info=True)
+            except ValueError as ve:
+                # raised if there was an issue saving the output or
+                # the query json has incorrect values
+                logger.error(str(ve), exc_info=True)
 
-            return result
-        except TypeError as te:  # raised if the distribution query json format is wrong
-            logger.error(str(te), exc_info=True)
-        except ValueError as ve:
-            # raised if there was an issue saving the output or
-            # the query json has incorrect values
-            logger.error(str(ve), exc_info=True)
+        else:
+            logger.debug("Processing availability query...")
+            try:
+                availability_query = AvailabilityQuery.model_validate(query_dict)
 
-    else:
-        logger.debug("Processing availability query...")
-        try:
-            availability_query = AvailabilityQuery.model_validate(query_dict)
-
-            result = query_solvers.solve_availability(
-                results_modifier, db_client=db_client, query=availability_query
-            )
-            return result
-        except TypeError as te:  # raised if the distribution query json format is wrong
-            logger.error(str(te), exc_info=True)
-        except ValueError as ve:
-            # raised if there was an issue saving the output or
-            # the query json has incorrect values
-            logger.error(str(ve), exc_info=True)
-    raise ValueError("Invalid query type")
+                result = query_solvers.solve_availability(
+                    results_modifier, db_client=db_client, query=availability_query
+                )
+                return result
+            except TypeError as te:  # raised if the distribution query json format is wrong
+                logger.error(str(te), exc_info=True)
+            except ValueError as ve:
+                # raised if there was an issue saving the output or
+                # the query json has incorrect values
+                logger.error(str(ve), exc_info=True)
+        raise ValueError("Invalid query type")
