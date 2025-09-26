@@ -82,7 +82,6 @@ services:
       TASK_API_USERNAME: username
       TASK_API_PASSWORD: password
       TASK_API_ENFORCE_HTTPS: false
-      TASK_API_TYPE: b 
       LOW_NUMBER_SUPPRESSION_THRESHOLD: 0
       ROUNDING_TARGET: 0
       POLLING_INTERVAL: 5
