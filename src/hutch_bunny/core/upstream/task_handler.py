@@ -35,6 +35,7 @@ def handle_task(
             task_data,
             result_modifier,
             db_client=db_client,
+            settings=settings
         )
         task_api_client.send_results(result)
     except NotImplementedError as e:
