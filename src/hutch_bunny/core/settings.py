@@ -7,13 +7,20 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-class Settings(BaseSettings):  # type: ignore
+class Settings(BaseSettings):
     """
     Settings for the application
     """
 
     DATASOURCE_USE_TRINO: bool = Field(
         description="Whether to use Trino as the datasource", default=False
+    )
+    DATASOURCE_USE_AZURE_MANAGED_IDENTITY: bool = Field(
+        description="Whether to use Azure managed identity for authentication",
+        default=False,
+    )
+    DATASOURCE_AZURE_MANAGED_IDENTITY_CLIENT_ID: str | None = Field(
+        description="The client ID for Azure managed identity", default=None
     )
     LOW_NUMBER_SUPPRESSION_THRESHOLD: int = Field(
         description="The threshold for low numbers", default=10
@@ -31,26 +38,44 @@ class Settings(BaseSettings):  # type: ignore
     DATE_FORMAT: str = "%d-%b-%y %H:%M:%S"
 
     DATASOURCE_DB_DRIVERNAME: str = Field(
-        description="The driver to use for the datasource database, one of: postgresql, mssql",
+        description="The driver to use for the datasource database, one of: postgresql, mssql, duckdb",
         default="postgresql",
-        pattern="^(postgresql|mssql)$",
+        pattern="^(postgresql|mssql|duckdb)$",
     )
-    DATASOURCE_DB_USERNAME: str = Field(
-        description="The username for the datasource database", default="trino-user"
+    DATASOURCE_DB_USERNAME: str | None = Field(
+        description="The username for the datasource database. Not required when using Azure managed identity.",
+        default="trino-user",
     )
-    DATASOURCE_DB_PASSWORD: str = Field(
-        description="The password for the datasource database"
+    DATASOURCE_DB_PASSWORD: str | None = Field(
+        description="The password for the datasource database. Not required when using Azure managed identity.",
+        default=None,
     )
-    DATASOURCE_DB_HOST: str = Field(description="The host for the datasource database")
-    DATASOURCE_DB_PORT: int = Field(description="The port for the datasource database")
+    DATASOURCE_DB_HOST: str | None = Field(
+        description="The host for the datasource database. Optional if using duckdb.",
+        default=None,
+    )
+    DATASOURCE_DB_PORT: int | None = Field(
+        description="The port for the datasource database. Optional if using duckdb.",
+        default=None,
+    )
     DATASOURCE_DB_SCHEMA: str = Field(
         description="The schema for the datasource database"
     )
-    DATASOURCE_DB_DATABASE: str = Field(
-        description="The database for the datasource database"
+    DATASOURCE_DB_DATABASE: str | None = Field(
+        description="The database for the datasource database. Optional if using duckdb.",
+        default=None,
     )
     DATASOURCE_DB_CATALOG: str = Field(
         description="The catalog for the datasource database", default="hutch"
+    )
+    DATASOURCE_DUCKDB_PATH_TO_DB: str = Field(
+        description="The path to the DuckDB database file", default="/data/file.db"
+    )
+    DATASOURCE_DUCKDB_MEMORY_LIMIT: str = Field(
+        description="The memory limit for DuckDB (e.g. '1000mb', '2gb')", default="1000mb"
+    )
+    DATASOURCE_DUCKDB_TEMP_DIRECTORY: str = Field(
+        description="The temporary directory for DuckDB - used as a swap fir larger-than-memory processing.", default="/tmp"
     )
 
     def safe_model_dump(self) -> dict[str, object]:
@@ -58,9 +83,32 @@ class Settings(BaseSettings):  # type: ignore
         Convert settings to a dictionary, excluding sensitive fields.
         """
         return self.model_dump(exclude={"DATASOURCE_DB_PASSWORD"})
+    
+    @staticmethod
+    def _validate_duckdb_field(v, info: ValidationInfo, field_name: str) -> str | int | None:
+        driver = info.data.get("DATASOURCE_DB_DRIVERNAME", None)
+        if driver == "duckdb":
+            return v
+        if v is None or (isinstance(v, str) and not v):
+            raise ValueError(f"{field_name} is required unless using duckdb.")
+        return v
+
+    @field_validator("DATASOURCE_DB_HOST")
+    def validate_db_host(cls, v: str | None, info: ValidationInfo) -> str | None:
+        return cls._validate_duckdb_field(v, info, "DATASOURCE_DB_HOST")
+
+    @field_validator("DATASOURCE_DB_PORT")
+    def validate_db_port(cls, v: int | None, info: ValidationInfo) -> int | None:
+        return cls._validate_duckdb_field(v, info, "DATASOURCE_DB_PORT")
+
+    @field_validator("DATASOURCE_DB_DATABASE")
+    def validate_db_database(cls, v: str | None, info: ValidationInfo) -> str | None:
+        return cls._validate_duckdb_field(v, info, "DATASOURCE_DB_DATABASE")
 
 
-class DaemonSettings(Settings):  # type: ignore
+
+
+class DaemonSettings(Settings):
     """
     Settings for the daemon
     """
