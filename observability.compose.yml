@@ -21,6 +21,7 @@ services:
     depends_on:
       - loki
       - tempo
+      - prometheus
 
   # Loki - Logs
   loki:
@@ -65,14 +66,18 @@ services:
     ports:
       - "4317:4317" # OTLP gRPC
       - "4318:4318" # OTLP HTTP
+      - "8888:8888"   # Prometheus metrics
+      - "8889:8889"   # Prometheus exporter metrics
     volumes:
       - ./config/otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
     depends_on:
       - loki
       - tempo
+      - prometheus
     restart: unless-stopped
 
 volumes:
   grafana-data:
   loki-data:
   tempo-data: 
+  prometheus-data: 
