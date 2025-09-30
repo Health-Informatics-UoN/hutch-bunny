@@ -11,7 +11,6 @@ from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from opentelemetry.instrumentation.logging import LoggingInstrumentor
 from opentelemetry.sdk.resources import Resource, SERVICE_NAME, SERVICE_VERSION
 from importlib.metadata import version
 
