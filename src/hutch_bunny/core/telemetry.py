@@ -34,6 +34,8 @@ def setup_telemetry(settings: Settings) -> None:
 
         _setup_logging_integration(resource, settings)
 
+        _setup_metrics(resource, settings)
+
         SQLAlchemyInstrumentor().instrument()
         RequestsInstrumentor().instrument()
 
