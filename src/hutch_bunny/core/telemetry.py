@@ -1,3 +1,5 @@
+from functools import wraps
+from typing import Callable
 from opentelemetry import trace, metrics
 from opentelemetry.sdk.trace import TracerProvider, ReadableSpan 
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -78,6 +80,29 @@ def _setup_logging_integration(resource: Resource, settings: Settings) -> None:
     logger.addHandler(otel_handler)
 
 
+def trace_operation(operation_name: str, span_kind: trace.SpanKind = trace.SpanKind.INTERNAL) -> Callable:
+    """Decorator to trace function execution with minimal code invasion."""
+    def decorator(func: Callable) -> Callable:
+        tracer = trace.get_tracer(f"hutch-bunny.{func.__module__}")
+        
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            with tracer.start_as_current_span(
+                operation_name or func.__name__, 
+                kind=span_kind
+            ) as span:
+                try:
+                    result = func(*args, **kwargs)
+                    span.set_status(trace.Status(trace.StatusCode.OK))
+                    return result
+                except Exception as e:
+                    span.record_exception(e)
+                    span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
+                    raise
+        return wrapper
+    return decorator
+
+
 class DropPollingSpansProcessor(BatchSpanProcessor):
     def on_end(self, span: ReadableSpan) -> None:
         attributes = span.attributes
@@ -87,5 +112,3 @@ class DropPollingSpansProcessor(BatchSpanProcessor):
         if isinstance(url_value, str) and "/task/nextjob/" in url_value:
             return  
         super().on_end(span)
-
-

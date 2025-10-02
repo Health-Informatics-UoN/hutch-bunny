@@ -90,5 +90,5 @@ services:
       OTEL_ENABLED: true 
       OTEL_SERVICE_NAME: "hutch-bunny"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
-      BUNNY_LOGGER_LEVEL: "INFO"
+      BUNNY_LOGGER_LEVEL: "DEBUG"
       PYTHONUNBUFFERED: "1"

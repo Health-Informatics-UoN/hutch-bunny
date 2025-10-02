@@ -91,22 +91,7 @@ class PollingService:
                     task_data = response.json()
                     logger.info("Task received. Resolving...")
                     logger.debug(f"Task: {task_data}")
-
-                    # Start a span for processing this specific task
-                    with tracer.start_as_current_span("process_task", kind=trace.SpanKind.CONSUMER) as span:
-                        # Add semantic attributes for easier tracing
-                        span.set_attribute("task.id", task_data.get("id", "unknown"))
-                        span.set_attribute("task.type", task_data.get("type", "unknown"))
-                        span.set_attribute("http.status_code", response.status_code)
-                        span.set_attribute("http.url", self.polling_endpoint)
-
-                        try:
-                            self.task_handler(task_data)
-                            span.set_status(trace.Status(trace.StatusCode.OK))
-                        except Exception as e:
-                            span.record_exception(e)
-                            span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
-
+                    self.task_handler(task_data)
                 elif response.status_code == 204:
                     logger.debug("No task found. Looking for task...")
                 else:
