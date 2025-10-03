@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Callable
+from typing import Callable, TypeVar, ParamSpec
 from opentelemetry import trace, metrics
 from opentelemetry.sdk.trace import TracerProvider, ReadableSpan 
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -18,6 +18,10 @@ from importlib.metadata import version
 
 from hutch_bunny.core.settings import Settings 
 from hutch_bunny.core.logger import logger
+
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
 def setup_telemetry(settings: Settings) -> None: 
@@ -82,11 +86,11 @@ def _setup_logging_integration(resource: Resource, settings: Settings) -> None:
 
 def trace_operation(operation_name: str, span_kind: trace.SpanKind = trace.SpanKind.INTERNAL) -> Callable:
     """Decorator to trace function execution with minimal code invasion."""
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         tracer = trace.get_tracer(f"hutch-bunny.{func.__module__}")
         
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             with tracer.start_as_current_span(
                 operation_name or func.__name__, 
                 kind=span_kind
