@@ -1,8 +1,10 @@
 """Database utilities and constants for Hutch Bunny."""
+from opentelemetry import trace 
 from sqlalchemy.engine import Engine 
 from sqlalchemy.sql import Executable
 
 from hutch_bunny.core.logger import logger 
+from hutch_bunny.core.telemetry import trace_operation 
 
 # These are db specific constants, not intended for users to override,
 # here to avoid magic strings and provide clarity / ease of change in future.
@@ -33,6 +35,7 @@ def expand_short_drivers(
     return drivername
 
 
+@trace_operation("log_query", span_kind=trace.SpanKind.INTERNAL)
 def log_query(stmnt: Executable, engine: Engine) -> None:
     """Log the compiled SQL query."""
     try:
