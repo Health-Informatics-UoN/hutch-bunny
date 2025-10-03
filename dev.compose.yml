@@ -86,9 +86,9 @@ services:
       ROUNDING_TARGET: 0
       POLLING_INTERVAL: 5
       COLLECTION_ID: b8c58ab0-51c7-4842-ac96-efffc2c02472
+      BUNNY_LOGGER_LEVEL: "INFO"
+      PYTHONUNBUFFERED: "1"
       # Observability config
       OTEL_ENABLED: true 
       OTEL_SERVICE_NAME: "hutch-bunny"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
-      BUNNY_LOGGER_LEVEL: "DEBUG"
-      PYTHONUNBUFFERED: "1"
