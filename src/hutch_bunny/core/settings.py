@@ -1,41 +1,16 @@
 from pydantic_settings import BaseSettings
 from pydantic import Field, field_validator, ValidationInfo
-from typing import Optional, Literal
+from typing import Optional, Literal, Any
 from hutch_bunny.core.logger import logger
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
-class Settings(BaseSettings):
+class DatabaseSettings(BaseSettings):
     """
-    Settings for the application
+    Database connection and configuration settings
     """
-
-    DATASOURCE_USE_TRINO: bool = Field(
-        description="Whether to use Trino as the datasource", default=False
-    )
-    DATASOURCE_USE_AZURE_MANAGED_IDENTITY: bool = Field(
-        description="Whether to use Azure managed identity for authentication",
-        default=False,
-    )
-    DATASOURCE_AZURE_MANAGED_IDENTITY_CLIENT_ID: str | None = Field(
-        description="The client ID for Azure managed identity", default=None
-    )
-    LOW_NUMBER_SUPPRESSION_THRESHOLD: int = Field(
-        description="The threshold for low numbers", default=10
-    )
-    ROUNDING_TARGET: int = Field(description="The target for rounding", default=10)
-
-    LOGGER_NAME: str = "hutch"
-    LOGGER_LEVEL: str = Field(
-        description="The level of the logger. Must be one of: DEBUG, INFO, WARNING, ERROR, CRITICAL",
-        default="INFO",
-        alias="BUNNY_LOGGER_LEVEL",
-        pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$",
-    )
-    MSG_FORMAT: str = "%(levelname)s - %(asctime)s - %(message)s"
-    DATE_FORMAT: str = "%d-%b-%y %H:%M:%S"
 
     DATASOURCE_DB_DRIVERNAME: str = Field(
         description="The driver to use for the datasource database, one of: postgresql, mssql, duckdb",
@@ -68,24 +43,31 @@ class Settings(BaseSettings):
     DATASOURCE_DB_CATALOG: str = Field(
         description="The catalog for the datasource database", default="hutch"
     )
+
+    # DuckDB specific settings
     DATASOURCE_DUCKDB_PATH_TO_DB: str = Field(
         description="The path to the DuckDB database file", default="/data/file.db"
     )
     DATASOURCE_DUCKDB_MEMORY_LIMIT: str = Field(
-        description="The memory limit for DuckDB (e.g. '1000mb', '2gb')", default="1000mb"
+        description="The memory limit for DuckDB (e.g. '1000mb', '2gb')",
+        default="1000mb",
     )
     DATASOURCE_DUCKDB_TEMP_DIRECTORY: str = Field(
-        description="The temporary directory for DuckDB - used as a swap fir larger-than-memory processing.", default="/tmp"
+        description="The temporary directory for DuckDB - used as a swap for larger-than-memory processing.",
+        default="/tmp",
     )
 
-    def safe_model_dump(self) -> dict[str, object]:
-        """
-        Convert settings to a dictionary, excluding sensitive fields.
-        """
-        return self.model_dump(exclude={"DATASOURCE_DB_PASSWORD"})
-    
+    # Azure settings
+    DATASOURCE_USE_AZURE_MANAGED_IDENTITY: bool = Field(
+        description="Whether to use Azure managed identity for authentication",
+        default=False,
+    )
+    DATASOURCE_AZURE_MANAGED_IDENTITY_CLIENT_ID: str | None = Field(
+        description="The client ID for Azure managed identity", default=None
+    )
+
     @staticmethod
-    def _validate_duckdb_field(v, info: ValidationInfo, field_name: str) -> str | int | None:
+    def _validate_duckdb_field(v: Any, info: ValidationInfo, field_name: str) -> Any:
         driver = info.data.get("DATASOURCE_DB_DRIVERNAME", None)
         if driver == "duckdb":
             return v
@@ -95,22 +77,23 @@ class Settings(BaseSettings):
 
     @field_validator("DATASOURCE_DB_HOST")
     def validate_db_host(cls, v: str | None, info: ValidationInfo) -> str | None:
-        return cls._validate_duckdb_field(v, info, "DATASOURCE_DB_HOST")
+        result = cls._validate_duckdb_field(v, info, "DATASOURCE_DB_HOST")
+        return result if isinstance(result, str) or result is None else str(result)
 
     @field_validator("DATASOURCE_DB_PORT")
     def validate_db_port(cls, v: int | None, info: ValidationInfo) -> int | None:
-        return cls._validate_duckdb_field(v, info, "DATASOURCE_DB_PORT")
+        result = cls._validate_duckdb_field(v, info, "DATASOURCE_DB_PORT")
+        return result if isinstance(result, int) or result is None else int(result)
 
     @field_validator("DATASOURCE_DB_DATABASE")
     def validate_db_database(cls, v: str | None, info: ValidationInfo) -> str | None:
-        return cls._validate_duckdb_field(v, info, "DATASOURCE_DB_DATABASE")
+        result = cls._validate_duckdb_field(v, info, "DATASOURCE_DB_DATABASE")
+        return result if isinstance(result, str) or result is None else str(result)
 
 
-
-
-class DaemonSettings(Settings):
+class TaskApiSettings(BaseSettings):
     """
-    Settings for the daemon
+    Task API connection and configuration settings
     """
 
     TASK_API_ENFORCE_HTTPS: bool = Field(
@@ -122,12 +105,6 @@ class DaemonSettings(Settings):
     TASK_API_TYPE: Optional[Literal["a", "b"]] = Field(
         description="The type of task API to use", default=None
     )
-    COLLECTION_ID: str = Field(description="The collection ID")
-    POLLING_INTERVAL: int = Field(description="The polling interval", default=5)
-    INITIAL_BACKOFF: int = Field(
-        description="The initial backoff in seconds", default=5
-    )
-    MAX_BACKOFF: int = Field(description="The maximum backoff in seconds", default=60)
 
     @field_validator("TASK_API_BASE_URL")
     def validate_https_enforcement(cls, v: str, info: ValidationInfo) -> str:
@@ -147,10 +124,94 @@ class DaemonSettings(Settings):
                 )
         return v
 
+
+class PollingSettings(BaseSettings):
+    """
+    Polling configuration settings
+    """
+
+    POLLING_INTERVAL: int = Field(description="The polling interval", default=5)
+    INITIAL_BACKOFF: int = Field(
+        description="The initial backoff in seconds", default=5
+    )
+    MAX_BACKOFF: int = Field(description="The maximum backoff in seconds", default=60)
+
+
+class LoggingSettings(BaseSettings):
+    """
+    Logging configuration settings
+    """
+
+    LOGGER_NAME: str = "hutch"
+    LOGGER_LEVEL: str = Field(
+        description="The level of the logger. Must be one of: DEBUG, INFO, WARNING, ERROR, CRITICAL",
+        default="INFO",
+        alias="BUNNY_LOGGER_LEVEL",
+        pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$",
+    )
+    MSG_FORMAT: str = "%(levelname)s - %(asctime)s - %(message)s"
+    DATE_FORMAT: str = "%d-%b-%y %H:%M:%S"
+
+
+class AppSettings(BaseSettings):
+    """
+    General application settings
+    """
+
+    DATASOURCE_USE_TRINO: bool = Field(
+        description="Whether to use Trino as the datasource", default=False
+    )
+    LOW_NUMBER_SUPPRESSION_THRESHOLD: int = Field(
+        description="The threshold for low numbers", default=10
+    )
+    ROUNDING_TARGET: int = Field(description="The target for rounding", default=10)
+
+
+class Settings(BaseSettings):
+    """
+    Base settings class for CLI - includes only what CLI needs
+    """
+
+    # Compose granular settings that CLI needs
+    database: DatabaseSettings = Field(default_factory=DatabaseSettings)
+    app: AppSettings = Field(default_factory=AppSettings)
+    logging: LoggingSettings = Field(default_factory=LoggingSettings)
+
     def safe_model_dump(self) -> dict[str, object]:
         """
         Convert settings to a dictionary, excluding sensitive fields.
         """
-        return self.model_dump(
-            exclude={"DATASOURCE_DB_PASSWORD", "TASK_API_PASSWORD", "COLLECTION_ID"}
-        )
+        return {
+            "database": self.database.model_dump(exclude={"DATASOURCE_DB_PASSWORD"}),
+            "app": self.app.model_dump(),
+            "logging": self.logging.model_dump(),
+        }
+
+
+class DaemonSettings(BaseSettings):
+    """
+    Settings for the daemon - includes only what daemon needs
+    """
+
+    # Compose granular settings that daemon needs
+    database: DatabaseSettings = Field(default_factory=DatabaseSettings)
+    app: AppSettings = Field(default_factory=AppSettings)
+    logging: LoggingSettings = Field(default_factory=LoggingSettings)
+    task_api: TaskApiSettings = Field(default_factory=TaskApiSettings)
+    polling: PollingSettings = Field(default_factory=PollingSettings)
+
+    # Daemon-specific settings
+    COLLECTION_ID: str = Field(description="The collection ID")
+
+    def safe_model_dump(self) -> dict[str, object]:
+        """
+        Convert settings to a dictionary, excluding sensitive fields.
+        """
+        return {
+            "database": self.database.model_dump(exclude={"DATASOURCE_DB_PASSWORD"}),
+            "app": self.app.model_dump(),
+            "logging": self.logging.model_dump(),
+            "task_api": self.task_api.model_dump(exclude={"TASK_API_PASSWORD"}),
+            "polling": self.polling.model_dump(),
+            "COLLECTION_ID": "[REDACTED]",  # Always redact collection ID
+        }

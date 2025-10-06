@@ -26,9 +26,9 @@ def handle_task(
     """
     result_modifier: list[dict[str, str | int]] = results_modifiers(
         low_number_suppression_threshold=int(
-            settings.LOW_NUMBER_SUPPRESSION_THRESHOLD or 0
+            settings.app.LOW_NUMBER_SUPPRESSION_THRESHOLD or 0
         ),
-        rounding_target=int(settings.ROUNDING_TARGET or 0),
+        rounding_target=int(settings.app.ROUNDING_TARGET or 0),
     )
     try:
         result = execute_query(

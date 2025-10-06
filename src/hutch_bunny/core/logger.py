@@ -48,7 +48,9 @@ def configure_logger(settings) -> None:  # type: ignore
         settings: The settings to configure the logger with.
         # type: ignore is to prevent a circular import just for type checking.
     """
-    LOG_FORMAT = logging.Formatter(settings.MSG_FORMAT, datefmt=settings.DATE_FORMAT)
+    LOG_FORMAT = logging.Formatter(
+        settings.logging.MSG_FORMAT, datefmt=settings.logging.DATE_FORMAT
+    )
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(LOG_FORMAT)
 
@@ -61,5 +63,5 @@ def configure_logger(settings) -> None:  # type: ignore
     sensitive_filter = RedactValueFilter(sensitive_values)
     console_handler.addFilter(sensitive_filter)
 
-    logger.setLevel(settings.LOGGER_LEVEL)
+    logger.setLevel(settings.logging.LOGGER_LEVEL)
     logger.addHandler(console_handler)

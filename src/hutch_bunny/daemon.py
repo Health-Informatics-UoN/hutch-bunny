@@ -17,7 +17,7 @@ def main() -> None:
     logger.debug("Settings: %s", settings.safe_model_dump())
 
     # Setting database connection
-    db_client = get_db_client()
+    db_client = get_db_client(settings)
 
     client = TaskApiClient(settings=settings)
     polling_service = PollingService(

@@ -1,6 +1,6 @@
 from hutch_bunny.core.logger import logger
 import time
-from typing import Callable
+from typing import Callable, Any
 import requests
 from hutch_bunny.core.settings import DaemonSettings
 from hutch_bunny.core.upstream.task_api_client import TaskApiClient
@@ -14,7 +14,7 @@ class PollingService:
     def __init__(
         self,
         client: TaskApiClient,
-        task_handler: Callable,
+        task_handler: Callable[[dict[str, Any]], None],
         settings: DaemonSettings,
     ) -> None:
         """
@@ -42,8 +42,8 @@ class PollingService:
             str: The polling endpoint for the task API.
         """
         return (
-            f"task/nextjob/{self.settings.COLLECTION_ID}.{self.settings.TASK_API_TYPE}"
-            if self.settings.TASK_API_TYPE
+            f"task/nextjob/{self.settings.COLLECTION_ID}.{self.settings.task_api.TASK_API_TYPE}"
+            if self.settings.task_api.TASK_API_TYPE
             else f"task/nextjob/{self.settings.COLLECTION_ID}"
         )
 
@@ -71,9 +71,9 @@ class PollingService:
         Returns:
             None
         """
-        backoff_time = self.settings.INITIAL_BACKOFF
-        max_backoff_time = self.settings.MAX_BACKOFF
-        polling_interval = self.settings.POLLING_INTERVAL
+        backoff_time = self.settings.polling.INITIAL_BACKOFF
+        max_backoff_time = self.settings.polling.MAX_BACKOFF
+        polling_interval = self.settings.polling.POLLING_INTERVAL
         iteration = 0
 
         logger.info("Polling for tasks...")
@@ -95,7 +95,7 @@ class PollingService:
                 else:
                     logger.info(f"Got http status code: {response.status_code}")
 
-                backoff_time = self.settings.INITIAL_BACKOFF
+                backoff_time = self.settings.polling.INITIAL_BACKOFF
             except requests.exceptions.RequestException as e:
                 logger.error(f"Network error occurred: {e}")
                 # Exponential backoff
