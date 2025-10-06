@@ -1,5 +1,5 @@
 import pytest
-from hutch_bunny.core.db_manager import SyncDBManager
+from hutch_bunny.core.db import SyncDBClient
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.solvers.query_solvers import (
     solve_availability,
@@ -22,10 +22,13 @@ def availability_example() -> RquestResult:
 
 
 @pytest.fixture
-def availability_result(db_manager: SyncDBManager, availability_query_onerule_equals: AvailabilityQuery) -> RquestResult:
+def availability_result(
+    db_client: SyncDBClient,
+    availability_query_onerule_equals: AvailabilityQuery,
+) -> RquestResult:
     return solve_availability(
         results_modifier=[],
-        db_manager=db_manager,
+        db_client=db_client,
         query=availability_query_onerule_equals,
     )
 
