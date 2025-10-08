@@ -5,14 +5,14 @@ from sqlalchemy import select
 
 from hutch_bunny.core.rquest_models.rule import Rule
 from hutch_bunny.core.rquest_models.group import Group
-from hutch_bunny.core.entities import Person 
+from hutch_bunny.core.db.entities import Person 
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
-from hutch_bunny.core.db_manager import SyncDBManager
+from hutch_bunny.core.db.sync import SyncDBClient
 from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
 
 
 class TestBuildRuleQuery: 
-    def test_condition_concept_query(self, db_manager: SyncDBManager) -> None:
+    def test_condition_concept_query(self, db_client: SyncDBClient) -> None:
         """Test query generation for a condition concept."""
         rule = Rule(
             varname="OMOP",
@@ -23,12 +23,12 @@ class TestBuildRuleQuery:
         )
 
         mock_query = Mock(spec=AvailabilityQuery)
-        availability_solver = AvailabilitySolver(db_manager, mock_query)
+        availability_solver = AvailabilitySolver(db_client, mock_query)
         
         query = availability_solver._build_rule_query(rule)
         
         # Execute and verify structure
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             rows = result.fetchall()
             
@@ -43,7 +43,7 @@ class TestBuildRuleQuery:
             assert "drug_exposure" in sql_str
             assert "UNION" in sql_str
     
-    def test_measurement_with_range(self, db_manager: SyncDBManager) -> None:
+    def test_measurement_with_range(self, db_client: SyncDBClient) -> None:
         """Test measurement query with numeric range."""
         rule = Rule(
             varname="OMOP=46236952",  # Glomerular filtration
@@ -54,11 +54,11 @@ class TestBuildRuleQuery:
         )
 
         mock_query = Mock(spec=AvailabilityQuery)
-        availability_solver = AvailabilitySolver(db_manager, mock_query)
+        availability_solver = AvailabilitySolver(db_client, mock_query)
         
         query = availability_solver._build_rule_query(rule)
         
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             rows = result.fetchall()
             
@@ -70,7 +70,7 @@ class TestBuildRuleQuery:
             # Check actual results
             assert len(rows) > 0
     
-    def test_age_at_diagnosis_greater_than(self, db_manager: SyncDBManager) -> None:
+    def test_age_at_diagnosis_greater_than(self, db_client: SyncDBClient) -> None:
         """Test age constraint for diagnosis after certain age."""
         rule = Rule(
             varname="OMOP",
@@ -82,19 +82,19 @@ class TestBuildRuleQuery:
         )
         
         mock_query = Mock(spec=AvailabilityQuery)
-        availability_solver = AvailabilitySolver(db_manager, mock_query)
+        availability_solver = AvailabilitySolver(db_client, mock_query)
 
         query = availability_solver._build_rule_query(rule)
         
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             person_ids = {row[0] for row in result}
             
             # Verify age calculation in SQL
             sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
-            if db_manager.engine.dialect.name == "postgresql":
+            if db_client.engine.dialect.name == "postgresql":
                 assert "date_part" in sql_str
-            elif db_manager.engine.dialect.name == "mssql":
+            elif db_client.engine.dialect.name == "mssql":
                 assert "DATEPART" in sql_str
             
             # Should have fewer results than without age constraint
@@ -111,7 +111,7 @@ class TestBuildRuleQuery:
             
             assert len(person_ids) < len(person_ids_no_age)
     
-    def test_time_relative_constraint(self, db_manager: SyncDBManager) -> None:
+    def test_time_relative_constraint(self, db_client: SyncDBClient) -> None:
         """Test time-relative constraints (within last X months)."""
         rule = Rule(
             varname="OMOP",
@@ -123,14 +123,14 @@ class TestBuildRuleQuery:
         )
 
         mock_query = Mock(spec=AvailabilityQuery)
-        availability_solver = AvailabilitySolver(db_manager, mock_query)
+        availability_solver = AvailabilitySolver(db_client, mock_query)
         
         with patch("hutch_bunny.core.solvers.rule_query_builders.datetime") as mock_datetime: 
             fixed_now = datetime(2025, 8, 7, 12, 0, 0)
             mock_datetime.now.return_value = fixed_now
             query = availability_solver._build_rule_query(rule)
         
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             person_ids = {row[0] for row in result}
             assert len(person_ids) > 0
@@ -140,7 +140,7 @@ class TestBuildRuleQuery:
             assert "condition_start_date" in sql_str
             assert "2025-07" in sql_str  # One month back from frozen time
         
-    def test_secondary_modifier_single(self, db_manager: SyncDBManager) -> None:
+    def test_secondary_modifier_single(self, db_client: SyncDBClient) -> None:
         """Test secondary modifier for condition provenance."""
         rule = Rule(
             varname="OMOP",
@@ -152,10 +152,10 @@ class TestBuildRuleQuery:
         )
 
         mock_query = Mock(spec=AvailabilityQuery)
-        availability_solver = AvailabilitySolver(db_manager, mock_query)
+        availability_solver = AvailabilitySolver(db_client, mock_query)
         query = availability_solver._build_rule_query(rule)
         
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             person_ids = {row[0] for row in result}
             assert len(person_ids) > 1 
@@ -164,7 +164,7 @@ class TestBuildRuleQuery:
             assert "condition_type_concept_id" in sql_str
             assert "32020" in sql_str
     
-    def test_secondary_modifier_multiple(self, db_manager: SyncDBManager) -> None:
+    def test_secondary_modifier_multiple(self, db_client: SyncDBClient) -> None:
         """Test multiple secondary modifiers with OR logic."""
         rule = Rule(
             varname="OMOP",
@@ -176,19 +176,19 @@ class TestBuildRuleQuery:
         )
         
         mock_query = Mock(spec=AvailabilityQuery)
-        availability_solver = AvailabilitySolver(db_manager, mock_query)
+        availability_solver = AvailabilitySolver(db_client, mock_query)
         query = availability_solver._build_rule_query(rule)
         
         sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
         assert sql_str.count("condition_type_concept_id") >= 3
         assert "OR" in sql_str
 
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             person_ids = {row[0] for row in result}
             assert len(person_ids) > 1 
     
-    def test_measurement_with_range_and_time(self, db_manager: SyncDBManager) -> None:
+    def test_measurement_with_range_and_time(self, db_client: SyncDBClient) -> None:
         """Test measurement with both numeric range and temporal constraint."""
         rule = Rule(
             varname="OMOP=4078285",
@@ -200,13 +200,13 @@ class TestBuildRuleQuery:
         )
         
         mock_query = Mock(spec=AvailabilityQuery)
-        availability_solver = AvailabilitySolver(db_manager, mock_query)
+        availability_solver = AvailabilitySolver(db_client, mock_query)
         
         with patch("hutch_bunny.core.solvers.rule_query_builders.datetime") as mock_datetime: 
             fixed_now = datetime(2015, 10, 2, 12, 0, 0)
             mock_datetime.now.return_value = fixed_now
             query = availability_solver._build_rule_query(rule)
-            with db_manager.engine.connect() as conn:
+            with db_client.engine.connect() as conn:
                 result = conn.execute(query)
                 person_ids = {row[0] for row in result}
 
@@ -216,7 +216,7 @@ class TestBuildRuleQuery:
                 assert "value_as_number BETWEEN" in sql_str
                 assert "measurement_date" in sql_str
 
-    def test_condition_with_age_and_modifiers(self, db_manager: SyncDBManager) -> None:
+    def test_condition_with_age_and_modifiers(self, db_client: SyncDBClient) -> None:
         """Test condition with age constraint and secondary modifiers."""
         rule = Rule(
             varname="OMOP",
@@ -229,7 +229,7 @@ class TestBuildRuleQuery:
         )
         
         mock_query = Mock(spec=AvailabilityQuery)
-        availability_solver = AvailabilitySolver(db_manager, mock_query)
+        availability_solver = AvailabilitySolver(db_client, mock_query)
 
         query = availability_solver._build_rule_query(rule)
         
@@ -241,10 +241,10 @@ class TestBuildRuleQuery:
 @pytest.mark.integration
 class TestBuildGroupQuery: 
     @pytest.fixture
-    def availability_solver(self, db_manager: SyncDBManager) -> AvailabilitySolver:
+    def availability_solver(self, db_client: SyncDBClient) -> AvailabilitySolver:
         """Create an AvailabilitySolver with a real database connection."""
         mock_query = Mock(spec=AvailabilityQuery)
-        return AvailabilitySolver(db_manager, mock_query)
+        return AvailabilitySolver(db_client, mock_query)
 
     @pytest.fixture
     def concepts_dict(self) -> dict[str, str]:
@@ -261,7 +261,7 @@ class TestBuildGroupQuery:
 
     def test_single_inclusion_person_rule(
         self, 
-        db_manager: SyncDBManager,
+        db_client: SyncDBClient, 
         availability_solver: AvailabilitySolver, 
         concepts_dict: dict[str, str]
     ) -> None:
@@ -281,7 +281,7 @@ class TestBuildGroupQuery:
         
         query = availability_solver._build_group_query(group, concepts_dict)
         
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             person_ids = {row[0] for row in result}
             
@@ -292,7 +292,7 @@ class TestBuildGroupQuery:
     
     def test_single_exclusion_person_rule(
         self, 
-        db_manager: SyncDBManager,
+        db_client: SyncDBClient,
         availability_solver: AvailabilitySolver, 
         concepts_dict: dict[str, str]
     ) -> None:
@@ -312,7 +312,7 @@ class TestBuildGroupQuery:
         
         query = availability_solver._build_group_query(group, concepts_dict)
         
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             person_ids = {row[0] for row in result}
             
@@ -323,7 +323,7 @@ class TestBuildGroupQuery:
     
     def test_multiple_exclusions_person_rule_with_and(
         self,
-        db_manager: SyncDBManager,
+        db_client: SyncDBClient, 
         availability_solver: AvailabilitySolver,
         concepts_dict: dict[str, str]
     ) -> None:
@@ -350,7 +350,7 @@ class TestBuildGroupQuery:
         
         query = availability_solver._build_group_query(group, concepts_dict)
         
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             person_ids = {row[0] for row in result}
             
@@ -384,7 +384,7 @@ class TestBuildGroupQuery:
     
     def test_single_inclusion_omop_rule(
         self, 
-        db_manager: SyncDBManager,
+        db_client: SyncDBClient, 
         availability_solver: AvailabilitySolver, 
         concepts_dict: dict[str, str]
     ) -> None:
@@ -404,7 +404,7 @@ class TestBuildGroupQuery:
         
         query = availability_solver._build_group_query(group, concepts_dict)
         
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             person_ids = {row[0] for row in result}
             
@@ -416,7 +416,7 @@ class TestBuildGroupQuery:
 
     def test_single_exclusion_omop_rule(
         self, 
-        db_manager: SyncDBManager,
+        db_client: SyncDBClient, 
         availability_solver: AvailabilitySolver, 
         concepts_dict: dict[str, str]
     ) -> None:
@@ -436,7 +436,7 @@ class TestBuildGroupQuery:
         
         query = availability_solver._build_group_query(group, concepts_dict)
         
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             person_ids = {row[0] for row in result}
             
@@ -446,7 +446,7 @@ class TestBuildGroupQuery:
 
     def test_two_person_rules_and(
         self, 
-        db_manager: SyncDBManager,
+        db_client: SyncDBClient, 
         availability_solver: AvailabilitySolver, 
         concepts_dict: dict[str, str]
     ) -> None:
@@ -473,7 +473,7 @@ class TestBuildGroupQuery:
         
         query = availability_solver._build_group_query(group, concepts_dict)
         
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             person_ids = {row[0] for row in result}
             
@@ -486,7 +486,7 @@ class TestBuildGroupQuery:
 
     def test_multiple_omop_rules_and(
         self, 
-        db_manager: SyncDBManager,
+        db_client: SyncDBClient, 
         availability_solver: AvailabilitySolver, 
         concepts_dict: dict[str, str]
     ) -> None:
@@ -513,7 +513,7 @@ class TestBuildGroupQuery:
         
         query = availability_solver._build_group_query(group, concepts_dict)
         
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             person_ids = {row[0] for row in result}
             
@@ -526,7 +526,7 @@ class TestBuildGroupQuery:
 
     def test_two_person_rules_or(
         self, 
-        db_manager: SyncDBManager,
+        db_client: SyncDBClient,
         availability_solver: AvailabilitySolver, 
         concepts_dict: dict[str, str]
     ) -> None:
@@ -557,7 +557,7 @@ class TestBuildGroupQuery:
         assert "gender_concept_id = 8507 OR" in sql_str or "(person.gender_concept_id = 8507) OR (person.gender_concept_id = 8532)" in sql_str
         assert "gender_concept_id = 8507 AND person.gender_concept_id = 8532" not in sql_str
         
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             person_ids = {row[0] for row in result}
             # Should get all people (male OR female)
@@ -579,7 +579,7 @@ class TestBuildGroupQuery:
 
     def test_inclusion_and_exclusion_and_logic(
         self, 
-        db_manager: SyncDBManager,
+        db_client: SyncDBClient, 
         availability_solver: AvailabilitySolver, 
         concepts_dict: dict[str, str]
     ) -> None:
@@ -606,7 +606,7 @@ class TestBuildGroupQuery:
         
         query = availability_solver._build_group_query(group, concepts_dict)
         
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             person_ids = {row[0] for row in result}
             
@@ -629,7 +629,7 @@ class TestBuildGroupQuery:
     
     def test_complex_mixed_rules(
         self, 
-        db_manager: SyncDBManager,
+        db_client: SyncDBClient, 
         availability_solver: AvailabilitySolver, 
         concepts_dict: dict[str, str]
     ) -> None:
@@ -663,7 +663,7 @@ class TestBuildGroupQuery:
 
         query = availability_solver._build_group_query(group, concepts_dict)
         
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             person_ids = {row[0] for row in result}
             
@@ -673,7 +673,7 @@ class TestBuildGroupQuery:
     
     def test_group_with_age_constraints(
         self, 
-        db_manager: SyncDBManager,
+        db_client: SyncDBClient, 
         availability_solver: AvailabilitySolver, 
         concepts_dict: dict[str, str]
     ) -> None:
@@ -701,7 +701,7 @@ class TestBuildGroupQuery:
         
         query = availability_solver._build_group_query(group, concepts_dict)
         
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             person_ids = {row[0] for row in result}
             
@@ -713,7 +713,7 @@ class TestBuildGroupQuery:
 
     def test_group_with_time_constraints(
         self, 
-        db_manager: SyncDBManager,
+        db_client: SyncDBClient, 
         availability_solver: AvailabilitySolver, 
         concepts_dict: dict[str, str]
     ) -> None:
@@ -745,7 +745,7 @@ class TestBuildGroupQuery:
             mock_datetime.now.return_value = fixed_now
             query = availability_solver._build_group_query(group, concepts_dict)
         
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             person_ids = {row[0] for row in result}
             
@@ -754,7 +754,7 @@ class TestBuildGroupQuery:
     
     def test_group_with_measurement_ranges(
         self, 
-        db_manager: SyncDBManager,
+        db_client: SyncDBClient, 
         availability_solver: AvailabilitySolver, 
         concepts_dict: dict[str, str]
     ) -> None:
@@ -781,7 +781,7 @@ class TestBuildGroupQuery:
         
         query = availability_solver._build_group_query(group, concepts_dict)
         
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             person_ids = {row[0] for row in result}
             
@@ -793,7 +793,7 @@ class TestBuildGroupQuery:
     
     def test_empty_group_results(
         self, 
-        db_manager: SyncDBManager,
+        db_client: SyncDBClient, 
         availability_solver: AvailabilitySolver, 
         concepts_dict: dict[str, str]
     ) -> None:
@@ -820,7 +820,7 @@ class TestBuildGroupQuery:
         
         query = availability_solver._build_group_query(group, concepts_dict)
         
-        with db_manager.engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(query)
             person_ids = {row[0] for row in result}
             
