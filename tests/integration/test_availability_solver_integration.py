@@ -11,6 +11,7 @@ from hutch_bunny.core.db.sync import SyncDBClient
 from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
 
 
+@pytest.mark.integration
 class TestBuildRuleQuery: 
     def test_condition_concept_query(self, db_client: SyncDBClient) -> None:
         """Test query generation for a condition concept."""
@@ -236,6 +237,37 @@ class TestBuildRuleQuery:
         sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
         assert "condition_type_concept_id" in sql_str
         assert "year_of_birth" in sql_str
+
+    def test_age_rule_on_person_table(self, db_client: SyncDBClient) -> None: 
+        """Test an AGE rule that filters the Person table by current age."""
+        rule = Rule(
+            varname="AGE", 
+            varcat="Person", 
+            type_="NUM", 
+            operator="=", 
+            value="20|50"
+        ) 
+
+        mock_query = Mock(spec=AvailabilityQuery)
+        availability_solver = AvailabilitySolver(db_client, mock_query)
+        
+        group = Group(
+            rules=[rule],
+            rules_operator="AND"
+        )
+        concepts = {}
+        query = availability_solver._build_group_query(group, concepts)
+        sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
+
+        if db_client.engine.dialect.name == "postgresql":
+            assert "date_part" in sql_str.lower() or "extract" in sql_str.lower()
+            assert "year_of_birth" in sql_str
+        elif db_client.engine.dialect.name == "mssql":
+            assert "DATEPART" in sql_str
+            assert "year_of_birth" in sql_str
+        
+        assert ">= 20" in sql_str or ">=20" in sql_str
+        assert "<= 50" in sql_str or "<=50" in sql_str
 
 
 @pytest.mark.integration
