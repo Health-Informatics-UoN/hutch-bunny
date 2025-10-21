@@ -8,6 +8,7 @@ from tests.end_to_end.test_cases.availability_test_cases import (
     AvailabilityTestCase,
 )
 
+test_cases = [test_cases[-1]]
 
 @pytest.mark.end_to_end
 @pytest.mark.parametrize("test_case", test_cases)

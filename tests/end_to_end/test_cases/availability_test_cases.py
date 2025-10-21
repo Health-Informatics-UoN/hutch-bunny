@@ -121,7 +121,7 @@ test_cases = [
         json_file_path="tests/queries/availability/multiple_in_group_or.json",
         expected_count=780,
     ),
-    # Mutiple in group test - assert multiple in group OR filtering with rounding to 0.
+    # Multiple in group test - assert multiple in group OR filtering with rounding to 0.
     # Query for 8532 FEMALE OR 260139 Acute Bronchitis
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_or.json",
@@ -195,6 +195,40 @@ test_cases = [
         low_number_suppression=0,
         expected_count=333,
     ),
+    # Basic availability test - assert query to procedure occurence table return a single value 
+    AvailabilityTestCase(
+        json_file_path="tests/queries/availability/availability_procedure.json",
+        rounding=0,
+        low_number_suppression=0,
+        expected_count=0,
+    ), 
+    # Basic availability test - assert query to drug table return a single value 
+    AvailabilityTestCase(
+        json_file_path="tests/queries/availability/availability_drug_exposure.json",
+        rounding=0,
+        low_number_suppression=0,
+        expected_count=83,
+    ), 
+    # Multiple in group test - assert multiple in group with exclusion and condition with rounding to 0.
+    # Query for 8507 NOT MALE with Hyperlipidemia. 
+    AvailabilityTestCase(
+        json_file_path="tests/queries/availability/multiple_in_group_with_exclusion.json",
+        rounding=0,
+        expected_count=51,
+    ),
+    # Multiple groups with two rules each AND logic between groups 
+    AvailabilityTestCase(
+        json_file_path="tests/queries/availability/multiple_groups_with_and.json",
+        rounding=0,
+        low_number_suppression=0,
+        expected_count=5,
+    ),
+    # Multiple groups with two rules each and OR logic between groups 
+    #AvailabilityTestCase(
+    #    json_file_path="tests/queries/availability/multiple_groups_with_or.json",
+    #    rounding=0,
+    #    expected_count=51,
+    #),
 ]
 
 # TODO: Add test cases for age - until we have improved code patterns for datetime.

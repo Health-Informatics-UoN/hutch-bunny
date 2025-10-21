@@ -346,4 +346,14 @@ class AvailabilitySolver():
             )
         )
 
+        sql_str = str(
+            full_query_all_groups.compile(
+                dialect=self.db_client.engine.dialect,
+                compile_kwargs={"literal_binds": True},
+            )
+        )
+
+        with open("scripts/compiled_query.sql", "w", encoding="utf-8") as f:
+            f.write(sql_str)
+
         return full_query_all_groups

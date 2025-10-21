@@ -1,0 +1,26 @@
+{
+  "task_id": "job-2025-02-14-09:00:54-RQ-a1b2c3d4-e5f6-47g8-h9i0-j1k2l3m4n5o6",
+  "project": "project_id",
+  "owner": "user1",
+  "cohort": {
+    "groups": [
+      {
+        "rules": [
+          {
+            "varname": "OMOP",
+            "varcat": "Drug",
+            "type": "TEXT",
+            "oper": "=",
+            "value": " 19133905"
+          }
+        ],
+        "rules_oper": "AND"
+      }
+    ],
+    "groups_oper": "OR"
+  },
+  "collection": "collection_id",
+  "protocol_version": "v2",
+  "char_salt": "salt",
+  "uuid": "unique_id"
+}
