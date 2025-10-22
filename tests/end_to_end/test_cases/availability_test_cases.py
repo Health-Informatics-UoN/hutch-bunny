@@ -225,6 +225,13 @@ test_cases = [
         low_number_suppression=0,
         expected_count=82,
     ),
+    # Multiple in group test with only exclusion rules 
+    AvailabilityTestCase(
+        json_file_path="tests/queries/availability/multiple_in_group_exclusion_only_with_and.json",
+        rounding=0,
+        low_number_suppression=0,
+        expected_count=513,
+    ),
     # Multiple groups with two rules each AND logic between groups 
     #AvailabilityTestCase(
     #    json_file_path="tests/queries/availability/multiple_groups_with_and.json",
