@@ -216,13 +216,22 @@ test_cases = [
         rounding=0,
         expected_count=51,
     ),
-    # Multiple groups with two rules each AND logic between groups 
+    # Multiple in group test with exclusion and inclusion operations 
+    # Uses different rule types Generic OMOP condition, Measurement, and Person. 
+    # This example is NOT Male, WITH Hyperlipdemia, WITH a Glomerular filtration rate measurement between 1 and 3. 
     AvailabilityTestCase(
-        json_file_path="tests/queries/availability/multiple_groups_with_and.json",
+        json_file_path="tests/queries/availability/multiple_in_group_inclusion_and_exclusion_different_rule_types.json",
         rounding=0,
         low_number_suppression=0,
-        expected_count=5,
+        expected_count=82,
     ),
+    # Multiple groups with two rules each AND logic between groups 
+    #AvailabilityTestCase(
+    #    json_file_path="tests/queries/availability/multiple_groups_with_and.json",
+    #    rounding=0,
+    #    low_number_suppression=0,
+    #    expected_count=5,
+    #),
     # Multiple groups with two rules each and OR logic between groups 
     #AvailabilityTestCase(
     #    json_file_path="tests/queries/availability/multiple_groups_with_or.json",

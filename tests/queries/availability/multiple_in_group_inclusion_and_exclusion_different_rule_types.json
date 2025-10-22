@@ -1,0 +1,34 @@
+{
+  "task_id" : "job-2025-02-14-09:02:48-RQ-986ee282-fe00-42fe-a6c4-bff83ffd77ec",
+  "project" : "project_id",
+  "owner" : "user1",
+  "cohort" : {
+    "groups" : [ {
+      "rules" : [ {
+        "varname" : "OMOP",
+        "varcat" : "Person",
+        "type" : "TEXT",
+        "oper" : "!=",
+        "value" : "8532"
+      }, {
+        "varname" : "OMOP",
+        "varcat" : "Condition",
+        "type" : "TEXT",
+        "oper" : "=",
+        "value" : "260139"
+      }, {
+        "varname": "OMOP=46236952",
+        "varcat": "Measurement",
+        "type": "NUM",
+        "oper": "=",
+        "value": "1.0|3.0"
+      } ],
+      "rules_oper" : "AND"
+    } ],
+    "groups_oper" : "AND"
+  },
+  "collection": "collection_id",
+  "protocol_version" : "v2",
+  "char_salt" : "salt",
+  "uuid" : "unique_id"
+}
