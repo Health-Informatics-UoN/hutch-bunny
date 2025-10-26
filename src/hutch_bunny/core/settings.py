@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings
 from pydantic import Field, field_validator, ValidationInfo
-from typing import Optional, Literal
+from typing import Optional, Literal, Mapping, Sequence
 from hutch_bunny.core.logger import logger
 from dotenv import load_dotenv
 
@@ -76,6 +76,10 @@ class Settings(BaseSettings):
     )
     DATASOURCE_DUCKDB_TEMP_DIRECTORY: str = Field(
         description="The temporary directory for DuckDB - used as a swap fir larger-than-memory processing.", default="/tmp"
+    )
+    DATASOURCE_DB_CONNECTION_QUERY: Mapping[str, str | Sequence[str]] | None = Field(
+        description="A mapping representing the query string. Contains strings for keys and either strings or tuples of strings for values.",
+        default=None
     )
 
     def safe_model_dump(self) -> dict[str, object]:
