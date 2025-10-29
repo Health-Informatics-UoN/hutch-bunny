@@ -25,6 +25,7 @@ jobs:
       TASK_API_BASE_URL: http://localhost:8000
       TASK_API_USERNAME: test_user
       TASK_API_PASSWORD: test_password
+      TASK_API_ENFORCE_HTTPS: false 
 
     services:
       postgres:
@@ -106,6 +107,7 @@ jobs:
       TASK_API_BASE_URL: http://localhost:8000
       TASK_API_USERNAME: test_user
       TASK_API_PASSWORD: test_password
+      TASK_API_ENFORCE_HTTPS: false 
 
     services:
       sqlserver:
