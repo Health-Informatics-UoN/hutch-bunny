@@ -7,6 +7,7 @@ class DuckDBClient(SyncDBClient):
         self,
         path_to_db: str,
         duckdb_memory_limit: str,
+        duckdb_temp_directory: str,
         schema: str | None = None,
     ) -> None:
         """Constructor method for DuckDBClient.
@@ -23,7 +24,8 @@ class DuckDBClient(SyncDBClient):
         self._engine = create_engine("duckdb:///" + path_to_db, connect_args={
             'read_only': True,
             'config': {
-                'memory_limit': duckdb_memory_limit
+                'memory_limit': duckdb_memory_limit,
+                'temp_directory': duckdb_temp_directory
             }
         })
 
