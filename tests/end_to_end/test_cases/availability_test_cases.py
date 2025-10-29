@@ -246,6 +246,13 @@ test_cases = [
         low_number_suppression=0,
         expected_count=127,
     ),
+    # Age - assert age filtering with default rounding.
+    AvailabilityTestCase(
+        json_file_path="tests/queries/availability/age.json",
+        rounding=10,
+        low_number_suppression=10,
+        expected_count=10,
+    ),
 ]
 
 # TODO: Add test cases for age - until we have improved code patterns for datetime.
