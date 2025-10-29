@@ -1,7 +1,7 @@
 from unittest.mock import Mock, patch
 from datetime import datetime
 import pytest 
-from sqlalchemy import select 
+from sqlalchemy import select, cast, Integer
 
 from hutch_bunny.core.rquest_models.rule import Rule
 from hutch_bunny.core.rquest_models.group import Group
@@ -597,14 +597,15 @@ class TestBuildGroupQuery:
             assert len(person_ids) > 1100  # ~1130 total
 
             # Compare with individual queries
-            male_query = select(Person.person_id).where(Person.gender_concept_id == 8507)
-            female_query = select(Person.person_id).where(Person.gender_concept_id == 8532)
+            male_query = select(cast(Person.person_id, Integer)).where(Person.gender_concept_id == 8507)
+            female_query = select(cast(Person.person_id, Integer)).where(Person.gender_concept_id == 8532)
             
             male_result = conn.execute(male_query)
             female_result = conn.execute(female_query)
             
             male_ids = {row[0] for row in male_result}
             female_ids = {row[0] for row in female_result}
+            breakpoint()
             
             # OR should give us the union of both sets
             expected = male_ids.union(female_ids)
