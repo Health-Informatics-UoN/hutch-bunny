@@ -403,6 +403,7 @@ class TestBuildGroupQuery:
             black_result = conn.execute(black_query)
             black_ids = {row[0] for row in black_result}
             
+            assert len(black_ids) > 0 
             assert len(person_ids) < len(female_ids)  # Less than all females
             assert len(person_ids) > 400  # But still substantial
             
