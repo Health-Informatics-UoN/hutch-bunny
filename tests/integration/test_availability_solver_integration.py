@@ -606,6 +606,9 @@ class TestBuildGroupQuery:
             male_ids = {row[0] for row in male_result}
             female_ids = {row[0] for row in female_result}
 
+            print(f"Male: {male_ids}")
+            print(f"Female: {female_ids}")
+
             # OR should give us the union of both sets
             expected = male_ids.union(female_ids)
             assert person_ids == expected

@@ -73,7 +73,7 @@ jobs:
       - name: Run tests
         run: |
           set -e
-          uv run pytest tests --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov=hutch_bunny tests | tee pytest-coverage.txt
+          uv run pytest -s tests --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov=hutch_bunny tests | tee pytest-coverage.txt
           test ${PIPESTATUS[0]} -eq 0
 
       - name: Pytest coverage comment
