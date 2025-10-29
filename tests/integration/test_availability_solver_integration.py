@@ -600,10 +600,10 @@ class TestBuildGroupQuery:
             male_query = select(cast(Person.person_id, Integer)).where(Person.gender_concept_id == 8507)
             female_query = select(cast(Person.person_id, Integer)).where(Person.gender_concept_id == 8532)
             
-            male_result = conn.execute(male_query)
-            female_result = conn.execute(female_query)
-            
+            male_result = conn.execute(male_query).fetchall()
             male_ids = {row[0] for row in male_result}
+
+            female_result = conn.execute(female_query).fetchall()
             female_ids = {row[0] for row in female_result}
 
             print(f"Male: {male_ids}")
