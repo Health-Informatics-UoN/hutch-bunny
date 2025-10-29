@@ -11,7 +11,22 @@ class Settings(BaseSettings):
     """
     Settings for the application
     """
-
+    CACHE_ENABLED: bool = Field(
+        description="Enable caching of distribution query results",
+        default=False
+    )
+    CACHE_DIR: str = Field(
+        description="Directory to store cached distribution results",
+        default="/app/cache"
+    )
+    CACHE_TTL_HOURS: float = Field(
+        description="Cache validity (time-to-live) period in hours (0 = never expires)",
+        default=24.0
+    )
+    CACHE_REFRESH_ON_STARTUP: bool = Field(
+        description="Refresh cache when daemon starts",
+        default=True
+    )
     DATASOURCE_USE_TRINO: bool = Field(
         description="Whether to use Trino as the datasource", default=False
     )
@@ -114,7 +129,7 @@ class DaemonSettings(Settings):
     """
 
     TASK_API_ENFORCE_HTTPS: bool = Field(
-        description="Whether to enforce HTTPS for the task API", default=True
+        description="Whether to enforce HTTPS for the task API", default=True  
     )
     TASK_API_BASE_URL: str = Field(description="The base URL of the task API")
     TASK_API_USERNAME: str = Field(description="The username for the task API")
