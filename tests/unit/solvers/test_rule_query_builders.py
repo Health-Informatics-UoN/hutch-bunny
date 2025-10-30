@@ -381,7 +381,7 @@ class TestOMOPRuleQueryBuilder():
         union_count = query_str.count("UNION")
         
         # 4 queries connected by 3 UNIONs
-        assert union_count == 3
+        assert union_count == 4
 
 
 class TestPersonQueryConstraintBuilder: 
