@@ -1,7 +1,7 @@
 import base64
+from opentelemetry import trace
+
 from hutch_bunny.core.logger import logger
-
-
 from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
 from hutch_bunny.core.db import BaseDBClient
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
@@ -18,11 +18,13 @@ from hutch_bunny.core.solvers.demographics_solver import (
 )
 from hutch_bunny.core.solvers.distribution_solver import CodeDistributionQuerySolver
 from hutch_bunny.core.services.metadata_service import MetadataService
+from hutch_bunny.core.telemetry import trace_operation
+
 
 settings = Settings()
 metadata_service = MetadataService()
 
-
+@trace_operation("solve_availability", span_kind=trace.SpanKind.INTERNAL)
 def solve_availability(
     results_modifier: list[dict[str, str | int]],
     db_client: BaseDBClient,
@@ -76,6 +78,7 @@ def _get_distribution_solver(
     raise NotImplementedError(f"Queries with code: {query.code} are not yet supported.")
 
 
+@trace_operation("solve_distribution", span_kind=trace.SpanKind.INTERNAL)
 def solve_distribution(
     results_modifier: list[dict[str, str | int]],
     db_client: BaseDBClient,

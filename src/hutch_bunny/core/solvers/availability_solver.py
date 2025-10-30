@@ -31,6 +31,7 @@ from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.logger import logger, INFO
 from hutch_bunny.core.rquest_models.rule import Rule
 from hutch_bunny.core.solvers.rule_query_builders import OMOPRuleQueryBuilder, PersonConstraintBuilder
+from hutch_bunny.core.db.utils import log_query
 
 
 class ResultModifier(TypedDict):
@@ -337,13 +338,9 @@ class AvailabilitySolver():
                 func.count() >= low_number
             )
 
-        logger.debug(
-            str(
-                full_query_all_groups.compile(
-                    dialect=self.db_client.engine.dialect,
-                    compile_kwargs={"literal_binds": True},
-                )
-            )
+        log_query(
+            full_query_all_groups, 
+            self.db_client.engine
         )
 
         return full_query_all_groups
