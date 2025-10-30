@@ -1,3 +1,5 @@
+from opentelemetry import trace 
+
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.solvers import query_solvers
 from hutch_bunny.core.db import BaseDBClient
@@ -7,10 +9,12 @@ from hutch_bunny.core.rquest_models.distribution import (
     DistributionQueryType,
 )
 from hutch_bunny.core.rquest_models.result import RquestResult
+from hutch_bunny.core.telemetry import trace_operation
 from hutch_bunny.core.settings import Settings 
 from hutch_bunny.core.services.cache_service import DistributionCacheService
 
 
+@trace_operation("execute_query", span_kind=trace.SpanKind.INTERNAL)
 def execute_query(
     query_dict: dict[str, object],
     results_modifier: list[dict[str, str | int]],
@@ -33,7 +37,6 @@ def execute_query(
     Returns
         RquestResult
     """
-
     logger.info("Processing query...")
     logger.debug(query_dict)
 

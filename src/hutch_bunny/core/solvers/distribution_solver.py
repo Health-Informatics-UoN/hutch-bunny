@@ -26,6 +26,7 @@ from tenacity import (
 from hutch_bunny.core.rquest_models.distribution import DistributionQuery
 from sqlalchemy import select
 from hutch_bunny.core.solvers.availability_solver import ResultModifier
+from hutch_bunny.core.db.utils import log_query 
 
 # Type alias for tables that have person_id
 PersonTable = Union[
@@ -173,7 +174,7 @@ class CodeDistributionQuerySolver:
                         .join(Concept, concept_col == Concept.concept_id)
                         .group_by(Concept.concept_id, Concept.concept_name)
                     )
-
+                
                 if low_number > 0:
                     stmnt = stmnt.having(
                         func.count(distinct(table.person_id)) > low_number
@@ -188,6 +189,11 @@ class CodeDistributionQuerySolver:
                 # add the same category and collection if, for the number of results received
                 categories.extend([domain_id] * len(res))
                 biobanks.extend([self.query.collection] * len(res))
+
+                log_query(
+                    stmnt, 
+                    self.db_client.engine
+                )
 
         for i in range(len(counts)):
             counts[i] = apply_filters(counts[i], results_modifier)
