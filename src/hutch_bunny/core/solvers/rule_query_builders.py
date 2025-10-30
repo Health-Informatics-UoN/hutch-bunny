@@ -343,7 +343,7 @@ class OMOPRuleQueryBuilder:
                 f"min_value must be less than or equal to max_value. "
                 f"Got min_value={min_val}, max_value={max_val}"
             )
-        # TODO: Confirm if Procedure Occurrence 'quantity' could be a numeric range?
+
         self.measurement_query = self.measurement_query.where(
         Measurement.value_as_number.between(min_val, max_val)
         )
@@ -376,7 +376,7 @@ class OMOPRuleQueryBuilder:
         
         if not secondary_modifiers:
             return self
-        # TODO: Confirm whether Procedure can use secondayr modifiers
+
         modifier_constraints = [
             ConditionOccurrence.condition_type_concept_id == modifier_id
             for modifier_id in secondary_modifiers if modifier_id
