@@ -1,4 +1,4 @@
-from typing import Any, Sequence
+from typing import Any, Sequence, Mapping
 from sqlalchemy import create_engine
 from sqlalchemy.inspection import inspect
 from sqlalchemy.engine import URL as SQLAURL, Row, Engine
@@ -20,6 +20,7 @@ class SyncDBClient(BaseDBClient):
         database: str,
         drivername: str,
         schema: str | None = None,
+        query: Mapping[str, str | Sequence[str]] | None = None,
     ) -> None:
         url = SQLAURL.create(
             drivername=drivername,
@@ -28,6 +29,7 @@ class SyncDBClient(BaseDBClient):
             host=host,
             port=port,
             database=database,
+            query=query
         )
 
         self.schema = schema if schema is not None and len(schema) > 0 else None
