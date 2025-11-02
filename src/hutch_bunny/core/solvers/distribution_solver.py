@@ -103,34 +103,19 @@ class CodeDistributionQuerySolver:
         after=after_log(logger, INFO),
     )
     def solve_query(self, results_modifier: list[ResultModifier]) -> Tuple[str, int]:
-        """Build table of distribution query and return as a TAB separated string
-         along with the number of rows.
-
-        Parameters
-         ----------
-         results_modifier: List
-         A list of modifiers to be applied to the results of the query before returning them to Relay
-
-         """
-
         low_number: int = next(
-            (
-                item["threshold"] if item["threshold"] is not None else 10
-                for item in results_modifier
-                if item["id"] == "Low Number Suppression"
-            ),
+            (item["threshold"] if item["threshold"] is not None else 10
+             for item in results_modifier
+             if item["id"] == "Low Number Suppression"),
             10,
         )
         rounding: int = next(
-            (
-                item["nearest"] if item["nearest"] is not None else 10
-                for item in results_modifier
-                if item["id"] == "Rounding"
-            ),
+            (item["nearest"] if item["nearest"] is not None else 10
+             for item in results_modifier
+             if item["id"] == "Rounding"),
             10,
         )
 
-        # Get the counts for each concept ID
         counts: list[int] = []
         concepts: list[int] = []
         categories: list[str] = []
@@ -138,21 +123,17 @@ class CodeDistributionQuerySolver:
 
         with self.db_client.engine.connect() as con:
             for domain_id in self.allowed_domains_map:
-                logger.debug(domain_id)
-
-                # get the right table and column based on the domain
                 table = self.allowed_domains_map[domain_id]
                 concept_col = self.domain_concept_id_map[domain_id]
 
-                # Step 1: create a subquery that aggregates counts per concept_id
+                # Step 1: subquery with aggregated counts
                 if rounding > 0:
                     subq = (
                         select(
                             concept_col.label("concept_id"),
-                            func.round(
-                                (func.count(distinct(table.person_id)) / rounding), 0
-                            ).label("count_agg")
-                            * rounding
+                            (func.round(
+                                func.count(distinct(table.person_id)) / rounding, 0
+                            ) * rounding).label("count_agg")
                         )
                         .group_by(concept_col)
                         .subquery()
@@ -167,61 +148,55 @@ class CodeDistributionQuerySolver:
                         .subquery()
                     )
 
-                # Step 2: join the subquery to Concept to get concept_name
+                # Step 2: join to Concept for concept_name
                 stmnt = (
-                    select(
-                        subq.c.count_agg,
-                        Concept.concept_id,
-                        Concept.concept_name
-                    )
+                    select(subq.c.count_agg, Concept.concept_id, Concept.concept_name)
                     .join(Concept, subq.c.concept_id == Concept.concept_id)
                 )
 
-                # Step 3: optional having filter (if low_number > 0)
+                # Step 3: apply low_number filter if needed
                 if low_number > 0:
                     stmnt = stmnt.where(subq.c.count_agg > low_number)
 
-                # Execute the statement
+                # Execute query
                 result = con.execute(stmnt)
                 res = result.fetchall()
 
-                # Step 4: populate output lists
-                for row in res:
-                    counts.append(row[0])
-                    concepts.append(row[1])
-                    omop_desc.append(row[2])
-
-                # Add categories
-                num_results = len(res)
-                categories.extend([domain_id] * num_results)
+                # Step 4: populate lists, safely handle empty results
+                if res:
+                    for row in res:
+                        counts.append(row[0])
+                        concepts.append(row[1])
+                        omop_desc.append(row[2])
+                    categories.extend([domain_id] * len(res))
+                else:
+                    # Ensure empty result does not break downstream
+                    counts.append(0)
+                    concepts.append(None)
+                    omop_desc.append("")
+                    categories.append(domain_id)
 
                 log_query(stmnt, self.db_client.engine)
 
+        # Step 5: apply modifiers safely
         for i in range(len(counts)):
             counts[i] = apply_filters(counts[i], results_modifier)
 
         counts = list(map(int, counts))
 
-        # Build rows and convert to tab separated string
+        # Step 6: build tab-separated results safely
         results = ["\t".join(self.output_cols)]
         for i in range(len(counts)):
-            row_values: list[str] = [
+            row_values = [
                 self.query.collection,
-                f"OMOP:{concepts[i]}" if i < len(concepts) else "",
-                str(counts[i] if i < len(counts) else 0),
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                str(concepts[i] if i < len(concepts) else ""),
-                omop_desc[i] if i < len(omop_desc) else "",
-                categories[i] if i < len(categories) else "",
+                f"OMOP:{concepts[i]}" if concepts[i] is not None else "",
+                str(counts[i]),
+                "", "", "", "", "", "", "", "", "",
+                str(concepts[i]) if concepts[i] is not None else "",
+                omop_desc[i],
+                categories[i],
             ]
             results.append("\t".join(row_values))
 
         return os.linesep.join(results), len(counts)
+
