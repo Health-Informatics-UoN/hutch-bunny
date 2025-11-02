@@ -1,7 +1,6 @@
 import os
 from hutch_bunny.core.logger import logger, INFO
 from typing import Tuple, Type, Union
-import pandas as pd
 
 from sqlalchemy import distinct, func
 
@@ -26,7 +25,7 @@ from tenacity import (
 from hutch_bunny.core.rquest_models.distribution import DistributionQuery
 from sqlalchemy import select
 from hutch_bunny.core.solvers.availability_solver import ResultModifier
-from hutch_bunny.core.db.utils import log_query 
+from hutch_bunny.core.db.utils import log_query
 
 # Type alias for tables that have person_id
 PersonTable = Union[
@@ -112,11 +111,7 @@ class CodeDistributionQuerySolver:
          results_modifier: List
          A list of modifiers to be applied to the results of the query before returning them to Relay
 
-         Returns:
-             Tuple[str, int]: The table as a string and the number of rows.
-        """
-        # Prepare the empty results data frame
-        df = pd.DataFrame(columns=self.output_cols)
+         """
 
         low_number: int = next(
             (
@@ -139,7 +134,6 @@ class CodeDistributionQuerySolver:
         counts: list[int] = []
         concepts: list[int] = []
         categories: list[str] = []
-        biobanks: list[str] = []
         omop_desc: list[str] = []
 
         with self.db_client.engine.connect() as con:
@@ -174,24 +168,26 @@ class CodeDistributionQuerySolver:
                         .join(Concept, concept_col == Concept.concept_id)
                         .group_by(Concept.concept_id, Concept.concept_name)
                     )
-                
+
                 if low_number > 0:
                     stmnt = stmnt.having(
                         func.count(distinct(table.person_id)) > low_number
                     )
 
-                res = pd.read_sql(stmnt, con)
+                result = con.execute(stmnt)
+                res = result.fetchall()
 
-                counts.extend(res.iloc[:, 0])
+                for row in res:
+                    counts.append(row[0])
+                    concepts.append(row[1])
+                    omop_desc.append(row[2])
 
-                concepts.extend(res.iloc[:, 1])
-                omop_desc.extend(res.iloc[:, 2])
                 # add the same category and collection if, for the number of results received
-                categories.extend([domain_id] * len(res))
-                biobanks.extend([self.query.collection] * len(res))
+                num_results = len(res)
+                categories.extend([domain_id] * num_results)
 
                 log_query(
-                    stmnt, 
+                    stmnt,
                     self.db_client.engine
                 )
 
@@ -200,19 +196,26 @@ class CodeDistributionQuerySolver:
 
         counts = list(map(int, counts))
 
-        df["COUNT"] = counts
-        # todo: dont think concepts contains anything?
-        df["OMOP"] = concepts
-        df["CATEGORY"] = categories
-        df["CODE"] = df["OMOP"].apply(lambda x: f"OMOP:{x}")
-        df["BIOBANK"] = biobanks
-        df["OMOP_DESCR"] = omop_desc
+        # Build rows and convert to tab separated string
+        results = ["\t".join(self.output_cols)]
+        for i in range(len(counts)):
+            row_values: list[str] = [
+                self.query.collection,
+                f"OMOP:{concepts[i]}" if i < len(concepts) else "",
+                str(counts[i] if i < len(counts) else 0),
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                str(concepts[i] if i < len(concepts) else ""),
+                omop_desc[i] if i < len(omop_desc) else "",
+                categories[i] if i < len(categories) else "",
+            ]
+            results.append("\t".join(row_values))
 
-        # replace NaN values with empty string
-        df = df.fillna("")
-        # Convert df to tab separated string
-        results = list(["\t".join(df.columns)])
-        for _, row in df.iterrows():
-            results.append("\t".join([str(r) for r in row.values]))
-
-        return os.linesep.join(results), len(df)
+        return os.linesep.join(results), len(counts)
