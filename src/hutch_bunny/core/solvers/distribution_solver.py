@@ -104,15 +104,19 @@ class CodeDistributionQuerySolver:
     )
     def solve_query(self, results_modifier: list[ResultModifier]) -> Tuple[str, int]:
         low_number: int = next(
-            (item["threshold"] if item["threshold"] is not None else 10
-             for item in results_modifier
-             if item["id"] == "Low Number Suppression"),
+            (
+                item["threshold"] if item["threshold"] is not None else 10
+                for item in results_modifier
+                if item["id"] == "Low Number Suppression"
+            ),
             10,
         )
         rounding: int = next(
-            (item["nearest"] if item["nearest"] is not None else 10
-             for item in results_modifier
-             if item["id"] == "Rounding"),
+            (
+                item["nearest"] if item["nearest"] is not None else 10
+                for item in results_modifier
+                if item["id"] == "Rounding"
+            ),
             10,
         )
 
@@ -123,78 +127,67 @@ class CodeDistributionQuerySolver:
 
         with self.db_client.engine.connect() as con:
             for domain_id in self.allowed_domains_map:
+                logger.debug(domain_id)
+
                 table = self.allowed_domains_map[domain_id]
                 concept_col = self.domain_concept_id_map[domain_id]
 
-                # Step 1: subquery with aggregated counts
-                if rounding > 0:
-                    subq = (
-                        select(
-                            concept_col.label("concept_id"),
-                            (func.round(
-                                func.count(distinct(table.person_id)) / rounding, 0
-                            ) * rounding).label("count_agg")
-                        )
-                        .group_by(concept_col)
-                        .subquery()
-                    )
-                else:
-                    subq = (
-                        select(
-                            concept_col.label("concept_id"),
-                            func.count(distinct(table.person_id)).label("count_agg")
-                        )
-                        .group_by(concept_col)
-                        .subquery()
-                    )
+                raw_count = func.count(distinct(table.person_id))
 
-                # Step 2: join to Concept for concept_name
+                if rounding > 0:
+                    rounded_count = func.round((raw_count / rounding), 0) * rounding
+                else:
+                    rounded_count = raw_count
+
                 stmnt = (
-                    select(subq.c.count_agg, Concept.concept_id, Concept.concept_name)
-                    .join(Concept, subq.c.concept_id == Concept.concept_id)
+                    select(
+                        rounded_count.label("count"),
+                        Concept.concept_id,
+                        Concept.concept_name,
+                    )
+                    .join(Concept, concept_col == Concept.concept_id)
+                    .group_by(Concept.concept_id, Concept.concept_name)
                 )
 
-                # Step 3: apply low_number filter if needed
+                # HAVING applies to raw counts, not rounded counts
                 if low_number > 0:
-                    stmnt = stmnt.where(subq.c.count_agg > low_number)
+                    stmnt = stmnt.having(raw_count > low_number)
 
-                # Execute query
                 result = con.execute(stmnt)
                 res = result.fetchall()
 
-                # Step 4: populate lists, safely handle empty results
-                if res:
-                    for row in res:
-                        counts.append(row[0])
-                        concepts.append(row[1])
-                        omop_desc.append(row[2])
-                    categories.extend([domain_id] * len(res))
-                else:
-                    # Ensure empty result does not break downstream
-                    counts.append(0)
-                    concepts.append(None)
-                    omop_desc.append("")
-                    categories.append(domain_id)
+                for row in res:
+                    counts.append(row[0])
+                    concepts.append(row[1])
+                    omop_desc.append(row[2])
 
+                categories.extend([domain_id] * len(res))
                 log_query(stmnt, self.db_client.engine)
 
-        # Step 5: apply modifiers safely
+        # Suppression modifiers applied AFTER the query (unchanged)
         for i in range(len(counts)):
             counts[i] = apply_filters(counts[i], results_modifier)
 
         counts = list(map(int, counts))
 
-        # Step 6: build tab-separated results safely
         results = ["\t".join(self.output_cols)]
         for i in range(len(counts)):
-            row_values = [
+            row_values: list[str] = [
                 self.query.collection,
-                f"OMOP:{concepts[i]}" if concepts[i] is not None else "",
-                str(counts[i]),
-                "", "", "", "", "", "", "", "", "",
-                str(concepts[i]) if concepts[i] is not None else "",
-                omop_desc[i],
-                categories[i],
+                f"OMOP:{concepts[i]}" if i < len(concepts) else "",
+                str(counts[i] if i < len(counts) else 0),
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                str(concepts[i] if i < len(concepts) else ""),
+                omop_desc[i] if i < len(omop_desc) else "",
+                categories[i] if i < len(categories) else "",
             ]
             results.append("\t".join(row_values))
 
