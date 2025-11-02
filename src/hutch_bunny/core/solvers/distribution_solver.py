@@ -139,57 +139,63 @@ class CodeDistributionQuerySolver:
         with self.db_client.engine.connect() as con:
             for domain_id in self.allowed_domains_map:
                 logger.debug(domain_id)
+
                 # get the right table and column based on the domain
                 table = self.allowed_domains_map[domain_id]
                 concept_col = self.domain_concept_id_map[domain_id]
 
-                # gets a list of all concepts within this given table and their respective counts
-
+                # Step 1: create a subquery that aggregates counts per concept_id
                 if rounding > 0:
-                    stmnt = (
+                    subq = (
                         select(
+                            concept_col.label("concept_id"),
                             func.round(
                                 (func.count(distinct(table.person_id)) / rounding), 0
-                            )
-                            * rounding,
-                            Concept.concept_id,
-                            Concept.concept_name,
+                            ).label("count_agg")
+                            * rounding
                         )
-                        .join(Concept, concept_col == Concept.concept_id)
-                        .group_by(Concept.concept_id, Concept.concept_name)
+                        .group_by(concept_col)
+                        .subquery()
                     )
                 else:
-                    stmnt = (
+                    subq = (
                         select(
-                            func.count(distinct(table.person_id)),
-                            Concept.concept_id,
-                            Concept.concept_name,
+                            concept_col.label("concept_id"),
+                            func.count(distinct(table.person_id)).label("count_agg")
                         )
-                        .join(Concept, concept_col == Concept.concept_id)
-                        .group_by(Concept.concept_id, Concept.concept_name)
+                        .group_by(concept_col)
+                        .subquery()
                     )
 
+                # Step 2: join the subquery to Concept to get concept_name
+                stmnt = (
+                    select(
+                        subq.c.count_agg,
+                        Concept.concept_id,
+                        Concept.concept_name
+                    )
+                    .join(Concept, subq.c.concept_id == Concept.concept_id)
+                )
+
+                # Step 3: optional having filter (if low_number > 0)
                 if low_number > 0:
-                    stmnt = stmnt.having(
-                        func.count(distinct(table.person_id)) > low_number
-                    )
+                    stmnt = stmnt.where(subq.c.count_agg > low_number)
 
+                # Execute the statement
                 result = con.execute(stmnt)
                 res = result.fetchall()
 
+                # Step 4: populate output lists
                 for row in res:
                     counts.append(row[0])
                     concepts.append(row[1])
                     omop_desc.append(row[2])
 
-                # add the same category and collection if, for the number of results received
+                # Add categories
                 num_results = len(res)
                 categories.extend([domain_id] * num_results)
 
-                log_query(
-                    stmnt,
-                    self.db_client.engine
-                )
+                log_query(stmnt, self.db_client.engine)
 
         for i in range(len(counts)):
             counts[i] = apply_filters(counts[i], results_modifier)
