@@ -103,6 +103,14 @@ class CodeDistributionQuerySolver:
         after=after_log(logger, INFO),
     )
     def solve_query(self, results_modifier: list[ResultModifier]) -> Tuple[str, int]:
+
+        """Build table of distribution query and return as a TAB separated string
+                 along with the number of rows.
+                Parameters
+                 ----------
+                 results_modifier: List
+                 A list of modifiers to be applied to the results of the query before returning them to Relay
+        """
         low_number: int = next(
             (
                 item["threshold"] if item["threshold"] is not None else 10
@@ -129,30 +137,37 @@ class CodeDistributionQuerySolver:
             for domain_id in self.allowed_domains_map:
                 logger.debug(domain_id)
 
+                # Get table and concept column for this domain
                 table = self.allowed_domains_map[domain_id]
                 concept_col = self.domain_concept_id_map[domain_id]
 
-                raw_count = func.count(distinct(table.person_id))
-
-                if rounding > 0:
-                    rounded_count = func.round((raw_count / rounding), 0) * rounding
-                else:
-                    rounded_count = raw_count
-
-                stmnt = (
+                # Step 1: subquery to count distinct person_id per concept_id
+                subq = (
                     select(
-                        rounded_count.label("count"),
-                        Concept.concept_id,
-                        Concept.concept_name,
+                        concept_col.label("concept_id"),
+                        func.count(distinct(table.person_id)).label("count_agg")
                     )
-                    .join(Concept, concept_col == Concept.concept_id)
-                    .group_by(Concept.concept_id, Concept.concept_name)
+                    .group_by(concept_col)
+                    .subquery()
                 )
 
-                # HAVING applies to raw counts, not rounded counts
-                if low_number > 0:
-                    stmnt = stmnt.having(raw_count > low_number)
+                # Step 2: join with Concept table
+                stmnt = (
+                    select(
+                        # Apply rounding only here, after the join
+                        (func.round(subq.c.count_agg / rounding, 0) * rounding).label("count_agg_rounded")
+                        if rounding > 0 else subq.c.count_agg,
+                        Concept.concept_id,
+                        Concept.concept_name
+                    )
+                    .join(Concept, subq.c.concept_id == Concept.concept_id)
+                )
 
+                # Step 3: optional low-number filter
+                if low_number > 0:
+                    stmnt = stmnt.where(subq.c.count_agg > low_number)
+
+                # Execute
                 result = con.execute(stmnt)
                 res = result.fetchall()
 
@@ -161,7 +176,10 @@ class CodeDistributionQuerySolver:
                     concepts.append(row[1])
                     omop_desc.append(row[2])
 
-                categories.extend([domain_id] * len(res))
+                # Track categories
+                num_results = len(res)
+                categories.extend([domain_id] * num_results)
+
                 log_query(stmnt, self.db_client.engine)
 
         # Suppression modifiers applied AFTER the query (unchanged)
