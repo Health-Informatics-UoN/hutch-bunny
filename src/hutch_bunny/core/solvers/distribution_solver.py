@@ -105,11 +105,12 @@ class CodeDistributionQuerySolver:
     def solve_query(self, results_modifier: list[ResultModifier]) -> Tuple[str, int]:
 
         """Build table of distribution query and return as a TAB separated string
-                 along with the number of rows.
-                Parameters
-                 ----------
-                 results_modifier: List
-                 A list of modifiers to be applied to the results of the query before returning them to Relay
+        along with the number of rows.
+
+        Parameters
+        ----------
+            results_modifier: List
+            A list of modifiers to be applied to the results of the query before returning them to Relay
         """
         low_number: int = next(
             (
