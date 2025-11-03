@@ -1,6 +1,6 @@
 [project]
 name = "hutch-bunny"
-version = "1.4.2"
+version = "1.4.3"
 description = "A Cohort Discovery Task API worker"
 license = { text = "MIT License" }
 readme = "README.md"
