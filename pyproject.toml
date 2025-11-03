@@ -1,6 +1,6 @@
 [project]
 name = "hutch-bunny"
-version = "1.4.1"
+version = "1.4.2"
 description = "A Cohort Discovery Task API worker"
 license = { text = "MIT License" }
 readme = "README.md"
@@ -20,7 +20,6 @@ maintainers = [
 requires-python = ">=3.13"
 dependencies = [
   "numpy>=2.2.1",
-  "pandas>=2.2.3",
   "psycopg[binary]>=3.2.3",
   "python-dotenv>=1.0.1",
   "requests>=2.32.3", # daemon-only
@@ -51,7 +50,6 @@ build-backend = "hatchling.build"
 dev = [
     "ruff>=0.8.6",
     "pytest>=8.3.4",
-    "pandas-stubs>=2.2.3.241126",
     "mypy>=1.14.1",
     "types-requests>=2.32.0.20241016",
     "coverage>=7.6.12",
