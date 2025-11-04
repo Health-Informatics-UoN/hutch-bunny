@@ -1,8 +1,9 @@
 import os
 from hutch_bunny.core.logger import logger, INFO
-from typing import Tuple, Type, Union
+from typing import Tuple, Type, Union, Sequence, Any 
 
 from sqlalchemy import distinct, func
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.db import BaseDBClient
@@ -36,6 +37,49 @@ PersonTable = Union[
     DrugExposure,
     ProcedureOccurrence,
 ]
+
+
+class CodeDistributionRow(BaseModel):
+    """
+    A single row in the distribution output.
+    """
+    biobank: str = Field(alias="BIOBANK")
+    code: str = Field(alias="CODE")
+    count: int = Field(alias="COUNT")  
+    description: str = Field(default="", alias="DESCRIPTION")
+    min_val: str = Field(default="", alias="MIN")
+    q1: str = Field(default="", alias="Q1")
+    median: str = Field(default="", alias="MEDIAN")
+    mean: str = Field(default="", alias="MEAN")
+    q3: str = Field(default="", alias="Q3")
+    max_val: str = Field(default="", alias="MAX")
+    alternatives: str = Field(default="", alias="ALTERNATIVES")
+    dataset: str = Field(default="", alias="DATASET")
+    omop: str = Field(alias="OMOP")
+    omop_descr: str = Field(alias="OMOP_DESCR")
+    category: str = Field(alias="CATEGORY")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator('count', mode='before')
+    @classmethod
+    def ensure_int(cls, v: Any) -> int:
+        return int(v) if v is not None else 0
+
+
+def convert_rows_to_tsv(
+    output_cols: list[str],
+    rows: Sequence[BaseModel]
+) -> str:
+    """Convert list of Pydantic models to TSV string."""
+    results = ["\t".join(output_cols)]
+    
+    for row in rows:
+        row_dict = row.model_dump(by_alias=True, mode="json")
+        row_values = [str(row_dict.get(col, "")) for col in output_cols]
+        results.append("\t".join(row_values))
+    
+    return os.linesep.join(results)
 
 
 class CodeDistributionQuerySolver:
@@ -189,26 +233,17 @@ class CodeDistributionQuerySolver:
 
         counts = list(map(int, counts))
 
-        results = ["\t".join(self.output_cols)]
-        for i in range(len(counts)):
-            row_values: list[str] = [
-                self.query.collection,
-                f"OMOP:{concepts[i]}" if i < len(concepts) else "",
-                str(counts[i] if i < len(counts) else 0),
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                str(concepts[i] if i < len(concepts) else ""),
-                omop_desc[i] if i < len(omop_desc) else "",
-                categories[i] if i < len(categories) else "",
-            ]
-            results.append("\t".join(row_values))
+        rows = [
+            CodeDistributionRow(
+                biobank=self.query.collection,
+                code=f"OMOP:{concepts[i]}",
+                count=counts[i],
+                omop=str(concepts[i]),
+                omop_descr=omop_desc[i],
+                category=categories[i],
+            )
+            for i in range(len(counts))
+        ]
 
-        return os.linesep.join(results), len(counts)
-
+        tsv_string = convert_rows_to_tsv(self.output_cols, rows)
+        return tsv_string, len(rows)
