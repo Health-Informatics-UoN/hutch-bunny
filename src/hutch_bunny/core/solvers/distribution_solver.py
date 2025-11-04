@@ -1,9 +1,9 @@
 import os
 from hutch_bunny.core.logger import logger, INFO
-from typing import Tuple, Type, Union, Sequence, Any 
+from typing import Tuple, Type, Union, Sequence
 
 from sqlalchemy import distinct, func
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, Field, ConfigDict
 
 from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.db import BaseDBClient
