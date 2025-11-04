@@ -61,11 +61,6 @@ class CodeDistributionRow(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    @field_validator('count', mode='before')
-    @classmethod
-    def ensure_int(cls, v: Any) -> int:
-        return int(v) if v is not None else 0
-
 
 def convert_rows_to_tsv(
     output_cols: list[str],
