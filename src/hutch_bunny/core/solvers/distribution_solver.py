@@ -1,8 +1,9 @@
 import os
 from hutch_bunny.core.logger import logger, INFO
-from typing import Tuple, Type, Union
+from typing import Tuple, Type, Union, Sequence
 
 from sqlalchemy import distinct, func
+from pydantic import BaseModel, Field, ConfigDict
 
 from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.db import BaseDBClient
@@ -36,6 +37,44 @@ PersonTable = Union[
     DrugExposure,
     ProcedureOccurrence,
 ]
+
+
+class CodeDistributionRow(BaseModel):
+    """
+    A single row in the distribution output.
+    """
+    biobank: str = Field(alias="BIOBANK")
+    code: str = Field(alias="CODE")
+    count: int = Field(alias="COUNT")  
+    description: str = Field(default="", alias="DESCRIPTION")
+    min_val: str = Field(default="", alias="MIN")
+    q1: str = Field(default="", alias="Q1")
+    median: str = Field(default="", alias="MEDIAN")
+    mean: str = Field(default="", alias="MEAN")
+    q3: str = Field(default="", alias="Q3")
+    max_val: str = Field(default="", alias="MAX")
+    alternatives: str = Field(default="", alias="ALTERNATIVES")
+    dataset: str = Field(default="", alias="DATASET")
+    omop: str = Field(alias="OMOP")
+    omop_descr: str = Field(alias="OMOP_DESCR")
+    category: str = Field(alias="CATEGORY")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+def convert_rows_to_tsv(
+    output_cols: list[str],
+    rows: Sequence[BaseModel]
+) -> str:
+    """Convert list of Pydantic models to TSV string."""
+    results = ["\t".join(output_cols)]
+    
+    for row in rows:
+        row_dict = row.model_dump(by_alias=True, mode="json")
+        row_values = [str(row_dict.get(col, "")) for col in output_cols]
+        results.append("\t".join(row_values))
+    
+    return os.linesep.join(results)
 
 
 class CodeDistributionQuerySolver:
@@ -103,16 +142,15 @@ class CodeDistributionQuerySolver:
         after=after_log(logger, INFO),
     )
     def solve_query(self, results_modifier: list[ResultModifier]) -> Tuple[str, int]:
+
         """Build table of distribution query and return as a TAB separated string
-         along with the number of rows.
+        along with the number of rows.
 
         Parameters
-         ----------
-         results_modifier: List
-         A list of modifiers to be applied to the results of the query before returning them to Relay
-
-         """
-
+        ----------
+            results_modifier: List
+            A list of modifiers to be applied to the results of the query before returning them to Relay
+        """
         low_number: int = next(
             (
                 item["threshold"] if item["threshold"] is not None else 10
@@ -130,7 +168,6 @@ class CodeDistributionQuerySolver:
             10,
         )
 
-        # Get the counts for each concept ID
         counts: list[int] = []
         concepts: list[int] = []
         categories: list[str] = []
@@ -139,41 +176,38 @@ class CodeDistributionQuerySolver:
         with self.db_client.engine.connect() as con:
             for domain_id in self.allowed_domains_map:
                 logger.debug(domain_id)
-                # get the right table and column based on the domain
+
+                # Get table and concept column for this domain
                 table = self.allowed_domains_map[domain_id]
                 concept_col = self.domain_concept_id_map[domain_id]
 
-                # gets a list of all concepts within this given table and their respective counts
-
-                if rounding > 0:
-                    stmnt = (
-                        select(
-                            func.round(
-                                (func.count(distinct(table.person_id)) / rounding), 0
-                            )
-                            * rounding,
-                            Concept.concept_id,
-                            Concept.concept_name,
-                        )
-                        .join(Concept, concept_col == Concept.concept_id)
-                        .group_by(Concept.concept_id, Concept.concept_name)
+                # Step 1: subquery to count distinct person_id per concept_id
+                subq = (
+                    select(
+                        concept_col.label("concept_id"),
+                        func.count(distinct(table.person_id)).label("count_agg")
                     )
-                else:
-                    stmnt = (
-                        select(
-                            func.count(distinct(table.person_id)),
-                            Concept.concept_id,
-                            Concept.concept_name,
-                        )
-                        .join(Concept, concept_col == Concept.concept_id)
-                        .group_by(Concept.concept_id, Concept.concept_name)
-                    )
+                    .group_by(concept_col)
+                    .subquery()
+                )
 
+                # Step 2: join with Concept table
+                stmnt = (
+                    select(
+                        # Apply rounding only here, after the join
+                        (func.round(subq.c.count_agg / rounding, 0) * rounding).label("count_agg_rounded")
+                        if rounding > 0 else subq.c.count_agg,
+                        Concept.concept_id,
+                        Concept.concept_name
+                    )
+                    .join(Concept, subq.c.concept_id == Concept.concept_id)
+                )
+
+                # Step 3: optional low-number filter
                 if low_number > 0:
-                    stmnt = stmnt.having(
-                        func.count(distinct(table.person_id)) > low_number
-                    )
+                    stmnt = stmnt.where(subq.c.count_agg > low_number)
 
+                # Execute
                 result = con.execute(stmnt)
                 res = result.fetchall()
 
@@ -182,40 +216,29 @@ class CodeDistributionQuerySolver:
                     concepts.append(row[1])
                     omop_desc.append(row[2])
 
-                # add the same category and collection if, for the number of results received
+                # Track categories
                 num_results = len(res)
                 categories.extend([domain_id] * num_results)
 
-                log_query(
-                    stmnt,
-                    self.db_client.engine
-                )
+                log_query(stmnt, self.db_client.engine)
 
+        # Suppression modifiers applied AFTER the query (unchanged)
         for i in range(len(counts)):
             counts[i] = apply_filters(counts[i], results_modifier)
 
         counts = list(map(int, counts))
 
-        # Build rows and convert to tab separated string
-        results = ["\t".join(self.output_cols)]
-        for i in range(len(counts)):
-            row_values: list[str] = [
-                self.query.collection,
-                f"OMOP:{concepts[i]}" if i < len(concepts) else "",
-                str(counts[i] if i < len(counts) else 0),
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                str(concepts[i] if i < len(concepts) else ""),
-                omop_desc[i] if i < len(omop_desc) else "",
-                categories[i] if i < len(categories) else "",
-            ]
-            results.append("\t".join(row_values))
+        rows = [
+            CodeDistributionRow(
+                biobank=self.query.collection,
+                code=f"OMOP:{concepts[i]}",
+                count=counts[i],
+                omop=str(concepts[i]),
+                omop_descr=omop_desc[i],
+                category=categories[i],
+            )
+            for i in range(len(counts))
+        ]
 
-        return os.linesep.join(results), len(counts)
+        tsv_string = convert_rows_to_tsv(self.output_cols, rows)
+        return tsv_string, len(rows)
