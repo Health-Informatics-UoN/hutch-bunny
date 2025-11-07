@@ -1,11 +1,15 @@
+from opentelemetry import trace
+
 from hutch_bunny.core.db import BaseDBClient
 from hutch_bunny.core.config import DaemonSettings
 from hutch_bunny.core.execute_query import execute_query
 from hutch_bunny.core.upstream.task_api_client import TaskApiClient
 from hutch_bunny.core.results_modifiers import results_modifiers
 from hutch_bunny.core.logger import logger
+from hutch_bunny.core.telemetry import trace_operation
 
 
+@trace_operation("handle_task", span_kind=trace.SpanKind.CONSUMER)
 def handle_task(
     task_data: dict[str, object],
     db_client: BaseDBClient,
@@ -35,6 +39,7 @@ def handle_task(
             task_data,
             result_modifier,
             db_client=db_client,
+            settings=settings
         )
         task_api_client.send_results(result)
     except NotImplementedError as e:

@@ -20,7 +20,8 @@ from hutch_bunny.core.db.entities import (
     Measurement,
     Observation,
     Person,
-    DrugExposure
+    DrugExposure,
+    ProcedureOccurrence
 )
 from typing import Tuple 
 import operator as op
@@ -77,6 +78,7 @@ class OMOPRuleQueryBuilder:
         self.drug_query: Select[Tuple[int]] = select(DrugExposure.person_id)
         self.measurement_query: Select[Tuple[int]] = select(Measurement.person_id)
         self.observation_query: Select[Tuple[int]] = select(Observation.person_id)
+        self.procedure_query: Select[Tuple[int]] = select(ProcedureOccurrence.person_id)
 
     def add_concept_constraint(self, concept_id: int) -> 'OMOPRuleQueryBuilder':
         """
@@ -102,6 +104,9 @@ class OMOPRuleQueryBuilder:
         )
         self.observation_query = self.observation_query.where(
             Observation.observation_concept_id == concept_id
+        )
+        self.procedure_query = self.procedure_query.where(
+            ProcedureOccurrence.procedure_concept_id == concept_id
         )
         return self
 
@@ -162,6 +167,13 @@ class OMOPRuleQueryBuilder:
             self.observation_query,
             Observation.person_id,
             Observation.observation_date,
+            comparator,
+            age_value,
+        )
+        self.procedure_query = self._apply_age_constraint_to_table(
+            self.procedure_query,
+            ProcedureOccurrence.person_id,
+            ProcedureOccurrence.procedure_date,
             comparator,
             age_value,
         )
@@ -272,6 +284,9 @@ class OMOPRuleQueryBuilder:
             self.drug_query = self.drug_query.where(
                 DrugExposure.drug_exposure_start_date >= relative_date
             )
+            self.procedure_query = self.procedure_query.where(
+                ProcedureOccurrence.procedure_date >= relative_date
+            )
         else:
             self.measurement_query = self.measurement_query.where(
                 Measurement.measurement_date <= relative_date
@@ -284,6 +299,9 @@ class OMOPRuleQueryBuilder:
             )
             self.drug_query = self.drug_query.where(
                 DrugExposure.drug_exposure_start_date <= relative_date
+            )
+            self.procedure_query = self.procedure_query.where(
+                ProcedureOccurrence.procedure_date <= relative_date
             )
         return self
 
@@ -388,7 +406,8 @@ class OMOPRuleQueryBuilder:
             self.measurement_query,
             self.observation_query,
             self.condition_query,
-            self.drug_query
+            self.drug_query,
+            self.procedure_query
         )
 
 

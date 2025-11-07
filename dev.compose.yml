@@ -42,7 +42,7 @@ services:
       RABBITMQ_DEFAULT_PASS: password
 
   relay:
-    image: ghcr.io/health-informatics-uon/hutch/relay:dev-latest
+    image: ghcr.io/health-informatics-uon/hutch/relay:edge
     depends_on:
       - rabbitmq
       - db
@@ -56,11 +56,11 @@ services:
       RelayTaskQueue__ConnectionString: amqp://user:password@rabbitmq:5672
       Obfuscation__LowNumberSuppressionThreshold: 0
       Obfuscation__RoundingTarget: 0
-      UpstreamTaskApi__BaseUrl: https://<task_api_host>
-      UpstreamTaskApi__CollectionId: collection_id
-      UpstreamTaskApi__Username: username
-      UpstreamTaskApi__Password: password
+      UpstreamTaskApi__enable: false
       Database__ApplyMigrationsOnStartup: true
+      Beacon__enable: true 
+      DownstreamUsers__username__password: password  
+      DownstreamUsers__username__Subnode: b8c58ab0-51c7-4842-ac96-efffc2c02472
 
   bunny:
     build:
@@ -73,15 +73,27 @@ services:
     environment:
       DATASOURCE_DB_USERNAME: postgres
       DATASOURCE_DB_PASSWORD: postgres
-      DATASOURCE_DB_DATABASE: hutch-omop
+      DATASOURCE_DB_DATABASE: omop
       DATASOURCE_DB_DRIVERNAME: postgresql
       DATASOURCE_DB_SCHEMA: public
       DATASOURCE_DB_PORT: 5432
       DATASOURCE_DB_HOST: db
-      TASK_API_BASE_URL: http://relay:8080/
+      TASK_API_BASE_URL: http://relay:8080/link_connector_api
       TASK_API_USERNAME: username
       TASK_API_PASSWORD: password
-      LOW_NUMBER_SUPPRESSION_THRESHOLD:
-      ROUNDING_TARGET:
+      TASK_API_ENFORCE_HTTPS: false
+      LOW_NUMBER_SUPPRESSION_THRESHOLD: 0
+      ROUNDING_TARGET: 0
       POLLING_INTERVAL: 5
-      COLLECTION_ID: collection_id
+      COLLECTION_ID: b8c58ab0-51c7-4842-ac96-efffc2c02472
+      BUNNY_LOGGER_LEVEL: "INFO"
+      PYTHONUNBUFFERED: "1"
+      # Observability config
+      OTEL_ENABLED: true 
+      OTEL_SERVICE_NAME: "hutch-bunny"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      # Distribution query cache config 
+      CACHE_ENABLED: true 
+      CACHE_DIR: /app/bunny_cache
+      CACHE_TTL_HOURS: 0.03
+      CACHE_REFRESH_ON_STARTUP: true 
