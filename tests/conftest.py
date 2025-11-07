@@ -10,7 +10,7 @@ from hutch_bunny.core.rquest_models.distribution import (
     DistributionQueryType,
 )
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
-from hutch_bunny.core.settings import Settings
+from hutch_bunny.core.config import Settings
 import hutch_bunny.core.db as db
 
 
@@ -21,13 +21,13 @@ settings = Settings()
 def db_client() -> SyncDBClient:
     datasource_db_port = os.getenv("DATASOURCE_DB_PORT")
     return SyncDBClient(
-        username=settings.DATASOURCE_DB_USERNAME,
-        password=settings.DATASOURCE_DB_PASSWORD,
-        host=settings.DATASOURCE_DB_HOST,
+        username=settings.database.DATASOURCE_DB_USERNAME,
+        password=settings.database.DATASOURCE_DB_PASSWORD,
+        host=settings.database.DATASOURCE_DB_HOST,
         port=int(datasource_db_port),
-        database=settings.DATASOURCE_DB_DATABASE,
-        drivername=db.expand_short_drivers(settings.DATASOURCE_DB_DRIVERNAME),
-        schema=settings.DATASOURCE_DB_SCHEMA,
+        database=settings.database.DATASOURCE_DB_DATABASE,
+        drivername=db.expand_short_drivers(settings.database.DATASOURCE_DB_DRIVERNAME),
+        schema=settings.database.DATASOURCE_DB_SCHEMA,
     )
 
 

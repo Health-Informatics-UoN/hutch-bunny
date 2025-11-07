@@ -1,7 +1,7 @@
 """Database management module for Hutch Bunny."""
 
 from hutch_bunny.core.logger import logger, INFO
-from hutch_bunny.core.settings import Settings, DaemonSettings
+from hutch_bunny.core.config import Settings, DaemonSettings
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -134,7 +134,7 @@ def get_db_client(settings: Settings | DaemonSettings) -> BaseDBClient:
     logger.info("Connecting to database...")
 
     try:
-        if settings.app.DATASOURCE_USE_TRINO:
+        if settings.database.DATASOURCE_USE_TRINO:
             return _create_trino_client(settings)
         elif settings.database.DATASOURCE_USE_AZURE_MANAGED_IDENTITY:
             return _create_azure_client(settings)

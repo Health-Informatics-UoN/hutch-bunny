@@ -12,8 +12,9 @@ def mock_db_manager():
 @pytest.fixture
 def mock_settings():
     settings = Mock()
-    settings.LOW_NUMBER_SUPPRESSION_THRESHOLD = 10
-    settings.ROUNDING_TARGET = 2
+    settings.obfuscation = Mock()
+    settings.obfuscation.LOW_NUMBER_SUPPRESSION_THRESHOLD = 10
+    settings.obfuscation.ROUNDING_TARGET = 2
     return settings
 
 

@@ -8,8 +8,8 @@ from importlib import reload
 # Import the entire modules instead of specific functions
 # To allow reload of settings for testing
 import hutch_bunny.core.logger
-import hutch_bunny.core.settings
-from hutch_bunny.core.settings import Settings, DaemonSettings
+import hutch_bunny.core.config
+from hutch_bunny.core.config import Settings, DaemonSettings
 
 
 @pytest.fixture
@@ -33,14 +33,14 @@ def daemon_settings() -> DaemonSettings:
     """Fixture to create a DaemonSettings instance with test values"""
     return DaemonSettings(
         COLLECTION_ID="test_collection",
-        DATASOURCE_DB_PASSWORD="db_password",
-        DATASOURCE_DB_HOST="localhost",
-        DATASOURCE_DB_PORT=5432,
-        DATASOURCE_DB_SCHEMA="public",
-        DATASOURCE_DB_DATABASE="test_db",
-        TASK_API_BASE_URL="https://example.com",
-        TASK_API_USERNAME="user",
-        TASK_API_PASSWORD="password",
+        database__DATASOURCE_DB_PASSWORD="db_password",
+        database__DATASOURCE_DB_HOST="localhost",
+        database__DATASOURCE_DB_PORT=5432,
+        database__DATASOURCE_DB_SCHEMA="public",
+        database__DATASOURCE_DB_DATABASE="test_db",
+        task_api__TASK_API_BASE_URL="https://example.com",
+        task_api__TASK_API_USERNAME="user",
+        task_api__TASK_API_PASSWORD="password",
     )
 
 
@@ -49,13 +49,13 @@ def test_configure_logger() -> None:
     # Test invalid level raises validation error
     os.environ["BUNNY_LOGGER_LEVEL"] = "FLOPPSY"
     with pytest.raises(ValueError, match="pattern"):
-        reload(hutch_bunny.core.settings)
+        reload(hutch_bunny.core.config)
         settings = Settings()
         hutch_bunny.core.logger.configure_logger(settings)
 
     # Test INFO level
     os.environ["BUNNY_LOGGER_LEVEL"] = "INFO"
-    reload(hutch_bunny.core.settings)
+    reload(hutch_bunny.core.config)
     settings = Settings()
     hutch_bunny.core.logger.configure_logger(settings)
     logger = logging.getLogger("hutch_bunny")
@@ -63,7 +63,7 @@ def test_configure_logger() -> None:
 
     # Test DEBUG level
     os.environ["BUNNY_LOGGER_LEVEL"] = "DEBUG"
-    reload(hutch_bunny.core.settings)
+    reload(hutch_bunny.core.config)
     settings = Settings()
     hutch_bunny.core.logger.configure_logger(settings)
     assert logger.level == logging.DEBUG

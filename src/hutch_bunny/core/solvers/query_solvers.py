@@ -12,7 +12,7 @@ from hutch_bunny.core.rquest_models.distribution import (
 )
 
 from hutch_bunny.core.rquest_models.result import RquestResult
-from hutch_bunny.core.settings import Settings
+from hutch_bunny.core.config import Settings
 from hutch_bunny.core.solvers.demographics_solver import (
     DemographicsDistributionQuerySolver,
 )

@@ -1,6 +1,6 @@
 import base64
 from hutch_bunny.core.rquest_models.file import File
-from hutch_bunny.core.settings import DaemonSettings
+from hutch_bunny.core.config import DaemonSettings
 from importlib.metadata import version
 
 

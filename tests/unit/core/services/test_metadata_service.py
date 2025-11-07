@@ -3,7 +3,7 @@ import pytest
 import base64
 from unittest.mock import patch, MagicMock
 from hutch_bunny.core.services.metadata_service import MetadataService
-from hutch_bunny.core.settings import DaemonSettings
+from hutch_bunny.core.config import DaemonSettings
 from importlib.metadata import version
 
 
@@ -12,8 +12,9 @@ def mock_settings() -> MagicMock:
     """Create a mock settings instance."""
     mock = MagicMock(spec=DaemonSettings)
     mock.COLLECTION_ID = "test_collection"
-    mock.ROUNDING_TARGET = 10
-    mock.LOW_NUMBER_SUPPRESSION_THRESHOLD = 150
+    mock.obfuscation = MagicMock()
+    mock.obfuscation.ROUNDING_TARGET = 10
+    mock.obfuscation.LOW_NUMBER_SUPPRESSION_THRESHOLD = 150
     return mock
 
 

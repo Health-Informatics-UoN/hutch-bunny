@@ -9,7 +9,7 @@ from hutch_bunny.core.rquest_models.distribution import (
 from hutch_bunny.core.db import SyncDBClient
 from hutch_bunny.core.rquest_models.result import RquestResult
 from hutch_bunny.core.rquest_models.file import File
-from hutch_bunny.core.settings import Settings
+from hutch_bunny.core.config import Settings
 import hutch_bunny.core.db as db
 
 settings = Settings()
@@ -17,15 +17,15 @@ settings = Settings()
 
 @pytest.fixture
 def db_client() -> SyncDBClient:
-    datasource_db_port = settings.DATASOURCE_DB_PORT
+    datasource_db_port = settings.database.DATASOURCE_DB_PORT
     return SyncDBClient(
-        username=settings.DATASOURCE_DB_USERNAME,
-        password=settings.DATASOURCE_DB_PASSWORD,
-        host=settings.DATASOURCE_DB_HOST,
+        username=settings.database.DATASOURCE_DB_USERNAME,
+        password=settings.database.DATASOURCE_DB_PASSWORD,
+        host=settings.database.DATASOURCE_DB_HOST,
         port=(int(datasource_db_port) if datasource_db_port is not None else None),
-        database=settings.DATASOURCE_DB_DATABASE,
-        drivername=db.expand_short_drivers(settings.DATASOURCE_DB_DRIVERNAME),
-        schema=settings.DATASOURCE_DB_SCHEMA,
+        database=settings.database.DATASOURCE_DB_DATABASE,
+        drivername=db.expand_short_drivers(settings.database.DATASOURCE_DB_DRIVERNAME),
+        schema=settings.database.DATASOURCE_DB_SCHEMA,
     )
 
 

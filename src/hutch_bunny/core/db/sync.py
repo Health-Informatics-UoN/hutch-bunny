@@ -4,7 +4,7 @@ from sqlalchemy.inspection import inspect
 from sqlalchemy.engine import URL as SQLAURL, Row, Engine
 from sqlalchemy.sql import Executable
 from hutch_bunny.core.logger import logger
-from hutch_bunny.core.settings import Settings
+from hutch_bunny.core.config import Settings
 from .base import BaseDBClient
 
 settings = Settings()

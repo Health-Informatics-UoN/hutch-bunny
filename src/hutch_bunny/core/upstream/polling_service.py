@@ -2,7 +2,7 @@ from hutch_bunny.core.logger import logger
 import time
 from typing import Callable, Any
 import requests
-from hutch_bunny.core.settings import DaemonSettings
+from hutch_bunny.core.config import DaemonSettings
 from hutch_bunny.core.upstream.task_api_client import TaskApiClient
 
 

@@ -1,4 +1,4 @@
-from hutch_bunny.core.settings import DaemonSettings
+from hutch_bunny.core.config import DaemonSettings
 from hutch_bunny.core.upstream.task_api_client import TaskApiClient
 from hutch_bunny.core.logger import configure_logger, logger
 from hutch_bunny.core.db import get_db_client

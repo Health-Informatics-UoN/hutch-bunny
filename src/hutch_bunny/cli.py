@@ -8,7 +8,7 @@ from hutch_bunny.core.rquest_models.result import RquestResult
 from hutch_bunny.core.parser import parser
 from hutch_bunny.core.logger import configure_logger, logger
 from hutch_bunny.core.db import get_db_client
-from hutch_bunny.core.settings import Settings
+from hutch_bunny.core.config import Settings
 from importlib.metadata import version
 
 
