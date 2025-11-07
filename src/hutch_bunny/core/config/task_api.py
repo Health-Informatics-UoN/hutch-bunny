@@ -18,6 +18,7 @@ class TaskApiSettings(BaseSettings):
     TASK_API_TYPE: Optional[Literal["a", "b"]] = Field(
         description="The type of task API to use", default=None
     )
+    COLLECTION_ID: str = Field(description="The collection ID")
 
     @field_validator("TASK_API_BASE_URL")
     def validate_https_enforcement(cls, v: str, info: ValidationInfo) -> str:

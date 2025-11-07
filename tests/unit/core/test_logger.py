@@ -32,7 +32,7 @@ def mock_logger() -> Generator[MagicMock, None, None]:
 def daemon_settings() -> DaemonSettings:
     """Fixture to create a DaemonSettings instance with test values"""
     return DaemonSettings(
-        COLLECTION_ID="test_collection",
+        task_api__COLLECTION_ID="test_collection",
         database__DATASOURCE_DB_PASSWORD="db_password",
         database__DATASOURCE_DB_HOST="localhost",
         database__DATASOURCE_DB_PORT=5432,

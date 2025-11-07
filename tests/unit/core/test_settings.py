@@ -16,7 +16,7 @@ def test_https_validation_enforced() -> None:
             task_api__TASK_API_ENFORCE_HTTPS=True,
             task_api__TASK_API_USERNAME="user",
             task_api__TASK_API_PASSWORD="password",
-            COLLECTION_ID="test",
+            task_api__COLLECTION_ID="test",
             database__DATASOURCE_DB_PASSWORD="db_password",
             database__DATASOURCE_DB_HOST="localhost",
             database__DATASOURCE_DB_PORT=5432,

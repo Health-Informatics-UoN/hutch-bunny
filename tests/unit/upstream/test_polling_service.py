@@ -8,11 +8,13 @@ import requests
 @pytest.fixture
 def mock_settings():
     mock_settings = Mock()
-    mock_settings.COLLECTION_ID = "test_collection"
-    mock_settings.TASK_API_TYPE = "test_type"
-    mock_settings.INITIAL_BACKOFF = 1
-    mock_settings.MAX_BACKOFF = 8
-    mock_settings.POLLING_INTERVAL = 0.1
+    mock_settings.task_api = Mock()
+    mock_settings.task_api.COLLECTION_ID = "test_collection"
+    mock_settings.task_api.TASK_API_TYPE = "test_type"
+    mock_settings.polling = Mock()
+    mock_settings.polling.INITIAL_BACKOFF = 1
+    mock_settings.polling.MAX_BACKOFF = 8
+    mock_settings.polling.POLLING_INTERVAL = 0.1
     return mock_settings
 
 
@@ -89,8 +91,9 @@ def test_construct_polling_endpoint_without_type(
 ):
     # Arrange
     mock_settings = Mock()
-    mock_settings.COLLECTION_ID = "test_collection"
-    mock_settings.TASK_API_TYPE = None
+    mock_settings.task_api = Mock()
+    mock_settings.task_api.COLLECTION_ID = "test_collection"
+    mock_settings.task_api.TASK_API_TYPE = None
 
     polling_service = PollingService(mock_client, mock_task_handler, mock_settings)
 

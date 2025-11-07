@@ -57,8 +57,8 @@ def configure_logger(settings) -> None:  # type: ignore
     # Create a filter to redact collection_id
     sensitive_values: list[str] = []
 
-    if hasattr(settings, "COLLECTION_ID") and settings.COLLECTION_ID:
-        sensitive_values.append(settings.COLLECTION_ID)
+    if hasattr(settings, "task_api") and hasattr(settings.task_api, "COLLECTION_ID") and settings.task_api.COLLECTION_ID:
+        sensitive_values.append(settings.task_api.COLLECTION_ID)
 
     sensitive_filter = RedactValueFilter(sensitive_values)
     console_handler.addFilter(sensitive_filter)

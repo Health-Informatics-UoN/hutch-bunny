@@ -11,7 +11,8 @@ from importlib.metadata import version
 def mock_settings() -> MagicMock:
     """Create a mock settings instance."""
     mock = MagicMock(spec=DaemonSettings)
-    mock.COLLECTION_ID = "test_collection"
+    mock.task_api = MagicMock()
+    mock.task_api.COLLECTION_ID = "test_collection"
     mock.obfuscation = MagicMock()
     mock.obfuscation.ROUNDING_TARGET = 10
     mock.obfuscation.LOW_NUMBER_SUPPRESSION_THRESHOLD = 150

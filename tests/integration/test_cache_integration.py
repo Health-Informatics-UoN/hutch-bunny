@@ -259,7 +259,8 @@ def test_background_refresh_updates_cache(
     mock_settings: Mock
 ) -> None:
     mock_cache_get.return_value = None
-    mock_settings.COLLECTION_ID = "test_collection"
+    mock_settings.task_api = Mock()
+    mock_settings.task_api.COLLECTION_ID = "test_collection"
 
     results = [
         RquestResult(uuid="1", status="ok", collection_id="test", count=100),

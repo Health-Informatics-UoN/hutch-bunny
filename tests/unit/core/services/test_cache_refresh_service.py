@@ -14,9 +14,11 @@ def mock_settings() -> Mock:
     settings.CACHE_REFRESH_ON_STARTUP = True
     settings.CACHE_DIR = tempfile.mkdtemp()
     settings.CACHE_TTL_HOURS = 24 
-    settings.COLLECTION_ID = "test123"
-    settings.LOW_NUMBER_SUPPRESSION_THRESHOLD = 10
-    settings.ROUNDING_TARGET = 10
+    settings.task_api = Mock()
+    settings.task_api.COLLECTION_ID = "test123"
+    settings.obfuscation = Mock()
+    settings.obfuscation.LOW_NUMBER_SUPPRESSION_THRESHOLD = 10
+    settings.obfuscation.ROUNDING_TARGET = 10
     return settings 
 
 
@@ -166,6 +168,6 @@ def test_refresh_cache_content(
     assert 'GENERIC' in query_codes
 
     mock_modifiers.assert_called_with(
-        low_number_suppression_threshold=mock_settings.LOW_NUMBER_SUPPRESSION_THRESHOLD,
-        rounding_target=mock_settings.ROUNDING_TARGET
+        low_number_suppression_threshold=mock_settings.obfuscation.LOW_NUMBER_SUPPRESSION_THRESHOLD,
+        rounding_target=mock_settings.obfuscation.ROUNDING_TARGET
     )

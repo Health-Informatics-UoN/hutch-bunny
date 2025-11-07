@@ -17,7 +17,7 @@ class MetadataService:
         Returns:
             File object containing the metadata
         """
-        biobank = self.settings.COLLECTION_ID
+        biobank = self.settings.task_api.COLLECTION_ID
         protocol = "Bunny"
         os_info = ""
         # version number

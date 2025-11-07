@@ -40,9 +40,6 @@ class DaemonSettings(BaseSettings):
     task_api: TaskApiSettings = Field(default_factory=TaskApiSettings)
     polling: PollingSettings = Field(default_factory=PollingSettings)
 
-    # Daemon-specific settings
-    COLLECTION_ID: str = Field(description="The collection ID")
-
     def safe_model_dump(self) -> dict[str, object]:
         """
         Convert settings to a dictionary, excluding sensitive fields.
@@ -51,8 +48,9 @@ class DaemonSettings(BaseSettings):
             "database": self.database.model_dump(exclude={"DATASOURCE_DB_PASSWORD"}),
             "logging": self.logging.model_dump(),
             "obfuscation": self.obfuscation.model_dump(),
-            "task_api": self.task_api.model_dump(exclude={"TASK_API_PASSWORD"}),
+            "task_api": self.task_api.model_dump(
+                exclude={"TASK_API_PASSWORD", "COLLECTION_ID"}
+            ),
             "polling": self.polling.model_dump(),
-            "COLLECTION_ID": "[REDACTED]",  # Always redact collection ID
         }
 

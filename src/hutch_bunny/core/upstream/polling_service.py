@@ -45,9 +45,9 @@ class PollingService:
             str: The polling endpoint for the task API.
         """
         return (
-            f"task/nextjob/{self.settings.COLLECTION_ID}.{self.settings.task_api.TASK_API_TYPE}"
+            f"task/nextjob/{self.settings.task_api.COLLECTION_ID}.{self.settings.task_api.TASK_API_TYPE}"
             if self.settings.task_api.TASK_API_TYPE
-            else f"task/nextjob/{self.settings.COLLECTION_ID}"
+            else f"task/nextjob/{self.settings.task_api.COLLECTION_ID}"
         )
 
     def poll_for_tasks(self, max_iterations: int | None = None) -> None:
