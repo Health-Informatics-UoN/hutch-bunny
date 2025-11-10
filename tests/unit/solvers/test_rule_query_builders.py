@@ -437,6 +437,8 @@ class TestPersonQueryConstraintBuilder:
         rule = Mock()
         rule.value = "8507"
         rule.operator = "="
+        rule.left_value_time=None
+        rule.right_value_time=None
 
         result = builder._build_gender_constraint(rule, builder._build_age_constraint(rule))
         assert len(result) == 1
@@ -448,6 +450,8 @@ class TestPersonQueryConstraintBuilder:
         rule = Mock()
         rule.value = "8532"
         rule.operator = "!="
+        rule.left_value_time = None
+        rule.right_value_time = None
 
         result = builder._build_gender_constraint(rule, builder._build_age_constraint(rule))
         assert len(result) == 1
@@ -459,7 +463,9 @@ class TestPersonQueryConstraintBuilder:
         rule = Mock()
         rule.value = "not_a_number"
         rule.operator = "="
-        
+        rule.left_value_time = None
+        rule.right_value_time = None
+
         with pytest.raises(ValueError):
             builder._build_gender_constraint(rule, builder._build_age_constraint(rule))
 
@@ -474,6 +480,8 @@ class TestPersonQueryConstraintBuilder:
             rule = Mock()
             rule.value = value
             rule.operator = operator
+            rule.left_value_time = None
+            rule.right_value_time = None
             
             result = builder._build_race_constraint(rule, builder._build_age_constraint(rule))
             assert len(result) == 1
@@ -491,7 +499,9 @@ class TestPersonQueryConstraintBuilder:
             rule = Mock()
             rule.value = value
             rule.operator = operator
-            
+            rule.left_value_time = None
+            rule.right_value_time = None
+
             result = builder._build_ethnicity_constraint(rule, builder._build_age_constraint(rule))
             assert len(result) == 1
             compiled_sql = str(result[0].compile(compile_kwargs={"literal_binds": True}))
