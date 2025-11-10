@@ -6,6 +6,7 @@ from sqlalchemy import (
     CompoundSelect,
     Engine, 
     or_,
+    and_,
     func,
     BinaryExpression,
     ColumnElement,
@@ -132,10 +133,10 @@ class OMOPRuleQueryBuilder:
             return self
         
         if not left_value_time:
-            comparator = op.lt
+            comparator = op.le
             age_value = int(right_value_time)
         elif not right_value_time:
-            comparator = op.gt
+            comparator = op.ge
             age_value = int(left_value_time)
         else:
             # Both values present - this would be a range
@@ -448,12 +449,14 @@ class PersonConstraintBuilder:
             return self._build_age_constraints(rule)
 
         concept_domain = concepts.get(rule.value)
+
+
         if concept_domain == "Gender":
-            return self._build_gender_constraint(rule)
+            return self._build_gender_constraint(rule, self._build_age_constraint(rule))
         elif concept_domain == "Race":
-            return self._build_race_constraint(rule)
+            return self._build_race_constraint(rule, self._build_age_constraint(rule))
         elif concept_domain == "Ethnicity":
-            return self._build_ethnicity_constraint(rule)
+            return self._build_ethnicity_constraint(rule, self._build_age_constraint(rule))
 
         return []
 
@@ -472,17 +475,67 @@ class PersonConstraintBuilder:
             age <= rule.max_value
         ]
 
-    def _build_gender_constraint(self, rule: Rule) -> list[ColumnElement[bool]]:
-        """Build gender constraint."""
-        constraint = Person.gender_concept_id == int(rule.value)
-        return [constraint if rule.operator == "=" else ~constraint]
+    def _build_age_constraint(self, rule: Rule) -> list[ColumnElement[bool]]:
+        """Build a dynamic age constraint with comparator."""
 
-    def _build_race_constraint(self, rule: Rule) -> list[ColumnElement[bool]]:
+        # If neither value is provided, return an empty list (no constraint)
+        if rule.left_value_time is None and rule.right_value_time is None:
+            return []
+
+        comparator: Callable[[int, int], bool] | None = None
+        age_value:int = 0
+
+        # Determine comparator and age_value based on which side is set
+        if rule.left_value_time is not None and rule.left_value_time !="":
+            comparator = op.ge  # age > left_value_time
+            age_value = int(rule.left_value_time)
+        elif rule.right_value_time is not None and rule.right_value_time !="":
+            comparator = op.le  # age < right_value_time
+            age_value = int(rule.right_value_time)
+
+        # Compute age
+        current_year = datetime.now().year
+        age = current_year - Person.year_of_birth
+
+        # Build numeric constraint using the comparator
+        numeric_constraint = comparator(age, age_value)
+
+        return [numeric_constraint]
+
+    def _build_gender_constraint(self, rule: Rule, age_constraints: list[ColumnElement[bool]]) -> list[ColumnElement[bool]]:
+        """Build gender constraint, optionally combining with an age constraint."""
+
+        # Base gender filter
+        gender_constraint = Person.gender_concept_id == int(rule.value)
+
+        # Combine gender + age
+        if age_constraints:
+            combined_constraint = and_(gender_constraint, *age_constraints)
+        else:
+            combined_constraint = gender_constraint
+
+        return [combined_constraint if rule.operator == "=" else ~combined_constraint]
+
+    def _build_race_constraint(self, rule: Rule, age_constraints: list[ColumnElement[bool]]) -> list[ColumnElement[bool]]:
         """Build race constraint."""
         constraint = Person.race_concept_id == int(rule.value)
-        return [constraint if rule.operator == "=" else ~constraint]
 
-    def _build_ethnicity_constraint(self, rule: Rule) -> list[ColumnElement[bool]]:
+        # Combine gender + age
+        if age_constraints:
+            combined_constraint = and_(constraint, *age_constraints)
+        else:
+            combined_constraint = constraint
+
+        return [combined_constraint if rule.operator == "=" else ~combined_constraint]
+
+    def _build_ethnicity_constraint(self, rule: Rule, age_constraints: list[ColumnElement[bool]]) -> list[ColumnElement[bool]]:
         """Build ethnicity constraint."""
         constraint = Person.ethnicity_concept_id == int(rule.value)
-        return [constraint if rule.operator == "=" else ~constraint]
+
+        # Combine gender + age
+        if age_constraints:
+            combined_constraint = and_(constraint, *age_constraints)
+        else:
+            combined_constraint = constraint
+
+        return [combined_constraint if rule.operator == "=" else ~combined_constraint]
