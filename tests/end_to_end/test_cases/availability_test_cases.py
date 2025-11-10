@@ -28,6 +28,9 @@ class AvailabilityTestCase:
         modifiers_list = []
         if self.rounding is not None:
             modifiers_list.append({"id": "Rounding", "nearest": self.rounding})
+        else:
+            modifiers_list.append({"id": "Rounding", "nearest (default)": 10})
+
         if self.low_number_suppression is not None:
             modifiers_list.append(
                 {
@@ -35,6 +38,14 @@ class AvailabilityTestCase:
                     "threshold": self.low_number_suppression,
                 }
             )
+        else:
+            modifiers_list.append(
+                {
+                    "id": "Low Number Suppression",
+                    "threshold (default)": 10,
+                }
+            )
+
         return json.dumps(modifiers_list)
 
 
