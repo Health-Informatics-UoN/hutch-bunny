@@ -129,7 +129,7 @@ class TestOMOPRuleQueryBuilder():
         compiled = builder.condition_query.compile(compile_kwargs={"literal_binds": True})
         sql_str = str(compiled)
 
-        assert "25 > 20" in sql_str
+        assert "25 >= 20" in sql_str
 
     def test_add_temporal_constraint_only_left_constraint_present(self) -> None: 
         left_time_value = "1"
