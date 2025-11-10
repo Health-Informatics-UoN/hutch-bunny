@@ -1,6 +1,6 @@
 [project]
 name = "hutch-bunny"
-version = "1.3.1"
+version = "1.4.2"
 description = "A Cohort Discovery Task API worker"
 license = { text = "MIT License" }
 readme = "README.md"
@@ -20,7 +20,6 @@ maintainers = [
 requires-python = ">=3.13"
 dependencies = [
   "numpy>=2.2.1",
-  "pandas>=2.2.3",
   "psycopg[binary]>=3.2.3",
   "python-dotenv>=1.0.1",
   "requests>=2.32.3", # daemon-only
@@ -32,6 +31,11 @@ dependencies = [
   "pyodbc>=5.2.0",
   "pymssql>=2.3.7",
   "duckdb-engine>=0.17.0",
+  "opentelemetry-api>=1.20.0",
+  "opentelemetry-sdk>=1.20.0",
+  "opentelemetry-instrumentation-sqlalchemy>=0.41b0", 
+  "opentelemetry-instrumentation-requests>=0.41b0",
+  "opentelemetry-exporter-otlp>=1.20.0"
 ]
 
 [project.scripts]
@@ -46,7 +50,6 @@ build-backend = "hatchling.build"
 dev = [
     "ruff>=0.8.6",
     "pytest>=8.3.4",
-    "pandas-stubs>=2.2.3.241126",
     "mypy>=1.14.1",
     "types-requests>=2.32.0.20241016",
     "coverage>=7.6.12",

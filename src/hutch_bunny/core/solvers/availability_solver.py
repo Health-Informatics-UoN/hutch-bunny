@@ -1,5 +1,4 @@
-import pandas as pd
-from typing import TypedDict, Union
+from typing import TypedDict, Union, Literal
 from sqlalchemy import (
     CompoundSelect,
     func,
@@ -31,12 +30,15 @@ from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.logger import logger, INFO
 from hutch_bunny.core.rquest_models.rule import Rule
 from hutch_bunny.core.solvers.rule_query_builders import OMOPRuleQueryBuilder, PersonConstraintBuilder
+from hutch_bunny.core.db.utils import log_query
 
 
 class ResultModifier(TypedDict):
     id: str
     threshold: int | None
     nearest: int | None
+
+Key = Literal["threshold", "nearest"]
 
 
 class RuleTableQuery(TypedDict):
@@ -111,27 +113,24 @@ class AvailabilitySolver():
             .distinct()
         )
         with self.db_client.engine.connect() as con:
-            concepts_df = pd.read_sql_query(concept_query, con=con)
-        concept_dict = {
-            str(concept_id): domain_id for concept_id, domain_id in concepts_df.values
-        }
+            result = con.execute(concept_query)
+            concept_dict = {
+                str(concept_id): domain_id for concept_id, domain_id in result
+            }
         return concept_dict
 
     def _extract_modifier(
         self,
         results_modifiers: list[ResultModifier],
         result_id: str,
-        key: str,                  # new parameter for the key to extract
-        default_value: int = 10
+        key: Key,
+        default_value: int = 10,
     ) -> int:
-        return next(
-            (
-                item[key] if item.get(key) is not None else default_value
-                for item in results_modifiers
-                if item.get("id") == result_id
-            ),
-            default_value,
-        )
+        for item in results_modifiers:
+            if item["id"] == result_id:
+                value = item.get(key)  # type: int | None
+                return value if value is not None else default_value
+        return default_value
 
     def _build_group_query(
         self,
@@ -139,8 +138,8 @@ class AvailabilitySolver():
         concepts: dict[str, str]
     ) -> Union[Select[Tuple[int]], CompoundSelect]:
         """Build query for a single group - a nested SQL expression."""
-        rule_table_queries = []
-        person_constraints = []
+        rule_table_queries: list[RuleTableQuery] = []
+        person_constraints: list[ColumnElement[bool]] = []
 
         for rule in group.rules:
             inclusion_criteria = rule.operator == "="
@@ -171,8 +170,8 @@ class AvailabilitySolver():
             )
         elif valid_time_constraint and rule.time_category == "TIME":
             builder.add_temporal_constraint(
-                left_value_time=rule.left_value_time,
-                right_value_time=rule.right_value_time
+                left_value_time=rule.left_value_time or "",
+                right_value_time=rule.right_value_time or ""
             )
 
         if rule.min_value is not None and rule.max_value is not None:
@@ -337,13 +336,9 @@ class AvailabilitySolver():
                 func.count() >= low_number
             )
 
-        logger.debug(
-            str(
-                full_query_all_groups.compile(
-                    dialect=self.db_client.engine.dialect,
-                    compile_kwargs={"literal_binds": True},
-                )
-            )
+        log_query(
+            full_query_all_groups, 
+            self.db_client.engine
         )
 
         return full_query_all_groups

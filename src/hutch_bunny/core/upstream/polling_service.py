@@ -5,6 +5,9 @@ import requests
 from hutch_bunny.core.settings import DaemonSettings
 from hutch_bunny.core.upstream.task_api_client import TaskApiClient
 
+from opentelemetry import trace
+
+tracer = trace.get_tracer("hutch-bunny.polling")
 
 class PollingService:
     """
@@ -85,11 +88,10 @@ class PollingService:
                 response.raise_for_status()
 
                 if response.status_code == 200:
-                    logger.info("Task received. Resolving...")
-                    logger.debug(f"Task: {response.json()}")
                     task_data = response.json()
+                    logger.info("Task received. Resolving...")
+                    logger.debug(f"Task: {task_data}")
                     self.task_handler(task_data)
-
                 elif response.status_code == 204:
                     logger.debug("No task found. Looking for task...")
                 else:

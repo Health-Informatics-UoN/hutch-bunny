@@ -195,6 +195,12 @@ test_cases = [
         low_number_suppression=0,
         expected_count=333,
     ),
+    AvailabilityTestCase(
+        json_file_path="tests/queries/availability/procedure.json",
+        rounding=0,
+        low_number_suppression=0,
+        expected_count=41,
+    ),
 ]
 
 # TODO: Add test cases for age - until we have improved code patterns for datetime.
