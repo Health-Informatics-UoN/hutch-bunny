@@ -438,7 +438,7 @@ class TestPersonQueryConstraintBuilder:
         rule.value = "8507"
         rule.operator = "="
 
-        result = builder._build_gender_constraint(rule)
+        result = builder._build_gender_constraint(rule, builder._build_age_constraint(rule))
         assert len(result) == 1
         compiled_sql = str(result[0].compile(compile_kwargs={"literal_binds": True}))
         assert compiled_sql == "person.gender_concept_id = 8507"
@@ -449,7 +449,7 @@ class TestPersonQueryConstraintBuilder:
         rule.value = "8532"
         rule.operator = "!="
 
-        result = builder._build_gender_constraint(rule)
+        result = builder._build_gender_constraint(rule, builder._build_age_constraint(rule))
         assert len(result) == 1
         compiled_sql = str(result[0].compile(compile_kwargs={"literal_binds": True}))
         assert compiled_sql == "person.gender_concept_id != 8532"
@@ -461,7 +461,7 @@ class TestPersonQueryConstraintBuilder:
         rule.operator = "="
         
         with pytest.raises(ValueError):
-            builder._build_gender_constraint(rule)
+            builder._build_gender_constraint(rule, builder._build_age_constraint(rule))
 
     def test_build_race_constraint(self, builder: PersonConstraintBuilder) -> None:
         """Test race constraint for both inclusion and exclusion."""
@@ -475,7 +475,7 @@ class TestPersonQueryConstraintBuilder:
             rule.value = value
             rule.operator = operator
             
-            result = builder._build_race_constraint(rule)
+            result = builder._build_race_constraint(rule, builder._build_age_constraint(rule))
             assert len(result) == 1
             compiled_sql = str(result[0].compile(compile_kwargs={"literal_binds": True}))
             assert compiled_sql == expected_sql
@@ -492,7 +492,7 @@ class TestPersonQueryConstraintBuilder:
             rule.value = value
             rule.operator = operator
             
-            result = builder._build_ethnicity_constraint(rule)
+            result = builder._build_ethnicity_constraint(rule, builder._build_age_constraint(rule))
             assert len(result) == 1
             compiled_sql = str(result[0].compile(compile_kwargs={"literal_binds": True}))
             assert compiled_sql == expected_sql
