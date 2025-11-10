@@ -540,6 +540,8 @@ class TestPersonQueryConstraintBuilder:
     ) -> None:
         """Test build_constraints returns correct SQL for a single rule type."""
         rule = Mock(**rule_setup)
+        rule.left_value_time = None
+        rule.right_value_time = None
 
         concepts = {
             "8507": "Gender", 
