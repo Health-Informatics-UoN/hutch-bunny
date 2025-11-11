@@ -1,4 +1,6 @@
 import logging
+from hutch_bunny.core.config.logging import LoggingSettings
+from hutch_bunny.core.config.task_api import TaskApiSettings
 
 
 # Define logging level constants for retry
@@ -40,16 +42,23 @@ class RedactValueFilter(logging.Filter):
         return True
 
 
-def configure_logger(settings) -> None:  # type: ignore
+def configure_logger(settings=None) -> None:  # type: ignore
     """
     Configure the logger with the given settings.
 
     Args:
-        settings: The settings to configure the logger with.
+        settings: Optional settings object. If not provided, creates default settings.
         # type: ignore is to prevent a circular import just for type checking.
     """
+    logging_settings = LoggingSettings()
+    task_api_settings = TaskApiSettings() if settings is None else None
+    
+    # Try to get task_api settings from passed settings if available
+    if settings is not None and hasattr(settings, "task_api"):
+        task_api_settings = settings.task_api
+    
     LOG_FORMAT = logging.Formatter(
-        settings.logging.MSG_FORMAT, datefmt=settings.logging.DATE_FORMAT
+        logging_settings.MSG_FORMAT, datefmt=logging_settings.DATE_FORMAT
     )
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(LOG_FORMAT)
@@ -57,11 +66,11 @@ def configure_logger(settings) -> None:  # type: ignore
     # Create a filter to redact collection_id
     sensitive_values: list[str] = []
 
-    if hasattr(settings, "task_api") and hasattr(settings.task_api, "COLLECTION_ID") and settings.task_api.COLLECTION_ID:
-        sensitive_values.append(settings.task_api.COLLECTION_ID)
+    if task_api_settings and task_api_settings.COLLECTION_ID:
+        sensitive_values.append(task_api_settings.COLLECTION_ID)
 
     sensitive_filter = RedactValueFilter(sensitive_values)
     console_handler.addFilter(sensitive_filter)
 
-    logger.setLevel(settings.logging.LOGGER_LEVEL)
+    logger.setLevel(logging_settings.LOGGER_LEVEL)
     logger.addHandler(console_handler)

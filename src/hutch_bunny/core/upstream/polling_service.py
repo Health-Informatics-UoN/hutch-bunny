@@ -1,11 +1,15 @@
 from hutch_bunny.core.logger import logger
 import time
-from typing import Callable, Any
+from typing import Callable, Any, Optional, TYPE_CHECKING
 import requests
-from hutch_bunny.core.config import DaemonSettings
+from hutch_bunny.core.config.task_api import TaskApiSettings
+from hutch_bunny.core.config.polling import PollingSettings
 from hutch_bunny.core.upstream.task_api_client import TaskApiClient
 
 from opentelemetry import trace
+
+if TYPE_CHECKING:
+    from hutch_bunny.core.config import DaemonSettings
 
 tracer = trace.get_tracer("hutch-bunny.polling")
 
@@ -18,7 +22,7 @@ class PollingService:
         self,
         client: TaskApiClient,
         task_handler: Callable[[dict[str, Any]], None],
-        settings: DaemonSettings,
+        settings: Optional["DaemonSettings"] = None,
     ) -> None:
         """
         Initializes the PollingService.
@@ -26,7 +30,7 @@ class PollingService:
         Args:
             client (TaskApiClient): The client to use to poll the task API.
             task_handler (Callable): The function to call to handle the task.
-            settings (DaemonSettings): The settings to use to poll the task API.
+            settings: Optional settings object. If not provided, creates default settings.
             logger (Logger): The logger to use to log messages.
 
         Returns:
@@ -34,7 +38,8 @@ class PollingService:
         """
         self.client = client
         self.task_handler = task_handler
-        self.settings = settings
+        self.task_api_settings = TaskApiSettings()
+        self.polling_settings = PollingSettings()
         self.polling_endpoint = self._construct_polling_endpoint()
 
     def _construct_polling_endpoint(self) -> str:
@@ -45,9 +50,9 @@ class PollingService:
             str: The polling endpoint for the task API.
         """
         return (
-            f"task/nextjob/{self.settings.task_api.COLLECTION_ID}.{self.settings.task_api.TASK_API_TYPE}"
-            if self.settings.task_api.TASK_API_TYPE
-            else f"task/nextjob/{self.settings.task_api.COLLECTION_ID}"
+            f"task/nextjob/{self.task_api_settings.COLLECTION_ID}.{self.task_api_settings.TASK_API_TYPE}"
+            if self.task_api_settings.TASK_API_TYPE
+            else f"task/nextjob/{self.task_api_settings.COLLECTION_ID}"
         )
 
     def poll_for_tasks(self, max_iterations: int | None = None) -> None:
@@ -74,9 +79,9 @@ class PollingService:
         Returns:
             None
         """
-        backoff_time = self.settings.polling.INITIAL_BACKOFF
-        max_backoff_time = self.settings.polling.MAX_BACKOFF
-        polling_interval = self.settings.polling.POLLING_INTERVAL
+        backoff_time = self.polling_settings.INITIAL_BACKOFF
+        max_backoff_time = self.polling_settings.MAX_BACKOFF
+        polling_interval = self.polling_settings.POLLING_INTERVAL
         iteration = 0
 
         logger.info("Polling for tasks...")
@@ -97,7 +102,7 @@ class PollingService:
                 else:
                     logger.info(f"Got http status code: {response.status_code}")
 
-                backoff_time = self.settings.polling.INITIAL_BACKOFF
+                backoff_time = self.polling_settings.INITIAL_BACKOFF
             except requests.exceptions.RequestException as e:
                 logger.error(f"Network error occurred: {e}")
                 # Exponential backoff

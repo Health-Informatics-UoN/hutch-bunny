@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 from typing import Optional
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.config import DaemonSettings
+from hutch_bunny.core.config.task_api import TaskApiSettings
+from hutch_bunny.core.config.obfuscation import ObfuscationSettings
 from hutch_bunny.core.db import get_db_client
 from hutch_bunny.core.execute_query import execute_query
 from hutch_bunny.core.results_modifiers import results_modifiers
@@ -14,6 +16,8 @@ class CacheRefreshService:
 
     def __init__(self, settings: DaemonSettings): 
         self.settings = settings
+        self.task_api_settings = TaskApiSettings()
+        self.obfuscation_settings = ObfuscationSettings()
         self.running = False 
         self.thread: Optional[threading.Thread] = None 
         self.last_refresh = None 
@@ -82,22 +86,22 @@ class CacheRefreshService:
                 "code": "DEMOGRAPHICS",
                 "analysis": "DISTRIBUTION", 
                 "uuid": "cache_refresh",
-                "collection": self.settings.task_api.COLLECTION_ID,
+                "collection": self.task_api_settings.COLLECTION_ID,
                 "owner": "system"
             },
             {
                 "code": "GENERIC",
                 "analysis": "DISTRIBUTION",
                 "uuid": "cache_refresh", 
-                "collection": self.settings.task_api.COLLECTION_ID,
+                "collection": self.task_api_settings.COLLECTION_ID,
                 "owner": "system"
             }
         ]
 
         modifier_sets = [
             results_modifiers(
-                low_number_suppression_threshold=self.settings.obfuscation.LOW_NUMBER_SUPPRESSION_THRESHOLD,
-                rounding_target=self.settings.obfuscation.ROUNDING_TARGET
+                low_number_suppression_threshold=self.obfuscation_settings.LOW_NUMBER_SUPPRESSION_THRESHOLD,
+                rounding_target=self.obfuscation_settings.ROUNDING_TARGET
             )
         ]
 

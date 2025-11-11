@@ -33,13 +33,13 @@ def save_to_output(result: RquestResult, destination: str) -> None:
         logger.error(str(e), exc_info=True)
 
 
-def main(argv=None) -> None:
+def main(argv: list[str] | None = None) -> None:
     settings: Settings = Settings()
     configure_logger(settings)
     logger.info(f"Starting Bunny version: {version('hutch_bunny')}")
     logger.debug("Settings: %s", settings.safe_model_dump())
     # Setting database connection
-    db_client = get_db_client(settings)
+    db_client = get_db_client()
     # Bunny passed args.
     args = parser.parse_args(argv)
 

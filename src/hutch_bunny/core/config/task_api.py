@@ -1,7 +1,7 @@
 from pydantic_settings import BaseSettings
 from pydantic import Field, field_validator, ValidationInfo
 from typing import Optional, Literal
-from hutch_bunny.core.logger import logger
+# from hutch_bunny.core.logger import logger
 
 
 class TaskApiSettings(BaseSettings):
@@ -32,9 +32,9 @@ class TaskApiSettings(BaseSettings):
                 raise ValueError(
                     "HTTPS is required for the task API but not used. Set TASK_API_ENFORCE_HTTPS to false if you are using a non-HTTPS connection."
                 )
-            else:
-                logger.warning(
-                    "HTTPS is not used for the task API. This is not recommended in production environments."
-                )
+            # else:
+            #     # logger.warning(
+            #     #     "HTTPS is not used for the task API. This is not recommended in production environments."
+            #     # )
         return v
 

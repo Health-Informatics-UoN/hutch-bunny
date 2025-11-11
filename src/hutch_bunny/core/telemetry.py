@@ -16,16 +16,17 @@ from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.sdk.resources import Resource, SERVICE_NAME, SERVICE_VERSION
 from importlib.metadata import version
 
-from hutch_bunny.core.settings import Settings 
 from hutch_bunny.core.logger import logger
+from hutch_bunny.core.config.telemetry import TelemetrySettings
 
 
 P = ParamSpec("P")
 R = TypeVar("R")
 
 
-def setup_telemetry(settings: Settings) -> None: 
+def setup_telemetry() -> None: 
     """Minimal telemetry setup"""
+    settings = TelemetrySettings()
 
     if not settings.OTEL_ENABLED: 
         return 
@@ -51,7 +52,7 @@ def setup_telemetry(settings: Settings) -> None:
         print(f"OpenTelemetry setup failed: {e}")
 
 
-def _setup_tracing(resource: Resource, settings: Settings) -> None:
+def _setup_tracing(resource: Resource, settings: TelemetrySettings) -> None:
     """Setup distributed tracing."""
     trace_provider = TracerProvider(resource=resource)
     trace.set_tracer_provider(trace_provider)
@@ -62,7 +63,7 @@ def _setup_tracing(resource: Resource, settings: Settings) -> None:
     trace_provider.add_span_processor(DropPollingSpansProcessor(trace_exporter))
 
 
-def _setup_metrics(resource: Resource, settings: Settings) -> None: 
+def _setup_metrics(resource: Resource, settings: TelemetrySettings) -> None: 
     """Setup metrics collection."""
     metric_exporter = OTLPMetricExporter(
         endpoint=settings.OTEL_EXPORTER_OTLP_ENDPOINT
@@ -72,7 +73,7 @@ def _setup_metrics(resource: Resource, settings: Settings) -> None:
     metrics.set_meter_provider(metric_provider)
 
 
-def _setup_logging_integration(resource: Resource, settings: Settings) -> None: 
+def _setup_logging_integration(resource: Resource, settings: TelemetrySettings) -> None: 
     """Setup logging integration with existing Bunny logger."""
     log_provider = LoggerProvider(resource=resource)
     set_logger_provider(log_provider)
@@ -84,7 +85,7 @@ def _setup_logging_integration(resource: Resource, settings: Settings) -> None:
     logger.addHandler(otel_handler)
 
 
-def trace_operation(operation_name: str, span_kind: trace.SpanKind = trace.SpanKind.INTERNAL) -> Callable:
+def trace_operation(operation_name: str, span_kind: trace.SpanKind = trace.SpanKind.INTERNAL) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator to trace function execution with minimal code invasion."""
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
         tracer = trace.get_tracer(f"hutch-bunny.{func.__module__}")

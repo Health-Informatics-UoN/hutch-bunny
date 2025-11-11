@@ -5,8 +5,11 @@ from enum import Enum
 import requests
 from requests.auth import HTTPBasicAuth
 from hutch_bunny.core.rquest_models.result import RquestResult
-from hutch_bunny.core.config import DaemonSettings
-from typing import Optional, cast, Any
+from hutch_bunny.core.config.task_api import TaskApiSettings
+from typing import Optional, cast, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from hutch_bunny.core.config import DaemonSettings
 
 
 class SupportedMethod(Enum):
@@ -20,11 +23,12 @@ class SupportedMethod(Enum):
 class TaskApiClient:
     def __init__(
         self,
-        settings: DaemonSettings,
-    ):
-        self.base_url = settings.task_api.TASK_API_BASE_URL
-        self.username = settings.task_api.TASK_API_USERNAME
-        self.password = settings.task_api.TASK_API_PASSWORD
+        settings: Optional["DaemonSettings"] = None,
+    ) -> None:
+        task_api_settings = TaskApiSettings()
+        self.base_url = task_api_settings.TASK_API_BASE_URL
+        self.username = task_api_settings.TASK_API_USERNAME
+        self.password = task_api_settings.TASK_API_PASSWORD
 
     def _request(
         self,

@@ -1,6 +1,6 @@
 import base64
 from hutch_bunny.core.rquest_models.file import File
-from hutch_bunny.core.config import DaemonSettings
+from hutch_bunny.core.config.task_api import TaskApiSettings
 from importlib.metadata import version
 
 
@@ -8,7 +8,7 @@ class MetadataService:
     """Service for generating metadata for distribution query results."""
 
     def __init__(self) -> None:
-        self.settings = DaemonSettings()
+        self.task_api_settings = TaskApiSettings()
 
     def generate_metadata(self) -> File:
         """
@@ -17,7 +17,7 @@ class MetadataService:
         Returns:
             File object containing the metadata
         """
-        biobank = self.settings.task_api.COLLECTION_ID
+        biobank = self.task_api_settings.COLLECTION_ID
         protocol = "Bunny"
         os_info = ""
         # version number

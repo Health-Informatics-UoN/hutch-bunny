@@ -17,7 +17,7 @@ def main() -> None:
 
     configure_logger(settings)
 
-    setup_telemetry(settings)
+    setup_telemetry()
 
     logger.info(f"Starting Bunny version {version('hutch_bunny')} ")
     logger.debug("Settings: %s", settings.safe_model_dump())
@@ -29,11 +29,10 @@ def main() -> None:
     cache_refresh.start()
 
     try: 
-        client = TaskApiClient(settings=settings)
+        client = TaskApiClient()
         polling_service = PollingService(
             client,
             lambda task_data: handle_task(task_data, db_client, settings, client),
-            settings,
         )
         polling_service.poll_for_tasks()
     finally: 

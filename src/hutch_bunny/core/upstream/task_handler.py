@@ -2,6 +2,7 @@ from opentelemetry import trace
 
 from hutch_bunny.core.db import BaseDBClient
 from hutch_bunny.core.config import DaemonSettings
+from hutch_bunny.core.config.obfuscation import ObfuscationSettings
 from hutch_bunny.core.execute_query import execute_query
 from hutch_bunny.core.upstream.task_api_client import TaskApiClient
 from hutch_bunny.core.results_modifiers import results_modifiers
@@ -28,11 +29,12 @@ def handle_task(
     Returns:
         None
     """
+    obfuscation_settings = ObfuscationSettings()
     result_modifier: list[dict[str, str | int]] = results_modifiers(
         low_number_suppression_threshold=int(
-            settings.obfuscation.LOW_NUMBER_SUPPRESSION_THRESHOLD or 0
+            obfuscation_settings.LOW_NUMBER_SUPPRESSION_THRESHOLD or 0
         ),
-        rounding_target=int(settings.obfuscation.ROUNDING_TARGET or 0),
+        rounding_target=int(obfuscation_settings.ROUNDING_TARGET or 0),
     )
     try:
         result = execute_query(
