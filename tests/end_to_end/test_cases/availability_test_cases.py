@@ -118,31 +118,31 @@ test_cases = [
         json_file_path="tests/queries/availability/multiple_in_group_and.json",
         expected_count=220,
     ),
-    # Mutiple in group test - assert multiple in group OR filtering with default rounding.
+    # Multiple in group test - assert multiple in group OR filtering with default rounding.
     # Query for 8532 FEMALE OR 260139 Acute Bronchitis
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_or.json",
         expected_count=780,
     ),
-    # Mutiple in group test - assert multiple in group OR filtering with rounding to 0.
+    # Multiple in group test - assert multiple in group OR filtering with rounding to 0.
     # Query for 8532 FEMALE OR 260139 Acute Bronchitis
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_or.json",
         rounding=0,
         expected_count=782,
     ),
-    # Mutiple in group test - assert multiple in group AND filtering with age 1.
+    # Multiple in group test - assert multiple in group AND filtering with age 1.
     # 8532 Female AND 432867 Hyperlipidemia
-    # Age > 50 years when it occurred
+    # Age >= 50 years when it occurred
     # Rounding and threshold is not set, so will default to 10
 
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_and_with_age1.json",
         expected_count=30,
     ),
-    # Mutiple in group test - assert multiple in group AND filtering with age 1 and rounding to 0.
+    # Multiple in group test - assert multiple in group AND filtering with age 1 and rounding to 0.
     # 8532 Female AND 432867 Hyperlipidemia
-    # Age > 50 years when it occurred
+    # Age >= 50 years when it occurred
     # Threshold is not set, so will default to 10
 
     AvailabilityTestCase(
@@ -150,18 +150,18 @@ test_cases = [
         rounding=0,
         expected_count=30,
     ),
-    # Mutiple in group test - assert multiple in group OR filtering with age 2.
+    # Multiple in group test - assert multiple in group AND filtering with age 2.
     # 8532 Female AND 432867 Hyperlipidemia
-    # Age < 50 years when it occurred
+    # Age <= 50 years when it occurred
     # Rounding and threshold is not set, so will default to 10
 
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_and_with_age2.json",
         expected_count=30,
     ),
-    # Mutiple in group test - assert multiple in group OR filtering with age 2 and rounding to 0.
+    # Multiple in group test - assert multiple in group AND filtering with age 2 and rounding to 0.
     # 8532 Female AND 432867 Hyperlipidemia
-    # Age < 50 years when it occurred
+    # Age <= 50 years when it occurred
     # Threshold is not set, so will default to 10
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_and_with_age2.json",
