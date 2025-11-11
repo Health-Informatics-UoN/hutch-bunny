@@ -129,7 +129,7 @@ class TestOMOPRuleQueryBuilder():
         compiled = builder.condition_query.compile(compile_kwargs={"literal_binds": True})
         sql_str = str(compiled)
 
-        assert "25 > 20" in sql_str
+        assert "25 >= 20" in sql_str
 
     def test_add_temporal_constraint_only_left_constraint_present(self) -> None: 
         left_time_value = "1"
@@ -437,8 +437,10 @@ class TestPersonQueryConstraintBuilder:
         rule = Mock()
         rule.value = "8507"
         rule.operator = "="
+        rule.left_value_time=None
+        rule.right_value_time=None
 
-        result = builder._build_gender_constraint(rule)
+        result = builder._build_gender_constraint(rule, builder._build_age_constraint(rule))
         assert len(result) == 1
         compiled_sql = str(result[0].compile(compile_kwargs={"literal_binds": True}))
         assert compiled_sql == "person.gender_concept_id = 8507"
@@ -448,8 +450,10 @@ class TestPersonQueryConstraintBuilder:
         rule = Mock()
         rule.value = "8532"
         rule.operator = "!="
+        rule.left_value_time = None
+        rule.right_value_time = None
 
-        result = builder._build_gender_constraint(rule)
+        result = builder._build_gender_constraint(rule, builder._build_age_constraint(rule))
         assert len(result) == 1
         compiled_sql = str(result[0].compile(compile_kwargs={"literal_binds": True}))
         assert compiled_sql == "person.gender_concept_id != 8532"
@@ -459,9 +463,11 @@ class TestPersonQueryConstraintBuilder:
         rule = Mock()
         rule.value = "not_a_number"
         rule.operator = "="
-        
+        rule.left_value_time = None
+        rule.right_value_time = None
+
         with pytest.raises(ValueError):
-            builder._build_gender_constraint(rule)
+            builder._build_gender_constraint(rule, builder._build_age_constraint(rule))
 
     def test_build_race_constraint(self, builder: PersonConstraintBuilder) -> None:
         """Test race constraint for both inclusion and exclusion."""
@@ -474,8 +480,10 @@ class TestPersonQueryConstraintBuilder:
             rule = Mock()
             rule.value = value
             rule.operator = operator
+            rule.left_value_time = None
+            rule.right_value_time = None
             
-            result = builder._build_race_constraint(rule)
+            result = builder._build_race_constraint(rule, builder._build_age_constraint(rule))
             assert len(result) == 1
             compiled_sql = str(result[0].compile(compile_kwargs={"literal_binds": True}))
             assert compiled_sql == expected_sql
@@ -491,8 +499,10 @@ class TestPersonQueryConstraintBuilder:
             rule = Mock()
             rule.value = value
             rule.operator = operator
-            
-            result = builder._build_ethnicity_constraint(rule)
+            rule.left_value_time = None
+            rule.right_value_time = None
+
+            result = builder._build_ethnicity_constraint(rule, builder._build_age_constraint(rule))
             assert len(result) == 1
             compiled_sql = str(result[0].compile(compile_kwargs={"literal_binds": True}))
             assert compiled_sql == expected_sql
@@ -530,6 +540,8 @@ class TestPersonQueryConstraintBuilder:
     ) -> None:
         """Test build_constraints returns correct SQL for a single rule type."""
         rule = Mock(**rule_setup)
+        rule.left_value_time = None
+        rule.right_value_time = None
 
         concepts = {
             "8507": "Gender", 
