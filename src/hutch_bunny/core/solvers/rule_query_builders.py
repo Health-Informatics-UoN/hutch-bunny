@@ -122,6 +122,13 @@ class OMOPRuleQueryBuilder:
         Depending on which boundary is provided (left or right), this method applies a greater-than or less-than
         comparator to filter records where the person's age at the event date satisfies the constraint.
 
+        If the `|` is on the left of the value it was less than or equal the number.
+        If the `|` is on the right of the value it was greater than or equal the number.
+
+        For example:
+        - 10|:AGE:Y (greater than or equal to 10 years) - left_value_time will be 10 and right_value_time None
+        - |10:AGE:Y (less than or equal to 10 years) - left_value_time will be None and right_value_time 10
+
         Args:
             left_value_time (str | None): Lower age bound as a string, or None if not specified.
             right_value_time (str | None): Upper age bound as a string, or None if not specified.
@@ -449,7 +456,6 @@ class PersonConstraintBuilder:
             return self._build_age_constraints(rule)
 
         concept_domain = concepts.get(rule.value)
-
 
         if concept_domain == "Gender":
             return self._build_gender_constraint(rule, self._build_age_constraint(rule))
