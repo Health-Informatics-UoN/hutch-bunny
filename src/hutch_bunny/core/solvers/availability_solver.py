@@ -171,8 +171,8 @@ class AvailabilitySolver():
             )
         elif valid_time_constraint and rule.time_category == "TIME":
             builder.add_temporal_constraint(
-                greater_than_value=rule.greater_than_value or "",
-                less_than_value=rule.less_than_value or ""
+                greater_than_time=rule.greater_than_value or "",
+                less_than_time=rule.less_than_value or ""
             )
 
         if rule.min_value is not None and rule.max_value is not None:
