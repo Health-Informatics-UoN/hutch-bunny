@@ -162,16 +162,17 @@ class AvailabilitySolver():
         if rule.value:
             builder.add_concept_constraint(int(rule.value))
 
-        valid_time_constraint = rule.left_value_time or rule.right_value_time
+        valid_time_constraint = rule.greater_than_value or rule.less_than_value
+
         if valid_time_constraint and rule.time_category == "AGE":
             builder.add_age_constraint(
-                left_value_time=rule.left_value_time,
-                right_value_time=rule.right_value_time
+                greater_than_value=rule.greater_than_value,
+                less_than_value=rule.less_than_value
             )
         elif valid_time_constraint and rule.time_category == "TIME":
             builder.add_temporal_constraint(
-                left_value_time=rule.left_value_time or "",
-                right_value_time=rule.right_value_time or ""
+                left_value_time=rule.greater_than_value or "",
+                less_than_time=rule.less_than_value or ""
             )
 
         if rule.min_value is not None and rule.max_value is not None:
