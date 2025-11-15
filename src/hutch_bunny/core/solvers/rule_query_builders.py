@@ -126,8 +126,8 @@ class OMOPRuleQueryBuilder:
         If the `|` is on the right of the value it was greater than or equal the number.
 
         For example:
-        - 10|:AGE:Y (greater than or equal to 10 years) - left_value_time will be 10 and right_value_time None
-        - |10:AGE:Y (less than or equal to 10 years) - left_value_time will be None and right_value_time 10
+        - 10|:AGE:Y (greater than or equal to 10 years) - greater_than_value will be 10 and right_value_time None
+        - |10:AGE:Y (less than or equal to 10 years) - less_than_value will be None and right_value_time 10
 
         Args:
             greater_than_value (str | None): Lower age bound as a string, or None if not specified.
@@ -264,13 +264,13 @@ class OMOPRuleQueryBuilder:
         if not greater_than_time and not less_than_time:
             raise ValueError(
                 "Temporal constraint requires exactly one time value. "
-                "Both left_value_time and right_value_time are empty."
+                "Both greater_than_time and less_than_time are empty."
             )
         
         if greater_than_time and less_than_time:
             raise ValueError(
                 "Temporal constraint requires exactly one time value. "
-                f"Both values were provided: left='{greater_than_time}', right='{less_than_time}'. "
+                f"Both values were provided: greater='{greater_than_time}', less='{less_than_time}'. "
                 "One must be an empty string."
             )
 
@@ -503,10 +503,10 @@ class PersonConstraintBuilder:
 
         # Determine comparator and age_value based on which side is set
         if rule.greater_than_value is not None and rule.greater_than_value != "":
-            comparator = op.ge  # age > left_value_time
+            comparator = op.ge  # age >= greater_than_value
             age_value = int(rule.greater_than_value)
         elif rule.less_than_value is not None and rule.less_than_value != "":
-            comparator = op.le  # age < right_value_time
+            comparator = op.le  # age <=less_than_value
             age_value = int(rule.less_than_value)
 
         # Compute age
