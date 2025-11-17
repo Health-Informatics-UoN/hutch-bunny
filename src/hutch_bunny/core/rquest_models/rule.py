@@ -67,15 +67,15 @@ class Rule(BaseModel):
 
     A time is a number followed by a colon and a unit.
 
-    If the `|` is on the left of the value it was less than the number.
+    If the `|` is on the left of the value it was less than or equal the number.
 
-    If the `|` is on the right of the value it was greater than the number.
+    If the `|` is on the right of the value it was greater than or equal the number.
 
     For example:
-    - 10|:AGE:Y (greater than 10 years)
-    - 10|:TIME:M (greater than 10 months)
-    - |10:TIME:M (less than 10 months)
-    - |10:AGE:Y (less than 10 years)
+    - 10|:AGE:Y (greater than or equal to 10 years)
+    - 10|:TIME:M (greater than or equal to 10 months)
+    - |10:TIME:M (less than or equal to 10 months)
+    - |10:AGE:Y (less than or equal to 10 years)
     """
 
     secondary_modifier: list[int] | None = None
@@ -191,8 +191,8 @@ class Rule(BaseModel):
         
         Time format: "value|:CATEGORY:UNIT" or "|value:CATEGORY:UNIT"
         Examples:
-        - "10|:AGE:Y" (greater than 10 years)
-        - "|10:TIME:M" (less than 10 months)
+        - "10|:AGE:Y" (greater than or equal to 10 years)
+        - "|10:TIME:M" (less than or equal to 10 months)
         """
         if not self.time:
             return
