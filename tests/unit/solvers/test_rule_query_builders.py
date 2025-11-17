@@ -132,12 +132,12 @@ class TestOMOPRuleQueryBuilder():
         assert "25 >= 20" in sql_str
 
     def test_add_temporal_constraint_only_left_constraint_present(self) -> None: 
-        left_time_value = "1"
-        right_time_value = ""
+        greater_than_value = "1"
+        less_than_value = ""
 
         fixed_now = datetime(2025, 8, 7, 12, 0, 0)
 
-        time_to_use = int(left_time_value) * -1
+        time_to_use = int(greater_than_value) * -1
         relative_date = fixed_now + relativedelta(months=time_to_use)
 
         expected_date_str = relative_date.strftime("%Y-%m-%d %H:%M:%S")
@@ -149,7 +149,7 @@ class TestOMOPRuleQueryBuilder():
             mock_db_manager = Mock()
             builder = OMOPRuleQueryBuilder(mock_db_manager)
 
-            builder.add_temporal_constraint(left_time_value, right_time_value)
+            builder.add_temporal_constraint(greater_than_value, less_than_value )
 
             compiled = builder.condition_query.compile(
                 compile_kwargs={"literal_binds": True}
@@ -159,12 +159,12 @@ class TestOMOPRuleQueryBuilder():
             assert expected_sql_fragment in sql_str
     
     def test_add_temporal_constraint_only_right_constraint_present(self) -> None: 
-        left_time_value = ""
-        right_time_value = "1"
+        greater_than_value = ""
+        less_than_value = "1"
 
         fixed_now = datetime(2025, 8, 7, 12, 0, 0)
 
-        time_to_use = int(right_time_value) * -1
+        time_to_use = int(less_than_value) * -1
         relative_date = fixed_now + relativedelta(months=time_to_use)
 
         expected_date_str = relative_date.strftime("%Y-%m-%d %H:%M:%S")
@@ -176,7 +176,7 @@ class TestOMOPRuleQueryBuilder():
             mock_db_manager = Mock()
             builder = OMOPRuleQueryBuilder(mock_db_manager)
 
-            builder.add_temporal_constraint(left_time_value, right_time_value)
+            builder.add_temporal_constraint(greater_than_value, less_than_value)
 
             compiled = builder.condition_query.compile(
                 compile_kwargs={"literal_binds": True}
@@ -186,24 +186,24 @@ class TestOMOPRuleQueryBuilder():
             assert expected_sql_fragment in sql_str
 
     def test_add_temporal_constraint_no_input(self) -> None: 
-        left_time_value = ""
-        right_time_value = ""
+        greater_than_value = ""
+        less_than_value = ""
 
         mock_db_manager = Mock()
         builder = OMOPRuleQueryBuilder(mock_db_manager)
 
         with pytest.raises(ValueError): 
-            builder.add_temporal_constraint(left_time_value, right_time_value)
+            builder.add_temporal_constraint(greater_than_value, less_than_value)
     
     def test_add_temporal_constraint_both_inputs(self) -> None: 
-        left_time_value = "1"
-        right_time_value = "2"
+        greater_than_value = "1"
+        less_than_value = "2"
 
         mock_db_manager = Mock()
         builder = OMOPRuleQueryBuilder(mock_db_manager)
 
         with pytest.raises(ValueError): 
-            builder.add_temporal_constraint(left_time_value, right_time_value)
+            builder.add_temporal_constraint(greater_than_value, less_than_value)
 
     def test_add_numeric_range_with_no_input(self) -> None: 
         mock_db_manager = Mock()
@@ -437,8 +437,8 @@ class TestPersonQueryConstraintBuilder:
         rule = Mock()
         rule.value = "8507"
         rule.operator = "="
-        rule.left_value_time=None
-        rule.right_value_time=None
+        rule.greater_than_value=None
+        rule.less_than_value=None
 
         result = builder._build_gender_constraint(rule, builder._build_age_constraint(rule))
         assert len(result) == 1
@@ -450,8 +450,8 @@ class TestPersonQueryConstraintBuilder:
         rule = Mock()
         rule.value = "8532"
         rule.operator = "!="
-        rule.left_value_time = None
-        rule.right_value_time = None
+        rule.greater_than_value = None
+        rule.less_than_value = None
 
         result = builder._build_gender_constraint(rule, builder._build_age_constraint(rule))
         assert len(result) == 1
@@ -463,8 +463,8 @@ class TestPersonQueryConstraintBuilder:
         rule = Mock()
         rule.value = "not_a_number"
         rule.operator = "="
-        rule.left_value_time = None
-        rule.right_value_time = None
+        rule.greater_than_value = None
+        rule.less_than_value = None
 
         with pytest.raises(ValueError):
             builder._build_gender_constraint(rule, builder._build_age_constraint(rule))
@@ -480,8 +480,8 @@ class TestPersonQueryConstraintBuilder:
             rule = Mock()
             rule.value = value
             rule.operator = operator
-            rule.left_value_time = None
-            rule.right_value_time = None
+            rule.greater_than_value = None
+            rule.less_than_value = None
             
             result = builder._build_race_constraint(rule, builder._build_age_constraint(rule))
             assert len(result) == 1
@@ -499,8 +499,8 @@ class TestPersonQueryConstraintBuilder:
             rule = Mock()
             rule.value = value
             rule.operator = operator
-            rule.left_value_time = None
-            rule.right_value_time = None
+            rule.greater_than_value = None
+            rule.less_than_value = None
 
             result = builder._build_ethnicity_constraint(rule, builder._build_age_constraint(rule))
             assert len(result) == 1
@@ -540,8 +540,8 @@ class TestPersonQueryConstraintBuilder:
     ) -> None:
         """Test build_constraints returns correct SQL for a single rule type."""
         rule = Mock(**rule_setup)
-        rule.left_value_time = None
-        rule.right_value_time = None
+        rule.greater_than_value = None
+        rule.less_than_value = None
 
         concepts = {
             "8507": "Gender", 
