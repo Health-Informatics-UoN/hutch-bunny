@@ -126,8 +126,8 @@ class OMOPRuleQueryBuilder:
         If the `|` is on the right of the value it was greater than or equal the number.
 
         For example:
-        - 10|:AGE:Y (greater than or equal to 10 years) - greater_than_value will be 10 and right_value_time None
-        - |10:AGE:Y (less than or equal to 10 years) - less_than_value will be None and right_value_time 10
+        - 10|:AGE:Y (greater than or equal to 10 years) - greater_than_value will be 10 and less_than_value None
+        - |10:AGE:Y (less than or equal to 10 years) - greater_than_value will be None and less_than_value 10
 
         Args:
             greater_than_value (str | None): Lower age bound as a string, or None if not specified.
