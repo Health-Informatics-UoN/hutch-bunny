@@ -244,7 +244,7 @@ class OMOPRuleQueryBuilder:
         The method filters events to either before or after the computed relative
         date based on which time value is supplied:
         - If `greater_than_time` is given, events before (<=) that relative date are included.
-        - If `greater_than_time` is empty, events after (>=) the `right_value_time` relative date are included.
+        - If `greater_than_time` is empty, events after (>=) the `less_than_time` relative date are included.
 
         Args:
             greater_than_time (str): Left-side time bound in months as a numeric string,
