@@ -1,10 +1,6 @@
 {
-  "annotations": {
-    "list": []
-  },
-  "title": "Bunny Overview",
-  "uid": "bunny-overview",
-  "version": 1,
+  "title": "Bunny Logs",
+  "uid": "bunny-logs",
   "timezone": "browser",
   "refresh": "10s",
   "time": {
@@ -14,46 +10,29 @@
   "panels": [
     {
       "id": 1,
-      "title": "Recent Traces",
-      "type": "table",
-      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 8 },
-      "datasource": { "type": "tempo", "uid": "tempo" },
-      "targets": [
-        {
-          "refId": "A",
-          "queryType": "traceqlSearch",
-          "serviceName": "hutch-bunny",
-          "limit": 20
-        }
-      ]
-    },
-    {
-      "id": 2,
-      "title": "Task Processing Logs",
+      "title": "Application Logs",
       "type": "logs",
-      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 10 },
-      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 20
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
       "targets": [
         {
           "refId": "A",
-          "expr": "{service_name=\"hutch-bunny\"} |= ``",
-          "queryType": "range"
+          "expr": "{job=\"hutch-bunny\"}"
         }
-      ]
-    },
-    {
-      "id": 3,
-      "title": "Error Logs",
-      "type": "logs",
-      "gridPos": { "x": 0, "y": 18, "w": 24, "h": 8 },
-      "datasource": { "type": "loki", "uid": "loki" },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "{service_name=\"hutch-bunny\"} |~ \"(?i)error|exception|failed\"",
-          "queryType": "range"
-        }
-      ]
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      }
     }
   ],
   "schemaVersion": 38
