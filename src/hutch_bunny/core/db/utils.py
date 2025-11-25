@@ -43,8 +43,10 @@ def log_query(stmnt: Executable, engine: Engine) -> None:
             dialect=engine.dialect,
             compile_kwargs={"literal_binds": True}
         )
-        logger.info(f"Executing SQL query:\n{compiled}")
+        logger.info("Executing SQL query:")
+        logger.info(compiled)
     except Exception as e:
-        logger.info(f"Executing SQL query:\n{stmnt}")
+        logger.info("Executing SQL query:")
+        logger.info(stmnt)
         logger.debug(f"Could not compile with literal binds: {e}")
 

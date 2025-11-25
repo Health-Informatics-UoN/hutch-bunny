@@ -15,8 +15,8 @@
       "gridPos": {
         "x": 0,
         "y": 0,
-        "w": 24,
-        "h": 20
+        "w": 12,
+        "h": 10
       },
       "datasource": {
         "type": "loki",
@@ -25,13 +25,79 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "{job=\"hutch-bunny\"}"
+          "expr": "{job=\"hutch-bunny\"} | json | body !~ \"Executing SQL\" | line_format `{{ if eq .severity \"ERROR\" }}❌{{ else if eq .severity \"WARNING\" }}⚠️{{ else }}ℹ️{{ end }} {{.body}}`"
         }
       ],
       "options": {
         "showTime": true,
         "wrapLogMessage": true,
-        "enableLogDetails": true
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    }, 
+    {
+      "id": 2,
+      "title": "Errors & Warnings",
+      "type": "logs",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 10
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=\"hutch-bunny\"} | json | severity=~\"ERROR|WARNING\" | line_format `[{{.severity}}] {{.body}}`"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "enableLogDetails": true, 
+        "showLabels": false,
+        "showCommonLabels": false,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "id": 3,
+      "title": "SQL Queries",
+      "type": "logs",
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 24,
+        "h": 10
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=\"hutch-bunny\"} | json | attributes_code_function_name=\"log_query\" | body !~ \"Executing SQL query:\" | line_format \"{{.body}}\""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": false,
+        "enableLogDetails": true, 
+        "showLabels": false,
+        "prettifyLogMessage": false, 
+        "showCommonLabels": false,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
       }
     }
   ],
