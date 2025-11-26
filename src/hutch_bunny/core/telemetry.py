@@ -1,3 +1,4 @@
+import time 
 from functools import wraps
 from typing import Callable, TypeVar, ParamSpec
 from opentelemetry import trace, metrics
@@ -15,6 +16,8 @@ from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.sdk.resources import Resource, SERVICE_NAME, SERVICE_VERSION
 from importlib.metadata import version
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 
 from hutch_bunny.core.settings import Settings 
 from hutch_bunny.core.logger import logger
@@ -22,6 +25,11 @@ from hutch_bunny.core.logger import logger
 
 P = ParamSpec("P")
 R = TypeVar("R")
+
+
+# ============================================================================
+# Setup Functions
+# ============================================================================
 
 
 def setup_telemetry(settings: Settings) -> None: 
@@ -44,6 +52,10 @@ def setup_telemetry(settings: Settings) -> None:
 
         SQLAlchemyInstrumentor().instrument()
         RequestsInstrumentor().instrument()
+
+        _create_metrics()  
+        _instrument_sqlalchemy_metrics()  
+
 
         print("OpenTelemetry initialized!")
         
@@ -84,6 +96,11 @@ def _setup_logging_integration(resource: Resource, settings: Settings) -> None:
     logger.addHandler(otel_handler)
 
 
+# ============================================================================
+# Decorators
+# ============================================================================
+
+
 def trace_operation(operation_name: str, span_kind: trace.SpanKind = trace.SpanKind.INTERNAL) -> Callable:
     """Decorator to trace function execution with minimal code invasion."""
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
@@ -105,6 +122,69 @@ def trace_operation(operation_name: str, span_kind: trace.SpanKind = trace.SpanK
                     raise
         return wrapper
     return decorator
+
+
+# ============================================================================
+# Database Metrics (Auto-instrumented via SQLAlchemy Events)
+# ============================================================================
+
+
+def _create_metrics() -> None:
+    """Create all metrics AFTER meter provider is set."""
+    global db_query_counter, db_query_duration_histogram
+    
+    meter = metrics.get_meter("hutch-bunny")
+    
+    db_query_counter = meter.create_counter(
+        name="bunny_db_queries_total",
+        description="Total number of database queries executed",
+        unit="1",
+    )
+    
+    db_query_duration_histogram = meter.create_histogram(
+        name="bunny_db_query_duration_seconds",
+        description="Time spent executing database queries",
+        unit="s",
+    )
+
+
+def _instrument_sqlalchemy_metrics() -> None:
+    """
+    Instrument SQLAlchemy with custom metrics using event listeners.
+    This automatically captures all database queries without code changes.
+    """
+    from typing import Any
+    
+    @event.listens_for(Engine, "before_cursor_execute")
+    def before_cursor_execute(
+        conn: Any,
+        cursor: Any,
+        statement: str,
+        parameters: Any,
+        context: Any,
+        executemany: bool
+    ) -> None:
+        """Record the start time before query execution."""
+        context._query_start_time = time.time()
+    
+    @event.listens_for(Engine, "after_cursor_execute")
+    def after_cursor_execute(
+        conn: Any,
+        cursor: Any,
+        statement: str,
+        parameters: Any,
+        context: Any,
+        executemany: bool
+    ) -> None:
+        """Record metrics after query execution."""
+        duration = time.time() - context._query_start_time
+        
+        # Extract operation type (SELECT, INSERT, UPDATE, DELETE, etc.)
+        operation = statement.strip().split()[0].upper() if statement else "UNKNOWN"
+        
+        # Record metrics with operation label
+        db_query_counter.add(1, {"operation": operation})
+        db_query_duration_histogram.record(duration, {"operation": operation})
 
 
 class DropPollingSpansProcessor(BatchSpanProcessor):

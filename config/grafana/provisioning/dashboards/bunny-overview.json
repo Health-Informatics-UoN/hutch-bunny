@@ -1,6 +1,6 @@
 {
-  "title": "Bunny Logs",
-  "uid": "bunny-logs",
+  "title": "Bunny Observability",
+  "uid": "bunny-observability",
   "timezone": "browser",
   "refresh": "10s",
   "time": {
@@ -99,6 +99,70 @@
         "dedupStrategy": "none",
         "sortOrder": "Descending"
       }
+    }, 
+    {
+        "id": 4,
+        "title": "Recent Traces",
+        "type": "table",
+        "gridPos": { "x": 0, "y": 22, "w": 24, "h": 8 }, 
+        "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+        },
+        "targets": [
+            {
+                "refId": "A",
+                "queryType": "traceql",
+                "query": "{resource.service.name=\"hutch-bunny\"}",
+                "limit": 5
+            }
+        ], 
+        "options": {
+            "showHeader": true,
+            "footer": {
+                "show": false
+            }
+        }, 
+        "transformations": [
+            {
+                "id": "organize",
+                "options": {
+                    "excludeByName": {},
+                    "indexByName": {},
+                    "renameByName": {
+                        "traceID": "Trace ID",
+                        "startTime": "Start Time",
+                        "duration": "Duration"
+                    }
+                }
+            }
+        ]
+    }, 
+    {
+        "id": 5,
+        "title": "Database Query Rate",
+        "type": "timeseries",
+        "gridPos": { "x": 0, "y": 34, "w": 12, "h": 8 },
+        "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+        },
+        "targets": [
+            {
+            "refId": "A",
+            "expr": "bunny_db_queries_total",
+            "legendFormat": "{{operation}}"
+            }
+        ],
+        "fieldConfig": {
+            "defaults": {
+            "unit": "short",
+            "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "smooth"
+            }
+            }
+        }
     }
   ],
   "schemaVersion": 38

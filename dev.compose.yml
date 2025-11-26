@@ -95,5 +95,5 @@ services:
       # Distribution query cache config 
       CACHE_ENABLED: true 
       CACHE_DIR: /app/bunny_cache
-      CACHE_TTL_HOURS: 0.03
+      CACHE_TTL_HOURS: 0.25
       CACHE_REFRESH_ON_STARTUP: true 
