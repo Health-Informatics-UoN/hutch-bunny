@@ -420,7 +420,9 @@ class TestPersonQueryConstraintBuilder:
         # We don't need to know the exact CURRENT_TIMESTAMP calculation here,
         # just that it's the right comparison with literal values.
         assert f">= {rule.min_value}" in compiled_sql[0]
-        assert f"<= {rule.max_value}" in compiled_sql[1]
+        assert f"<= {rule.max_value}" in compiled_sql[0]
+
+
 
     def test_build_age_constraints_none_values(self, builder: PersonConstraintBuilder) -> None:
         """Directly test _build_age_constraints with None values."""
