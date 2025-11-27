@@ -477,8 +477,8 @@ class PersonConstraintBuilder:
             Person.year_of_birth 
         )
         return [
-            age >= rule.min_value,
-            age <= rule.max_value
+            and_(age >= rule.min_value,
+            age <= rule.max_value)
         ]
 
     def _build_age_constraint(self, rule: Rule) -> list[ColumnElement[bool]]:
