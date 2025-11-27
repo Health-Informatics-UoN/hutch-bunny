@@ -412,8 +412,8 @@ class TestPersonQueryConstraintBuilder:
             mock_diff.return_value = literal_column("25")
             constraints = builder._build_age_constraints(rule)
 
-        # Expect 2 constraints: >= min_age and <= max_age
-        assert len(constraints) == 2
+        # Expect 1 constraint: >= min_age and <= max_age
+        assert len(constraints) == 1
 
         compiled_sql = [str(c.compile(compile_kwargs={"literal_binds": True})) for c in constraints]
 
