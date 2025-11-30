@@ -137,12 +137,26 @@ class AvailabilitySolver():
         group: Group,
         concepts: dict[str, str]
     ) -> Union[Select[Tuple[int]], CompoundSelect]:
-        """Build query for a single group - a nested SQL expression."""
+        """
+        Build query for a single group - a nested SQL expression.
+
+        Args:
+            group: The group that contains the rules to be assembled
+            concepts: a dictionary that maps the concepts IDs to the domains they belong
+
+        Returns:
+            Either a single Select statement or multiple joined by UNION or INTERSECT
+            depending on the logic specified for the group
+        """
+
         rule_table_queries: list[RuleTableQuery] = []
+
         person_constraints: list[ColumnElement[bool]] = []
 
         for rule in group.rules:
+
             inclusion_criteria = rule.operator == "="
+
             if rule.varcat == "Person":
                 constraints = self.person_constraint_builder.build_constraints(rule, concepts)
                 person_constraints.extend(constraints)
@@ -156,7 +170,8 @@ class AvailabilitySolver():
         return self._construct_group_query(group, person_constraints, rule_table_queries)
 
     def _build_rule_query(self, rule: Rule) -> CompoundSelect:
-        """Build query for a single non-Person rule."""
+        """ Build query for a single non-Person rule."""
+
         builder = OMOPRuleQueryBuilder(self.db_client)
 
         if rule.value:
@@ -211,6 +226,7 @@ class AvailabilitySolver():
             else:
                 # For AND logic or single constraint, use AND (default)
                 person_query = select(Person.person_id).where(*person_constraints_for_group)
+
             inclusion_queries.append(person_query)
 
         # Add table queries for each rule
@@ -237,6 +253,7 @@ class AvailabilitySolver():
             if current_group.rules_operator == "AND":
                 # For AND logic, use INTERSECT which is more efficient than joins
                 group_query: Union[Select[Tuple[int]], CompoundSelect] = inclusion_queries[0]
+
                 for query in inclusion_queries[1:]:
                     group_query = intersect(group_query, query)
             else:
