@@ -412,15 +412,17 @@ class TestPersonQueryConstraintBuilder:
             mock_diff.return_value = literal_column("25")
             constraints = builder._build_age_constraints(rule)
 
-        # Expect 2 constraints: >= min_age and <= max_age
-        assert len(constraints) == 2
+        # Expect 1 constraint: >= min_age and <= max_age
+        assert len(constraints) == 1
 
         compiled_sql = [str(c.compile(compile_kwargs={"literal_binds": True})) for c in constraints]
 
         # We don't need to know the exact CURRENT_TIMESTAMP calculation here,
         # just that it's the right comparison with literal values.
         assert f">= {rule.min_value}" in compiled_sql[0]
-        assert f"<= {rule.max_value}" in compiled_sql[1]
+        assert f"<= {rule.max_value}" in compiled_sql[0]
+
+
 
     def test_build_age_constraints_none_values(self, builder: PersonConstraintBuilder) -> None:
         """Directly test _build_age_constraints with None values."""

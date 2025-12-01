@@ -461,6 +461,8 @@ class PersonConstraintBuilder:
             List of SQLAlchemy boolean expressions to be applied as WHERE clauses.
             Empty list if the rule doesn't apply to Person table.
         """
+
+        #This is the age search that does not use an OMOP concept, and is an RQuest specific addition
         if rule.varname == "AGE":
             return self._build_age_constraints(rule)
 
@@ -476,7 +478,18 @@ class PersonConstraintBuilder:
         return []
 
     def _build_age_constraints(self, rule: Rule) -> list[ColumnElement[bool]]:
-        """Build age range constraints."""
+        """
+        Build age range constraints.
+
+        Args:
+            rule: the current rule that has an age constraint to add
+
+        Returns:
+            an empty list if time range not supplied or
+            a list of one element that contains the added age parameter
+
+        """
+
         if rule.min_value is None or rule.max_value is None:
             return []
 
@@ -486,8 +499,8 @@ class PersonConstraintBuilder:
             Person.year_of_birth 
         )
         return [
-            age >= rule.min_value,
-            age <= rule.max_value
+            and_(age >= rule.min_value,
+            age <= rule.max_value)
         ]
 
     def _build_age_constraint(self, rule: Rule) -> list[ColumnElement[bool]]:
