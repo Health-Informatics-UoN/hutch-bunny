@@ -67,15 +67,15 @@ class Rule(BaseModel):
 
     A time is a number followed by a colon and a unit.
 
-    If the `|` is on the left of the value it was less than the number.
+    If the `|` is on the left of the value it was less than or equal the number.
 
-    If the `|` is on the right of the value it was greater than the number.
+    If the `|` is on the right of the value it was greater than or equal the number.
 
     For example:
-    - 10|:AGE:Y (greater than 10 years)
-    - 10|:TIME:M (greater than 10 months)
-    - |10:TIME:M (less than 10 months)
-    - |10:AGE:Y (less than 10 years)
+    - 10|:AGE:Y (greater than or equal to 10 years)
+    - 10|:TIME:M (greater than or equal to 10 months)
+    - |10:TIME:M (less than or equal to 10 months)
+    - |10:AGE:Y (less than or equal to 10 years)
     """
 
     secondary_modifier: list[int] | None = None
@@ -98,8 +98,8 @@ class Rule(BaseModel):
     time_value: str | None = None
     time_category: str | None = None
     time_unit: str | None = None
-    left_value_time: str | None = None
-    right_value_time: str | None = None
+    greater_than_value: str | None = None
+    less_than_value: str | None = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -191,8 +191,8 @@ class Rule(BaseModel):
         
         Time format: "value|:CATEGORY:UNIT" or "|value:CATEGORY:UNIT"
         Examples:
-        - "10|:AGE:Y" (greater than 10 years)
-        - "|10:TIME:M" (less than 10 months)
+        - "10|:AGE:Y" (greater than or equal to 10 years)
+        - "|10:TIME:M" (less than or equal to 10 months)
         """
         if not self.time:
             return
@@ -206,15 +206,15 @@ class Rule(BaseModel):
             # Parse left and right values from time_value
             if "|" in time_value:
                 left_value, right_value = time_value.split("|")
-                self.left_value_time = left_value if left_value else ""
-                self.right_value_time = right_value if right_value else ""
+                self.greater_than_value = left_value if left_value else ""
+                self.less_than_value = right_value if right_value else ""
             else:
-                self.left_value_time = time_value
-                self.right_value_time = ""
+                self.greater_than_value = time_value
+                self.less_than_value = ""
         except (ValueError, AttributeError):
             # If parsing fails, set all values to None
             self.time_value = None
             self.time_category = None
             self.time_unit = None
-            self.left_value_time = None
-            self.right_value_time = None
+            self.greater_than_value = None
+            self.less_than_value = None

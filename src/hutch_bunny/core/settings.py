@@ -11,7 +11,22 @@ class Settings(BaseSettings):
     """
     Settings for the application
     """
-
+    CACHE_ENABLED: bool = Field(
+        description="Enable caching of distribution query results",
+        default=False
+    )
+    CACHE_DIR: str = Field(
+        description="Directory to store cached distribution results",
+        default="/app/cache"
+    )
+    CACHE_TTL_HOURS: float = Field(
+        description="Cache validity (time-to-live) period in hours (0 = never expires)",
+        default=24.0
+    )
+    CACHE_REFRESH_ON_STARTUP: bool = Field(
+        description="Refresh cache when daemon starts",
+        default=True
+    )
     DATASOURCE_USE_TRINO: bool = Field(
         description="Whether to use Trino as the datasource", default=False
     )
@@ -74,6 +89,18 @@ class Settings(BaseSettings):
     DATASOURCE_DUCKDB_MEMORY_LIMIT: str = Field(
         description="The memory limit for DuckDB (e.g. '1000mb', '2gb')", default="1000mb"
     )
+    OTEL_ENABLED: bool = Field(
+        description="Boolean indicating whether or not telemetry data is exported via opentelemetry to the observability backend(s).", 
+        default=False,
+    )
+    OTEL_SERVICE_NAME: str = Field(
+        description="Service identification for opentelemetry.", 
+        default= "hutch-bunny-daemon"
+    )
+    OTEL_EXPORTER_OTLP_ENDPOINT: str = Field(
+        description="Opentelemetry collector endpoint required for sending data.", 
+        default="http://otel-collector:4317"
+    )
     DATASOURCE_DUCKDB_TEMP_DIRECTORY: str = Field(
         description="The temporary directory for DuckDB - used as a swap fir larger-than-memory processing.", default="/tmp"
     )
@@ -118,7 +145,7 @@ class DaemonSettings(Settings):
     """
 
     TASK_API_ENFORCE_HTTPS: bool = Field(
-        description="Whether to enforce HTTPS for the task API", default=True
+        description="Whether to enforce HTTPS for the task API", default=True  
     )
     TASK_API_BASE_URL: str = Field(description="The base URL of the task API")
     TASK_API_USERNAME: str = Field(description="The username for the task API")
