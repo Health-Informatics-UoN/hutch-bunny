@@ -11,6 +11,7 @@ from tenacity import (
 )
 
 from .base import BaseDBClient
+from .snowflake import SnowflakeDBClient
 from .sync import SyncDBClient
 from .trino import TrinoDBClient
 from .azure import AzureManagedIdentityDBClient
@@ -22,6 +23,19 @@ from .utils import (
 
 settings = Settings()
 
+def _is_snowflake_connector(drivername: str | None) -> bool:
+    """
+    Return True if the configured SQLAlchemy driver/dialect indicates Snowflake.
+
+    We accept both:
+    - 'snowflake' (SQLAlchemy dialect name)
+    - 'snowflake-connector-python' (legacy/misconfigured value seen in envs)
+    - 'snowflake...' variants (e.g. 'snowflake+something')
+    """
+    if not drivername:
+        return False
+    dn = drivername.strip().lower()
+    return dn == "snowflake" or dn == "snowflake-connector-python" or dn.startswith("snowflake+")
 
 def _create_trino_client() -> TrinoDBClient:
     """Create a Trino database client."""
@@ -95,6 +109,40 @@ def _create_sync_client() -> SyncDBClient:
     )
 
 
+
+def _create_snowflake_client() -> SnowflakeDBClient:
+    """Create a Snowflake database client."""
+    datasource_db_snowflake_warehouse = settings.DATASOURCE_DB_SNOWFLAKE_WAREHOUSE
+    datasource_db_snowflake_role = settings.DATASOURCE_DB_SNOWFLAKE_ROLE
+    datasource_db_snowflake_key_path = settings.DATASOURCE_PRIVATE_KEY_PATH
+    datasource_db_snowflake_passphrase = settings.DATASOURCE_PRIVATE_KEY_PASSPHRASE
+
+
+    # Validate that username and password are provided for snowflake connections
+    if not settings.DATASOURCE_DB_SNOWFLAKE_WAREHOUSE or not settings.DATASOURCE_DB_SNOWFLAKE_ROLE:
+        raise ValueError(
+            "DATASOURCE_DB_SNOWFLAKE_WAREHOUSE and DATASOURCE_DB_SNOWFLAKE_ROLE are required when using snowflake"
+        )
+    # Validate that username and password are provided for encrypted snowflake connections
+    if not settings.DATASOURCE_PRIVATE_KEY_PATH or not settings.DATASOURCE_PRIVATE_KEY_PASSPHRASE:
+        raise ValueError(
+            "DATASOURCE_PRIVATE_KEY_PATH and DATASOURCE_PRIVATE_KEY_PASSPHRASE are required when using snowflake"
+        )
+    return SnowflakeDBClient(
+        username=settings.DATASOURCE_DB_USERNAME,
+        account=settings.DATASOURCE_DB_ACCOUNT,
+        warehouse=settings.DATASOURCE_DB_SNOWFLAKE_WAREHOUSE,
+        database=settings.DATASOURCE_DB_DATABASE,
+        schema=settings.DATASOURCE_DB_SCHEMA,
+        password=settings.DATASOURCE_DB_PASSWORD,
+        private_key_path=settings.DATASOURCE_PRIVATE_KEY_PATH,
+        private_key_passphrase=settings.DATASOURCE_PRIVATE_KEY_PASSPHRASE,
+        role=settings.DATASOURCE_DB_SNOWFLAKE_ROLE
+
+    )
+
+
+
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_fixed(60),
@@ -112,6 +160,8 @@ def get_db_client() -> BaseDBClient:
             return _create_azure_client()
         elif settings.DATASOURCE_DB_DRIVERNAME == "duckdb":
             return _create_duckdb_client()
+        elif settings.DATASOURCE_USE_SNOWFLAKE:
+            return _create_snowflake_client()
         else:
             return _create_sync_client()
     except TypeError as e:
@@ -124,6 +174,7 @@ __all__ = [
     "SyncDBClient",
     "TrinoDBClient",
     "AzureManagedIdentityDBClient",
+    "SnowflakeDBClient",
     "get_db_client",
     "DEFAULT_TRINO_PORT",
     "expand_short_drivers",
