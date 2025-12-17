@@ -237,71 +237,33 @@ class SnowflakeDBClient(BaseDBClient):
         logger.info(f"Checking tables in Snowflake...")
         logger.info(f"  Database: {self.database}")
         logger.info(f"  Schema: {self.schema}")
-        logger.info(f"  Username: {self.username}")
-        logger.info(f"  Role: {self.role}")
 
         try:
-            with self.engine.connect() as conn:
-                # First, let's see what schemas actually exist in this database
+            # Use inspector like SyncDBClient does
+            existing_tables = set(self.inspector.get_table_names(schema=self.schema))
+            existing_views = set(self.inspector.get_view_names(schema=self.schema))
+            existing_objects = existing_tables.union(existing_views)
 
-                logger.info(f"SHOW SCHEMAS IN DATABASE {self.database}")
-                schemas_query = f"SHOW SCHEMAS IN DATABASE {self.database}"
-                result = conn.exec_driver_sql(schemas_query)
-                schemas = [row[1] for row in result.fetchall()]  # Schema name is usually in column 1
-                logger.info(f"  Available schemas: {schemas}")
+            # Snowflake returns uppercase, so normalize for comparison
+            existing_objects = {obj.upper() for obj in existing_objects}
 
-                # Check if our target schema exists
-                schema_upper = self.schema.upper() if self.schema else None
-                if schema_upper not in schemas:
-                    raise RuntimeError(
-                        f"Schema '{self.schema}' does not exist in database '{self.database}'.\n"
-                        f"Available schemas: {', '.join(schemas)}\n"
-                        f"Note: Schema names are case-sensitive. Make sure DATASOURCE_DB_SCHEMA matches exactly."
-                    )
-
-                logger.info(f"Step 2: Schema '{self.schema}' found! Querying tables...")
-
-                # Query INFORMATION_SCHEMA for tables and views
-                query = f"""
-                    SELECT TABLE_NAME, TABLE_TYPE
-                    FROM {self.database}.INFORMATION_SCHEMA.TABLES
-                    WHERE TABLE_SCHEMA = '{schema_upper}'
-                    AND TABLE_TYPE IN ('BASE TABLE', 'VIEW')
-                """
-                logger.debug(f"Executing query: {query}")
-                result = conn.exec_driver_sql(query)
-                rows = result.fetchall()
-
-                existing_objects = {row[0].upper() for row in rows}
-
-                logger.info(f"  Found {len(existing_objects)} tables/views: {sorted(existing_objects)}")
+            logger.info(f"  Found {len(existing_objects)} tables/views: {sorted(existing_objects)}")
 
         except Exception as e:
             logger.error(f"Failed to retrieve tables and views from Snowflake: {e}")
-            logger.error(f"Database: {self.database}, Schema: {self.schema}")
             raise RuntimeError(
                 f"Unable to retrieve tables from Snowflake.\n"
                 f"Database: {self.database}\n"
                 f"Schema: {self.schema}\n"
-                f"Please verify:\n"
-                f"1. The schema name is correct (check DATASOURCE_DB_SCHEMA setting)\n"
-                f"2. User '{self.username}' has USAGE privilege on the schema\n"
-                f"3. Role '{self.role}' has access to the schema\n"
                 f"Original error: {e}"
             ) from e
 
         if missing_tables := required_tables - existing_objects:
-            # Check case-insensitive
-            missing_tables_lower = {table.lower() for table in missing_tables}
-            existing_objects_lower = {obj.lower() for obj in existing_objects}
-            still_missing = missing_tables_lower - existing_objects_lower
-
-            if still_missing:
-                raise RuntimeError(
-                    f"Missing tables or views in Snowflake '{self.database}.{self.schema}': "
-                    f"{', '.join(still_missing)}\n"
-                    f"Found: {', '.join(sorted(existing_objects))}"
-                )
+            raise RuntimeError(
+                f"Missing tables or views in Snowflake '{self.database}.{self.schema}': "
+                f"{', '.join(missing_tables)}\n"
+                f"Found: {', '.join(sorted(existing_objects))}"
+            )
 
         logger.info(f"✅ All required tables found in Snowflake database")
 
