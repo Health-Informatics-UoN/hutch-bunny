@@ -101,7 +101,7 @@ class SnowflakeDBClient(BaseDBClient):
                 encryption_algorithm=serialization.NoEncryption()
             )
 
-            logger.info(" Private key loaded and decrypted successfully")
+            logger.debug(" Private key loaded and decrypted successfully")
             return pkb
 
         except FileNotFoundError:
@@ -169,20 +169,20 @@ class SnowflakeDBClient(BaseDBClient):
                 schema_translate_map={None: self.schema}
             )
 
-        logger.info("✅ SQLAlchemy Engine for Snowflake created successfully!")
+        logger.debug("SQLAlchemy Engine for Snowflake created successfully!")
 
         # Test the connection immediately
         try:
-            logger.info("Testing connection...")
+            logger.debug("Testing connection...")
             with engine.connect() as conn:
                 result = conn.exec_driver_sql(
                     "SELECT CURRENT_USER(), CURRENT_DATABASE(), CURRENT_SCHEMA(), CURRENT_ROLE()")
                 row = result.fetchone()
-                logger.info(f"  Connected as user: {row[0]}")
-                logger.info(f"  Current database: {row[1]}")
-                logger.info(f"  Current schema: {row[2]}")
-                logger.info(f"  Current role: {row[3]}")
-                logger.info("✅ Connection test successful!")
+                logger.debug(f"  Connected as user: {row[0]}")
+                logger.debug(f"  Current database: {row[1]}")
+                logger.debug(f"  Current schema: {row[2]}")
+                logger.debug(f"  Current role: {row[3]}")
+                logger.debug("Connection test successful!")
         except Exception as e:
             logger.error(f"❌ Connection test failed: {e}")
             raise RuntimeError(
@@ -221,9 +221,9 @@ class SnowflakeDBClient(BaseDBClient):
             "DRUG_EXPOSURE",
         }
 
-        logger.info(f"Checking tables in Snowflake...")
-        logger.info(f"  Database: {self.database}")
-        logger.info(f"  Schema: {self.schema}")
+        logger.debug(f"Checking tables in Snowflake...")
+        logger.debug(f"  Database: {self.database}")
+        logger.debug(f"  Schema: {self.schema}")
 
         try:
             # Use inspector like SyncDBClient does
@@ -234,7 +234,7 @@ class SnowflakeDBClient(BaseDBClient):
             # Snowflake returns uppercase, so normalize for comparison
             existing_objects = {obj.upper() for obj in existing_objects}
 
-            logger.info(f"  Found {len(existing_objects)} tables/views: {sorted(existing_objects)}")
+            logger.debug(f"  Found {len(existing_objects)} tables/views: {sorted(existing_objects)}")
 
         except Exception as e:
             logger.error(f"Failed to retrieve tables and views from Snowflake: {e}")
@@ -252,7 +252,7 @@ class SnowflakeDBClient(BaseDBClient):
                 f"Found: {', '.join(sorted(existing_objects))}"
             )
 
-        logger.info(f"✅ All required tables found in Snowflake database")
+        logger.info(f" All required tables found in Snowflake database")
 
     def _check_indexes_exist(self) -> None:
         """
