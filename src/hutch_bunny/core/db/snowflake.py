@@ -6,16 +6,8 @@ from sqlalchemy.sql import Executable
 from typing import Any, Sequence
 from snowflake.sqlalchemy import URL as SnowflakeURL
 
-try:
-    from cryptography.hazmat.backends import default_backend
-    from cryptography.hazmat.primitives import serialization
-
-    CRYPTOGRAPHY_AVAILABLE = True
-except ImportError:
-    CRYPTOGRAPHY_AVAILABLE = False
-    default_backend = None  # type: ignore
-    serialization = None  # type: ignore
-
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
 from hutch_bunny.core.logger import logger
 from .base import BaseDBClient
 
@@ -91,11 +83,6 @@ class SnowflakeDBClient(BaseDBClient):
             FileNotFoundError: If the key file is not found.
             ValueError: If the passphrase is incorrect or key format is invalid.
         """
-        if not CRYPTOGRAPHY_AVAILABLE:
-            raise ImportError(
-                "cryptography library is required for key pair authentication. "
-                "Install it with: pip install cryptography"
-            )
 
         try:
             logger.debug(f"Loading private key from: {key_path}")
