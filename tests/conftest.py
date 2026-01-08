@@ -21,19 +21,6 @@ settings = Settings()
 @pytest.fixture
 def db_client() -> BaseDBClient:
     return get_db_client()
-# @pytest.fixture
-# def db_client() -> SyncDBClient:
-#     datasource_db_port = os.getenv("DATASOURCE_DB_PORT")
-#     return SyncDBClient(
-#         username=settings.DATASOURCE_DB_USERNAME,
-#         password=settings.DATASOURCE_DB_PASSWORD,
-#         host=settings.DATASOURCE_DB_HOST,
-#         port=int(datasource_db_port),
-#         database=settings.DATASOURCE_DB_DATABASE,
-#         drivername=db.expand_short_drivers(settings.DATASOURCE_DB_DRIVERNAME),
-#         schema=settings.DATASOURCE_DB_SCHEMA,
-#     )
-
 
 @pytest.fixture
 def availability_query_onerule_equals() -> AvailabilityQuery:
