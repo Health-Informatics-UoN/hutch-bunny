@@ -84,11 +84,7 @@ class AvailabilitySolver():
                 rounding, 
                 low_number
             )
-            # compiled = final_query.compile()
-            # cquery = ("SQL= " + str(compiled))
-            # logger.debug(cquery)
-            sql = final_query.compile(compile_kwargs={"literal_binds": True})
-            print(sql)
+           
             try:
                 output = con.execute(final_query).fetchone()
                 count = int(output[0]) if output is not None else 0
