@@ -84,7 +84,7 @@ class AvailabilitySolver():
                 rounding, 
                 low_number
             )
-           
+
             try:
                 output = con.execute(final_query).fetchone()
                 count = int(output[0]) if output is not None else 0
@@ -117,11 +117,6 @@ class AvailabilitySolver():
             .distinct()
         )
         with self.db_client.engine.connect() as con:
-            # compiled = concept_query.compile()
-            # query = ("SQL= " + str(compiled))
-            # logger.debug(query)
-            # sql = concept_query.compile(compile_kwargs={"literal_binds": True})
-            # print(sql)
             result = con.execute(concept_query)
             concept_dict = {
                 str(concept_id): domain_id for concept_id, domain_id in result
