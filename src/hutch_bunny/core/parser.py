@@ -36,3 +36,12 @@ parser.add_argument(
     default="[]",  # when parsed will produce an empty list
     help="The results modifiers",
 )
+
+parser.add_argument(
+    "--unencoded",
+    dest="unencoded", 
+    required=False, 
+    type=bool, 
+    default=False, 
+    help="Boolean flag determining whether to output the results without encoding (default False)."
+)

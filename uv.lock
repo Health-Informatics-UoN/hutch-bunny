@@ -258,7 +258,7 @@ wheels = [
 
 [[package]]
 name = "hutch-bunny"
-version = "1.4.4"
+version = "1.5.0"
 source = { editable = "." }
 dependencies = [
     { name = "azure-identity" },
