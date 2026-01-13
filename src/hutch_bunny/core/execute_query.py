@@ -19,7 +19,8 @@ def execute_query(
     query_dict: dict[str, object],
     results_modifier: list[dict[str, str | int]],
     db_client: BaseDBClient,
-    settings: Settings | None = None
+    settings: Settings | None = None, 
+    encode_result: bool = True 
 ) -> RquestResult:
     """
     Executes either an availability query or a distribution query, and returns results filtered by modifiers. 
@@ -64,7 +65,7 @@ def execute_query(
                     "ICD-MAIN queries are not yet supported. See: https://github.com/Health-Informatics-UoN/hutch-bunny/issues/30"
                 )
             result = query_solvers.solve_distribution(
-                results_modifier, db_client=db_client, query=distribution_query
+                results_modifier, db_client=db_client, query=distribution_query, encode_result=encode_result
             )
             cache_service.set(query_dict, results_modifier, result)
             return result
