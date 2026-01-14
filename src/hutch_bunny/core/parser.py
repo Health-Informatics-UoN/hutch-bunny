@@ -38,10 +38,9 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--unencoded",
-    dest="unencoded", 
-    required=False, 
-    type=bool, 
-    default=False, 
+    "--no-encode",
+    dest="encode",
+    action="store_false",
     help="Boolean flag determining whether to output the results without encoding (default False)."
 )
+parser.set_defaults(encode=True)

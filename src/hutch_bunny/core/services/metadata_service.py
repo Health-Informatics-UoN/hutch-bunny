@@ -1,4 +1,3 @@
-import base64
 from importlib.metadata import version
 
 from hutch_bunny.core.rquest_models.file import File
