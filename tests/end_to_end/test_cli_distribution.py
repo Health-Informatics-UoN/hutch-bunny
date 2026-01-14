@@ -5,7 +5,7 @@ import json
 import sys
 import base64
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Any 
 
 
 @dataclass
@@ -92,7 +92,7 @@ test_cases = [
 ]
 
 
-def assert_distribution_output(output_file_path: str, expected_count: int, expected_values: dict, encode_result: bool = True) -> None:
+def assert_distribution_output(output_file_path: str, expected_count: int, expected_values: dict[Any, Any], encode_result: bool = True) -> None:
     """
     Validate the output file from the CLI distribution command.
 
