@@ -1,4 +1,6 @@
+import sys 
 import json
+from typing import Sequence
 
 from hutch_bunny.core.results_modifiers import (
     get_results_modifiers_from_str,
@@ -33,18 +35,24 @@ def save_to_output(result: RquestResult, destination: str) -> None:
         logger.error(str(e), exc_info=True)
 
 
-def main(argv = None) -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     settings: Settings = Settings()
     configure_logger(settings)
     logger.info(f"Starting Bunny version: {version('hutch_bunny')}")
     logger.debug("Settings: %s", settings.safe_model_dump())
-    # Setting database connection
+
     db_client = get_db_client()
-    # Bunny passed args.
     args = parser.parse_args(argv)
 
-    with open(args.body) as body:
-        query_dict = json.load(body)
+    if args.body_json: 
+        try:
+            query_dict = json.loads(args.body_json)
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON input: {e}")
+            sys.exit(1)
+    else: 
+        with open(args.body) as body:
+            query_dict = json.load(body)
 
     results_modifier: list[dict] = get_results_modifiers_from_str(
         args.results_modifiers

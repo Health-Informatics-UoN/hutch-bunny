@@ -4,12 +4,19 @@ parser = argparse.ArgumentParser(
     prog="bunny-cli",
     description="This program takes a JSON string containing an RQuest query and solves it.",
 )
-parser.add_argument(
+
+group = parser.add_mutually_exclusive_group(required=True)
+group.add_argument(
     "--body",
     dest="body",
-    required=True,
     help="The JSON file containing the query",
 )
+group.add_argument(
+    "--body-json",
+    dest="body_json",
+    help="The JSON query as an inline string",
+)
+
 parser.add_argument(
     "-o",
     "--output",
@@ -19,6 +26,7 @@ parser.add_argument(
     default="output.json",
     help="The path to the output file",
 )
+
 parser.add_argument(
     "-m",
     "--modifiers",
