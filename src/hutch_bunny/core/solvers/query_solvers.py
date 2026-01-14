@@ -1,4 +1,3 @@
-import base64
 from opentelemetry import trace
 
 from hutch_bunny.core.logger import logger
