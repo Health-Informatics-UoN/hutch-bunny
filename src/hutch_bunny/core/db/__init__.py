@@ -106,6 +106,7 @@ def _create_sync_client() -> SyncDBClient:
         database=settings.DATASOURCE_DB_DATABASE,
         drivername=datasource_db_drivername,
         schema=settings.DATASOURCE_DB_SCHEMA,
+        query=settings.DATASOURCE_DB_CONNECTION_QUERY
     )
 
 

@@ -94,7 +94,8 @@ test_cases = [
 
 @pytest.mark.end_to_end
 @pytest.mark.parametrize("test_case", test_cases)
-def test_cli_distribution(test_case: DistributionTestCase) -> None:
+@pytest.mark.parametrize("input_method", ["file", "inline"])
+def test_cli_distribution(test_case: DistributionTestCase, input_method: str) -> None:
     """
     Test the CLI distribution command.
 
@@ -110,9 +111,8 @@ def test_cli_distribution(test_case: DistributionTestCase) -> None:
     # Arrange
     output_file_path = "tests/queries/distribution/output.json"
 
-    # Act
-    result = subprocess.run(
-        [
+    if input_method == "file":
+        cmd = [
             sys.executable,
             "-m",
             "hutch_bunny.cli",
@@ -122,10 +122,24 @@ def test_cli_distribution(test_case: DistributionTestCase) -> None:
             test_case.modifiers,
             "--output",
             output_file_path,
-        ],
-        capture_output=True,
-        text=True,
-    )
+        ]
+    else:
+        with open(test_case.json_file_path) as f:
+            query_json = json.dumps(json.load(f))
+        
+        cmd = [
+            sys.executable,
+            "-m",
+            "hutch_bunny.cli",
+            "--body-json",
+            query_json,
+            "--modifiers",
+            test_case.modifiers,
+            "--output",
+            output_file_path,
+        ]
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
 
     # Assert
     assert result.returncode == 0, f"CLI failed with error: {result.stderr}"
