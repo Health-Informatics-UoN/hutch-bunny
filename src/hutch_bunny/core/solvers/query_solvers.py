@@ -115,7 +115,7 @@ def solve_distribution(
         )
         # Metadata file is only for distribution queries
         if query.code == DistributionQueryType.GENERIC:
-            metadata_file = metadata_service.generate_metadata()
+            metadata_file = metadata_service.generate_metadata(encode_result)
         else:
             metadata_file = None
 
