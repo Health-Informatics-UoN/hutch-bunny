@@ -112,10 +112,10 @@ def _create_sync_client() -> SyncDBClient:
 
 def _create_snowflake_client() -> SnowflakeDBClient:
     """Create a Snowflake database client."""
-    datasource_db_snowflake_warehouse = settings.DATASOURCE_DB_SNOWFLAKE_WAREHOUSE
-    datasource_db_snowflake_role = settings.DATASOURCE_DB_SNOWFLAKE_ROLE
-    datasource_db_snowflake_key_path = settings.DATASOURCE_PRIVATE_KEY_PATH
-    datasource_db_snowflake_passphrase = settings.DATASOURCE_PRIVATE_KEY_PASSPHRASE
+    # datasource_db_snowflake_warehouse = settings.DATASOURCE_DB_SNOWFLAKE_WAREHOUSE
+    # datasource_db_snowflake_role = settings.DATASOURCE_DB_SNOWFLAKE_ROLE
+    # datasource_db_snowflake_key_path = settings.DATASOURCE_PRIVATE_KEY_PATH
+    # datasource_db_snowflake_passphrase = settings.DATASOURCE_PRIVATE_KEY_PASSPHRASE
 
 
     # Validate that username and password are provided for snowflake connections

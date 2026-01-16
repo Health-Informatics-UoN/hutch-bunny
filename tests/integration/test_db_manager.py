@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-from hutch_bunny.core.db import SyncDBClient, BaseDBClient, SnowflakeDBClient
+from hutch_bunny.core.db import  BaseDBClient, SnowflakeDBClient
 
 
 @pytest.mark.integration

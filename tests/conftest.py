@@ -1,17 +1,14 @@
 import pytest
-import os
-import hutch_bunny.core.db as db
 from hutch_bunny.core.rquest_models.cohort import Cohort
 from hutch_bunny.core.rquest_models.group import Group
 from hutch_bunny.core.rquest_models.rule import Rule
-from hutch_bunny.core.db import SyncDBClient, BaseDBClient
+from hutch_bunny.core.db import BaseDBClient
 from hutch_bunny.core.rquest_models.distribution import (
     DistributionQuery,
     DistributionQueryType,
 )
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.settings import Settings
-import hutch_bunny.core.db as db
 from hutch_bunny.core.db import get_db_client
 
 

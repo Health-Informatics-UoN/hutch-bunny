@@ -1,4 +1,3 @@
-import snowflake.connector
 from sqlalchemy import create_engine
 from sqlalchemy.inspection import inspect
 from sqlalchemy.engine import Row, Engine
@@ -221,7 +220,7 @@ class SnowflakeDBClient(BaseDBClient):
             "DRUG_EXPOSURE",
         }
 
-        logger.debug(f"Checking tables in Snowflake...")
+        logger.debug("Checking tables in Snowflake...")
         logger.debug(f"  Database: {self.database}")
         logger.debug(f"  Schema: {self.schema}")
 
@@ -252,7 +251,7 @@ class SnowflakeDBClient(BaseDBClient):
                 f"Found: {', '.join(sorted(existing_objects))}"
             )
 
-        logger.info(f" All required tables found in Snowflake database")
+        logger.info("All required tables found in Snowflake database")
 
     def _check_indexes_exist(self) -> None:
         """
