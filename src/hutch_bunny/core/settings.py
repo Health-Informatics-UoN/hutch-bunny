@@ -121,6 +121,7 @@ class Settings(BaseSettings):
     )
     DATASOURCE_PRIVATE_KEY_PASSPHRASE: str = Field(
         description="Passphrase for the encrypted private key", default="password"
+        )
     DATASOURCE_DB_CONNECTION_QUERY: Mapping[str, str | Sequence[str]] | None = Field(
         description="A mapping representing the query string. Contains strings for keys and either strings or tuples of strings for values.",
         default=None
