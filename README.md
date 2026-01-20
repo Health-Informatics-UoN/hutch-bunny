@@ -1,6 +1,6 @@
 <p align="center">
   <picture>
-    <img alt="Hutch Logo" src="https://raw.githubusercontent.com/Health-Informatics-UoN/hutch/refs/heads/main/website/public/images/hutch-logo-colour.svg" width="280"/>
+    <img alt="Hutch Logo" src="https://raw.githubusercontent.com/Health-Informatics-UoN/hutch/refs/heads/main/website/public/images/bunny.svg" width="280"/>
   </picture>
 </p>
 <div align="center">
@@ -27,9 +27,9 @@ Fetches and resolves Availability and Distribution Queries against an OMOP CDM d
 [bunny-releases-badge]: https://img.shields.io/github/v/tag/Health-Informatics-UoN/hutch-bunny
 [bunny-tests-badge]: https://github.com/Health-Informatics-UoN/hutch-bunny/actions/workflows/check.run-tests.yml/badge.svg
 [license-badge]: https://img.shields.io/github/license/health-informatics-uon/hutch-bunny.svg
-[dotnet-badge]: https://img.shields.io/badge/.NET-5C2D91?style=flat&logo=.net&logoColor=white
-[python-badge]: https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white
-[docker-badge]: https://img.shields.io/badge/docker-%230db7ed.svg?style=flat&logo=docker&logoColor=white
-[docs-badge]: https://img.shields.io/badge/docs-black?style=flat&labelColor=%23222
-[roadmap-badge]: https://img.shields.io/badge/roadmap-blue?style=flat&labelColor=%230066cc
-[github-badge]: https://img.shields.io/badge/github-black?style=flat&logo=github&logoColor=white
+[dotnet-badge]: https://img.shields.io/badge/.NET-5C2D91?style=flat-square&logo=.net&logoColor=white
+[python-badge]: https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white
+[docker-badge]: https://img.shields.io/badge/docker-%230db7ed.svg?style=flat-square&logo=docker&logoColor=white
+[docs-badge]: https://img.shields.io/badge/docs-black?style=flat-square&labelColor=%23222
+[roadmap-badge]: https://img.shields.io/badge/roadmap-blue?style=flat-square&labelColor=%230066cc
+[github-badge]: https://img.shields.io/badge/github-black?style=flat-square&logo=github&logoColor=white
