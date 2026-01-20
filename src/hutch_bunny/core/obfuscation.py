@@ -1,3 +1,4 @@
+import base64 
 from copy import deepcopy
 
 
@@ -64,3 +65,18 @@ def apply_filters(value: int | float, filters: list) -> int:
             if result == 0:
                 break  # don't apply any more filters
     return int(result)
+
+
+def encode_output(data: str) -> tuple[str, float]:
+    """
+    Encode output data to base64.
+    
+    Args:
+        data: The string data to encode
+    
+    Returns:
+        Tuple of (base64_encoded_data, size_in_kb)
+    """
+    encoded_bytes = base64.b64encode(data.encode("utf-8"))
+    size = len(encoded_bytes) / 1000
+    return encoded_bytes.decode("utf-8"), size
