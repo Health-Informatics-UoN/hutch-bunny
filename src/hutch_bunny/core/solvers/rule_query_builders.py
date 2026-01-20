@@ -56,6 +56,8 @@ class SQLDialectHandler:
             return func.date_part("year", start_date) - year_of_birth
         elif engine.dialect.name == "mssql":
             return func.DATEPART(text("year"), start_date) - year_of_birth
+        elif engine.dialect.name == "snowflake":
+            return func.YEAR(start_date) - year_of_birth
         else:
             raise NotImplementedError("Unsupported database dialect")
         

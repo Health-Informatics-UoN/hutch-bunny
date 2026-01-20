@@ -207,6 +207,11 @@ class CodeDistributionQuerySolver:
                 if low_number > 0:
                     stmnt = stmnt.where(subq.c.count_agg > low_number)
 
+                compiled = stmnt.compile(
+                    dialect=con.engine.dialect,
+                    compile_kwargs={"literal_binds": True}
+                )
+                logger.debug(compiled)
                 # Execute
                 result = con.execute(stmnt)
                 res = result.fetchall()
