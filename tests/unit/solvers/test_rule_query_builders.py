@@ -73,6 +73,27 @@ class TestSQLDialectHandler:
             func.DATEPART(text("year"), start_date) - year_of_birth
         )
 
+    def test_get_year_difference_snowflake(self) -> None:
+        """Test Snowflake dialect returns correct function."""
+        engine = Mock()
+        engine.dialect.name = "snowflake"
+
+        metadata = MetaData()
+        test_table = Table(
+            "test", metadata,
+            Column("start_date", Date),
+            Column("year_of_birth", Date),
+        )
+
+        start_date = test_table.c.start_date
+        year_of_birth = test_table.c.year_of_birth
+
+        result = SQLDialectHandler.get_year_difference(engine, start_date, year_of_birth)
+
+        assert str(result) == str(
+            func.YEAR(start_date) - year_of_birth)
+
+
     def test_get_year_difference_with_actual_column_elements(self) -> None:
         """Test with actual SQLAlchemy column elements."""
         from sqlalchemy import Column, Date, Integer, create_engine
@@ -397,10 +418,10 @@ class TestPersonQueryConstraintBuilder:
     @pytest.fixture
     def builder(self, mock_db_manager: Mock) -> PersonConstraintBuilder:
         """Create a PersonConstraintBuilder instance."""
-        return PersonConstraintBuilder(mock_db_manager) 
-    
+        return PersonConstraintBuilder(mock_db_manager)
+
     def test_build_age_constraints_valid_range(
-        self, 
+        self,
         builder: PersonConstraintBuilder
     ) -> None:
         """Test age constraints produce correct SQL for a given range."""
@@ -408,21 +429,18 @@ class TestPersonQueryConstraintBuilder:
         rule.min_value = 18.0
         rule.max_value = 65.0
 
-        with patch("hutch_bunny.core.solvers.rule_query_builders.SQLDialectHandler.get_year_difference") as mock_diff: 
+        with patch("hutch_bunny.core.solvers.rule_query_builders.SQLDialectHandler.get_year_difference") as mock_diff:
             mock_diff.return_value = literal_column("25")
             constraints = builder._build_age_constraints(rule)
 
-        # Expect 1 constraint: >= min_age and <= max_age
+        # Expect 1 constraint with AND inside
         assert len(constraints) == 1
 
-        compiled_sql = [str(c.compile(compile_kwargs={"literal_binds": True})) for c in constraints]
+        compiled_sql = str(constraints[0].compile(compile_kwargs={"literal_binds": True}))
 
-        # We don't need to know the exact CURRENT_TIMESTAMP calculation here,
-        # just that it's the right comparison with literal values.
-        assert f">= {rule.min_value}" in compiled_sql[0]
-        assert f"<= {rule.max_value}" in compiled_sql[0]
-
-
+        # Check both conditions are in the combined constraint
+        assert f">= {rule.min_value}" in compiled_sql
+        assert f"<= {rule.max_value}" in compiled_sql
 
     def test_build_age_constraints_none_values(self, builder: PersonConstraintBuilder) -> None:
         """Directly test _build_age_constraints with None values."""

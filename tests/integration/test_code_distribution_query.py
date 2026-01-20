@@ -6,27 +6,18 @@ from hutch_bunny.core.rquest_models.distribution import (
     DistributionQuery,
     DistributionQueryType,
 )
-from hutch_bunny.core.db import SyncDBClient
+from hutch_bunny.core.db import SyncDBClient, BaseDBClient
 from hutch_bunny.core.rquest_models.result import RquestResult
 from hutch_bunny.core.rquest_models.file import File
 from hutch_bunny.core.settings import Settings
-import hutch_bunny.core.db as db
+from hutch_bunny.core.db import get_db_client
 
 settings = Settings()
 
 
 @pytest.fixture
-def db_client() -> SyncDBClient:
-    datasource_db_port = settings.DATASOURCE_DB_PORT
-    return SyncDBClient(
-        username=settings.DATASOURCE_DB_USERNAME,
-        password=settings.DATASOURCE_DB_PASSWORD,
-        host=settings.DATASOURCE_DB_HOST,
-        port=(int(datasource_db_port) if datasource_db_port is not None else None),
-        database=settings.DATASOURCE_DB_DATABASE,
-        drivername=db.expand_short_drivers(settings.DATASOURCE_DB_DRIVERNAME),
-        schema=settings.DATASOURCE_DB_SCHEMA,
-    )
+def db_client() -> BaseDBClient:
+    return get_db_client()
 
 
 @pytest.fixture

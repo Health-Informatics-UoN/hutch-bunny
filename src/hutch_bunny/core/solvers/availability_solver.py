@@ -1,3 +1,4 @@
+from logging import DEBUG
 from typing import TypedDict, Union, Literal
 from sqlalchemy import (
     CompoundSelect,
@@ -27,7 +28,7 @@ from typing import Tuple
 from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.rquest_models.group import Group
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
-from hutch_bunny.core.logger import logger, INFO
+from hutch_bunny.core.logger import logger
 from hutch_bunny.core.rquest_models.rule import Rule
 from hutch_bunny.core.solvers.rule_query_builders import OMOPRuleQueryBuilder, PersonConstraintBuilder
 from hutch_bunny.core.db.utils import log_query
@@ -56,8 +57,8 @@ class AvailabilitySolver():
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_fixed(60),
-        before_sleep=before_sleep_log(logger, INFO),
-        after=after_log(logger, INFO)
+        before_sleep=before_sleep_log(logger, DEBUG),
+        after=after_log(logger, DEBUG)
     )
     def solve_query(self, results_modifiers: list[ResultModifier]) -> int:
         """
@@ -84,8 +85,11 @@ class AvailabilitySolver():
                 low_number
             )
 
-            output = con.execute(final_query).fetchone()
-            count = int(output[0]) if output is not None else 0
+            try:
+                output = con.execute(final_query).fetchone()
+                count = int(output[0]) if output is not None else 0
+            except Exception as e:
+                logger.error(str(e))
 
         return apply_filters(count, results_modifiers)
 
@@ -150,13 +154,10 @@ class AvailabilitySolver():
         """
 
         rule_table_queries: list[RuleTableQuery] = []
-
         person_constraints: list[ColumnElement[bool]] = []
 
         for rule in group.rules:
-
             inclusion_criteria = rule.operator == "="
-
             if rule.varcat == "Person":
                 constraints = self.person_constraint_builder.build_constraints(rule, concepts)
                 person_constraints.extend(constraints)
@@ -170,8 +171,7 @@ class AvailabilitySolver():
         return self._construct_group_query(group, person_constraints, rule_table_queries)
 
     def _build_rule_query(self, rule: Rule) -> CompoundSelect:
-        """ Build query for a single non-Person rule."""
-
+        """Build query for a single non-Person rule."""
         builder = OMOPRuleQueryBuilder(self.db_client)
 
         if rule.value:
@@ -227,7 +227,6 @@ class AvailabilitySolver():
             else:
                 # For AND logic or single constraint, use AND (default)
                 person_query = select(Person.person_id).where(*person_constraints_for_group)
-
             inclusion_queries.append(person_query)
 
         # Add table queries for each rule
@@ -254,7 +253,6 @@ class AvailabilitySolver():
             if current_group.rules_operator == "AND":
                 # For AND logic, use INTERSECT which is more efficient than joins
                 group_query: Union[Select[Tuple[int]], CompoundSelect] = inclusion_queries[0]
-
                 for query in inclusion_queries[1:]:
                     group_query = intersect(group_query, query)
             else:
