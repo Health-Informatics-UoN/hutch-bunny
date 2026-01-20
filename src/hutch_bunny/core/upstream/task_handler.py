@@ -44,7 +44,10 @@ def handle_task(
         task_api_client.send_results(result)
     except NotImplementedError as e:
         logger.error(f"Not implemented: {e}. Data: {task_data}")
+        return
     except ValueError as e:
         logger.error(f"Invalid task input: {e}. Data: {task_data}")
+        return
     except Exception as e:
         logger.error(f"Unexpected error handling task: {e}", exc_info=True)
+        return

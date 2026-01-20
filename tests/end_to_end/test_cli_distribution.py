@@ -26,10 +26,10 @@ test_cases = [
             "8532": 560,  # FEMALE
             "260139": 440,  # Acute Bronchitis
             "4311629": 310,  # Impaired glucose tolerance
-            "19115351": 10, # Diazepam (drug)
-            "44783196": 20, # Surgical manipulation of joint of knee
-            "255848": 10, # Pneumonia
-            "432867": 110, # Hyperlipidemia
+            "19115351": 10,  # Diazepam (drug)
+            "44783196": 20,  # Surgical manipulation of joint of knee
+            "255848": 10,  # Pneumonia
+            "432867": 110,  # Hyperlipidemia
         },
     ),
     DistributionTestCase(
@@ -41,10 +41,10 @@ test_cases = [
             "8532": 558,  # FEMALE
             "260139": 442,  # Acute Bronchitis
             "4311629": 310,  # Impaired glucose tolerance
-            "19115351": 11, # Diazepam (drug)
-            "44783196": 19, # Surgical manipulation of joint of knee
-            "255848": 11, # Pneumonia
-            "432867": 110, # Hyperlipidemia
+            "19115351": 11,  # Diazepam (drug)
+            "44783196": 19,  # Surgical manipulation of joint of knee
+            "255848": 11,  # Pneumonia
+            "432867": 110,  # Hyperlipidemia
         },
     ),
     DistributionTestCase(
@@ -56,10 +56,10 @@ test_cases = [
             "8532": 600,  # FEMALE
             "260139": 400,  # Acute Bronchitis
             "4311629": 300,  # Impaired glucose tolerance
-            "19115351": 0, # Diazepam (drug)
-            "44783196": 0, # Surgical manipulation of joint of knee
-            "255848": 0, # Pneumonia
-            "432867": 100, # Hyperlipidemia
+            "19115351": 0,  # Diazepam (drug)
+            "44783196": 0,  # Surgical manipulation of joint of knee
+            "255848": 0,  # Pneumonia
+            "432867": 100,  # Hyperlipidemia
         },
     ),
     DistributionTestCase(
@@ -71,10 +71,10 @@ test_cases = [
             "8532": 560,  # FEMALE
             "260139": 440,  # Acute Bronchitis
             "4311629": 310,  # Impaired glucose tolerance
-            "19115351": 10, # Diazepam (drug)
-            "44783196": 20, # Surgical manipulation of joint of knee
-            "255848": 10, # Pneumonia
-            "432867": 110, # Hyperlipidemia
+            "19115351": 10,  # Diazepam (drug)
+            "44783196": 20,  # Surgical manipulation of joint of knee
+            "255848": 10,  # Pneumonia
+            "432867": 110,  # Hyperlipidemia
         },
     ),
     DistributionTestCase(
@@ -86,7 +86,7 @@ test_cases = [
             "8532": 560,  # FEMALE
             "260139": 440,  # Acute Bronchitis
             "4311629": 310,  # Impaired glucose tolerance
-            "432867": 110, # Hyperlipidemia
+            "432867": 110,  # Hyperlipidemia
         },
     ),
 ]

@@ -4,7 +4,7 @@ from typing import Optional, Literal, Mapping, Sequence
 from hutch_bunny.core.logger import logger
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(dotenv_path=".env", override=False)
 
 
 class Settings(BaseSettings):
@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     DATASOURCE_USE_TRINO: bool = Field(
         description="Whether to use Trino as the datasource", default=False
     )
+    DATASOURCE_USE_SNOWFLAKE: bool = Field(
+        description="Whether to use Snowflake as the datasource", default=False
+    )
     DATASOURCE_USE_AZURE_MANAGED_IDENTITY: bool = Field(
         description="Whether to use Azure managed identity for authentication",
         default=False,
@@ -53,9 +56,9 @@ class Settings(BaseSettings):
     DATE_FORMAT: str = "%d-%b-%y %H:%M:%S"
 
     DATASOURCE_DB_DRIVERNAME: str = Field(
-        description="The driver to use for the datasource database, one of: postgresql, mssql, duckdb",
+        description="The driver to use for the datasource database, one of: postgresql, mssql, duckdb, snowflake",
         default="postgresql",
-        pattern="^(postgresql|mssql|duckdb)$",
+        pattern="^(postgresql|mssql|duckdb|snowflake-connector-python)$",
     )
     DATASOURCE_DB_USERNAME: str | None = Field(
         description="The username for the datasource database. Not required when using Azure managed identity.",
@@ -90,20 +93,35 @@ class Settings(BaseSettings):
         description="The memory limit for DuckDB (e.g. '1000mb', '2gb')", default="1000mb"
     )
     OTEL_ENABLED: bool = Field(
-        description="Boolean indicating whether or not telemetry data is exported via opentelemetry to the observability backend(s).", 
+        description="Boolean indicating whether or not telemetry data is exported via opentelemetry to the observability backend(s).",
         default=False,
     )
     OTEL_SERVICE_NAME: str = Field(
-        description="Service identification for opentelemetry.", 
+        description="Service identification for opentelemetry.",
         default= "hutch-bunny-daemon"
     )
     OTEL_EXPORTER_OTLP_ENDPOINT: str = Field(
-        description="Opentelemetry collector endpoint required for sending data.", 
+        description="Opentelemetry collector endpoint required for sending data.",
         default="http://otel-collector:4317"
     )
     DATASOURCE_DUCKDB_TEMP_DIRECTORY: str = Field(
         description="The temporary directory for DuckDB - used as a swap fir larger-than-memory processing.", default="/tmp"
     )
+    DATASOURCE_DB_ACCOUNT: str | None = Field(
+        description="The Snowflake account identifier (e.g., 'LGGOZEC-CJ54726')", default=None
+    )
+    DATASOURCE_DB_SNOWFLAKE_WAREHOUSE: str = Field(
+        description="The Snowflake warehouse to use for queries", default="COMPUTE_WH"
+    )
+    DATASOURCE_DB_SNOWFLAKE_ROLE: str = Field(
+        description="The Snowflake role to use for queries", default="SYSADMIN"
+    )
+    DATASOURCE_PRIVATE_KEY_PATH: str = Field(
+        description="Path to the private key file (.p8) for key pair auth", default="/app/private_key.p8"
+    )
+    DATASOURCE_PRIVATE_KEY_PASSPHRASE: str = Field(
+        description="Passphrase for the encrypted private key", default="password"
+        )
     DATASOURCE_DB_CONNECTION_QUERY: Mapping[str, str | Sequence[str]] | None = Field(
         description="A mapping representing the query string. Contains strings for keys and either strings or tuples of strings for values.",
         default=None
@@ -114,7 +132,7 @@ class Settings(BaseSettings):
         Convert settings to a dictionary, excluding sensitive fields.
         """
         return self.model_dump(exclude={"DATASOURCE_DB_PASSWORD"})
-    
+
     @staticmethod
     def _validate_duckdb_field(v, info: ValidationInfo, field_name: str) -> str | int | None:
         driver = info.data.get("DATASOURCE_DB_DRIVERNAME", None)
@@ -124,18 +142,42 @@ class Settings(BaseSettings):
             raise ValueError(f"{field_name} is required unless using duckdb.")
         return v
 
+    @staticmethod
+    def _validate_optional_field(v, info: ValidationInfo, field_name: str,
+                                 optional_drivers: set[str]) -> str | int | None:
+        """Validate fields that are optional for certain drivers (like DuckDB and Snowflake)"""
+        driver = info.data.get("DATASOURCE_DB_DRIVERNAME", None)
+        if driver in optional_drivers:
+            return v
+        if v is None or (isinstance(v, str) and not v):
+            drivers_str = ", ".join(optional_drivers)
+            raise ValueError(f"{field_name} is required unless using {drivers_str}.")
+        return v
+
     @field_validator("DATASOURCE_DB_HOST")
     def validate_db_host(cls, v: str | None, info: ValidationInfo) -> str | None:
+        driver = info.data.get("DATASOURCE_DB_DRIVERNAME", None)
+        if driver in {"duckdb", "snowflake-connector-python"}:
+            return v
         return cls._validate_duckdb_field(v, info, "DATASOURCE_DB_HOST")
 
     @field_validator("DATASOURCE_DB_PORT")
     def validate_db_port(cls, v: int | None, info: ValidationInfo) -> int | None:
-        return cls._validate_duckdb_field(v, info, "DATASOURCE_DB_PORT")
+        return cls._validate_optional_field(v, info, "DATASOURCE_DB_PORT", {"duckdb", "snowflake-connector-python"})
 
     @field_validator("DATASOURCE_DB_DATABASE")
     def validate_db_database(cls, v: str | None, info: ValidationInfo) -> str | None:
         return cls._validate_duckdb_field(v, info, "DATASOURCE_DB_DATABASE")
 
+    @field_validator("DATASOURCE_DB_ACCOUNT")
+    def validate_snowflake_account(cls, v: str | None, info: ValidationInfo) -> str | None:
+        """Validate that account is provided when using Snowflake"""
+        driver = info.data.get("DATASOURCE_DB_DRIVERNAME", None)
+        use_snowflake = info.data.get("DATASOURCE_USE_SNOWFLAKE", False)
+
+        if (driver == "snowflake" or use_snowflake) and not v:
+            raise ValueError("DATASOURCE_DB_ACCOUNT is required when using Snowflake.")
+        return v
 
 
 
@@ -145,7 +187,7 @@ class DaemonSettings(Settings):
     """
 
     TASK_API_ENFORCE_HTTPS: bool = Field(
-        description="Whether to enforce HTTPS for the task API", default=True  
+        description="Whether to enforce HTTPS for the task API", default=True
     )
     TASK_API_BASE_URL: str = Field(description="The base URL of the task API")
     TASK_API_USERNAME: str = Field(description="The username for the task API")

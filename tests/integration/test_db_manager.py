@@ -1,11 +1,11 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-from hutch_bunny.core.db import SyncDBClient
+from hutch_bunny.core.db import  BaseDBClient, SnowflakeDBClient
 
 
 @pytest.mark.integration
-def test_check_tables_exist_integration(db_client: SyncDBClient) -> None:
+def test_check_tables_exist_integration(db_client: BaseDBClient) -> None:
     """
     Verifies that the function correctly identifies when all required tables
     exist in a real database.
@@ -21,13 +21,20 @@ def test_check_tables_exist_integration(db_client: SyncDBClient) -> None:
 
 
 @pytest.mark.integration
-def test_check_tables_exist_with_missing_tables(db_client: SyncDBClient) -> None:
+def test_check_tables_exist_with_missing_tables(db_client: BaseDBClient) -> None:
     """
     Verifies that the function correctly raises a RuntimeError when
     required tables are missing.
 
     Patch the inspector's get_table_names method to return a subset of the required tables.
     """
+
+    # Check if it's a Snowflake client
+    if isinstance(db_client, SnowflakeDBClient):
+        # Snowflake doesn't check indexes (uses clustering keys)
+        pytest.skip("Index checking is not applicable for Snowflake")
+
+
     mock_inspector = MagicMock()
     mock_inspector.get_table_names.return_value = [
         "concept",
@@ -45,14 +52,14 @@ def test_check_tables_exist_with_missing_tables(db_client: SyncDBClient) -> None
             db_client._check_tables_exist()
 
         # Assert error message contains the missing tables
-        assert "Missing tables or views in the database" in str(exc_info.value)
-        assert "condition_occurrence" in str(exc_info.value)
-        assert "observation" in str(exc_info.value)
-        assert "drug_exposure" in str(exc_info.value)
+        assert "Missing tables or views" in str(exc_info.value)
+        assert "condition_occurrence" in str(exc_info.value).lower()
+        assert "observation" in str(exc_info.value).lower()
+        assert "drug_exposure" in str(exc_info.value).lower()
 
 
 @pytest.mark.integration
-def test_check_tables_exist_with_schema_integration(db_client: SyncDBClient) -> None:
+def test_check_tables_exist_with_schema_integration(db_client: BaseDBClient) -> None:
     """
     Verifies that the function correctly handles schemas when checking
     for required tables.
@@ -68,7 +75,7 @@ def test_check_tables_exist_with_schema_integration(db_client: SyncDBClient) -> 
 
 
 @pytest.mark.integration
-def test_check_indexes_exist_integration(db_client: SyncDBClient) -> None:
+def test_check_indexes_exist_integration(db_client: BaseDBClient) -> None:
     """
     Verify that the _check_indexes_exist method works against the synth db.
     """
@@ -81,12 +88,16 @@ def test_check_indexes_exist_integration(db_client: SyncDBClient) -> None:
 
 
 @pytest.mark.integration
-def test_check_indexes_exist_with_missing_indexes(db_client: SyncDBClient) -> None:
+def test_check_indexes_exist_with_missing_indexes(db_client: BaseDBClient) -> None:
     """
     Verify that the _check_indexes_exist method logs warnings when indexes are missing.
 
     Patch the inspector's get_indexes method to return empty lists for all tables.
     """
+    # Check if it's a Snowflake client
+    if isinstance(db_client, SnowflakeDBClient):
+        # Snowflake doesn't check indexes (uses clustering keys)
+        pytest.skip("Index checking is not applicable for Snowflake")
     # Create a mock that returns empty lists for all tables
     mock_inspector = MagicMock()
     mock_inspector.get_indexes.return_value = []

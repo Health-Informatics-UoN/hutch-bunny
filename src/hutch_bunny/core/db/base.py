@@ -92,3 +92,8 @@ class BaseDBClient:
             list[str]: The list of tables in the database.
         """
         raise NotImplementedError
+
+    @abstractmethod
+    def check_tables_exist(self) -> None:
+        """Validate that required tables/views exist for this DB backend."""
+        raise NotImplementedError

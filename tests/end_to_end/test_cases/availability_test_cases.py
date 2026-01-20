@@ -43,89 +43,89 @@ class AvailabilityTestCase:
 
 test_cases = [
     # Basic availability test - assert default rounding.
-    # Query for 8507 MALE
+    # Query for 8507 MALE /Test: 1
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/availability.json",
         expected_count=570,
     ),
     # Basic availability test - assert rounding to 0.
-    # Query for 8507 MALE
+    # Query for 8507 MALE  /Test: 2
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/availability.json",
         rounding=0,
         expected_count=572,
     ),
-    # Basic availability test - assert overriden rounding and low number suppression.
-    # Query for 8507 MALE
+    # # Basic availability test - assert overriden rounding and low number suppression.
+    # # Query for 8507 MALE /Test: 3
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/availability.json",
         rounding=0,
         low_number_suppression=0,
         expected_count=572,
     ),
-    # Basic availability test - assert overriden rounding.
-    # Query for 8507 MALE
+    # # Basic availability test - assert overriden rounding.
+    # # Query for 8507 MALE /Test: 4
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/availability.json",
         low_number_suppression=30,
         expected_count=570,
     ),
-    # Basic availability test - assert low number suppression on threshold.
-    # Query for 8507 MALE
+    # # Basic availability test - assert low number suppression on threshold.
+    # # Query for 8507 MALE /Test: 5
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/availability.json",
         low_number_suppression=570,
         expected_count=570,
     ),
-    # Basic availability test - assert rounding and low number suppression.
-    # Query for 8507 MALE
+    # # Basic availability test - assert rounding and low number suppression.
+    # # Query for 8507 MALE /Test: 6
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/availability.json",
         rounding=10,
         low_number_suppression=20,
         expected_count=570,
     ),
-    # Basic availability test - assert rounding to 100.
-    # Query for 8507 MALE
+    # # Basic availability test - assert rounding to 100.
+    # # Query for 8507 MALE /Test: 7
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/availability.json",
         rounding=100,
         expected_count=600,
     ),
-    # Basic availability test - assert rounding to 10.
-    # Query for 8507 MALE
+    # # Basic availability test - assert rounding to 10.
+    # # Query for 8507 MALE /Test: 8
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/availability.json",
         rounding=10,
         expected_count=570,
     ),
-    # Basic gender test - assert gender OR filtering with default rounding.
-    # Query for 8507 MALE OR 8532 FEMALE
+    # # Basic gender test - assert gender OR filtering with default rounding.
+    # # Query for 8507 MALE OR 8532 FEMALE /Test: 9
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/basic_gender_or.json",
         expected_count=1130,
     ),
-    # Basic gender test - assert gender OR filtering with rounding to 0.
-    # Query for 8507 MALE OR 8532 FEMALE
+    # # Basic gender test - assert gender OR filtering with rounding to 0.
+    # # Query for 8507 MALE OR 8532 FEMALE /Test: 10
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/basic_gender_or.json",
         rounding=0,
         expected_count=1130,
     ),
-    # Multiple in group test - assert multiple in group AND filtering with default rounding.
-    # Query for 8532 FEMALE AND 260139 Acute Bronchitis
+    # # Multiple in group test - assert multiple in group AND filtering with default rounding.
+    # # Query for 8532 FEMALE AND 260139 Acute Bronchitis /Test: 11
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_and.json",
         expected_count=220,
     ),
-    # Multiple in group test - assert multiple in group OR filtering with default rounding.
-    # Query for 8532 FEMALE OR 260139 Acute Bronchitis
+    # # Multiple in group test - assert multiple in group OR filtering with default rounding.
+    # # Query for 8532 FEMALE OR 260139 Acute Bronchitis /Test: 12
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_or.json",
         expected_count=780,
     ),
     # Multiple in group test - assert multiple in group OR filtering with rounding to 0.
-    # Query for 8532 FEMALE OR 260139 Acute Bronchitis
+    # Query for 8532 FEMALE OR 260139 Acute Bronchitis /Test: 13
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_or.json",
         rounding=0,
@@ -134,7 +134,7 @@ test_cases = [
     # Multiple in group test - assert multiple in group AND filtering with age 1.
     # 8532 Female AND 432867 Hyperlipidemia
     # Age >= 50 years when it occurred
-    # Rounding and threshold is not set, so will default to 10
+    # Rounding and threshold is not set, so will default to 10 /Test: 14
 
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_and_with_age1.json",
@@ -143,7 +143,7 @@ test_cases = [
     # Multiple in group test - assert multiple in group AND filtering with age 1 and rounding to 0.
     # 8532 Female AND 432867 Hyperlipidemia
     # Age >= 50 years when it occurred
-    # Threshold is not set, so will default to 10
+    # Threshold is not set, so will default to 10 /Test: 15
 
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_and_with_age1.json",
@@ -153,7 +153,7 @@ test_cases = [
     # Multiple in group test - assert multiple in group AND filtering with age 2.
     # 8532 Female AND 432867 Hyperlipidemia
     # Age <= 50 years when it occurred
-    # Rounding and threshold is not set, so will default to 10
+    # Rounding and threshold is not set, so will default to 10 /Test: 16
 
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_and_with_age2.json",
@@ -162,14 +162,14 @@ test_cases = [
     # Multiple in group test - assert multiple in group AND filtering with age 2 and rounding to 0.
     # 8532 Female AND 432867 Hyperlipidemia
     # Age <= 50 years when it occurred
-    # Threshold is not set, so will default to 10
+    # Threshold is not set, so will default to 10 / Test: 17
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_and_with_age2.json",
         rounding=0,
         expected_count=25,
     ),
     # Basic measurement test - assert measurement with default rounding.
-    # 46236952 Glomerular filtration
+    # 46236952 Glomerular filtration  Test: 18
     # > 1.0, < 3.0
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/measurement.json",
@@ -177,34 +177,35 @@ test_cases = [
         low_number_suppression=10,
         expected_count=329,
     ),
-    # Multiple in group, exclusion criteria, and time test.
+    # Multiple in group, exclusion criteria, and time test. Test: 19
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_exclusion_time.json",
         rounding=0,
         low_number_suppression=10,
         expected_count=442,
     ),
-    # Basic ethnicity test - assert ethnicity OR filtering with override rounding.
+    # Basic ethnicity test - assert ethnicity OR filtering with override rounding. Test: 20
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/basic_ethnicity_or.json",
         rounding=0,
         low_number_suppression=0,
         expected_count=112,
     ),
-    # Basic race test - assert race OR filtering with override rounding.
+    # Basic race test - assert race OR filtering with override rounding. Test: 21
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/basic_race_or.json",
         rounding=0,
         low_number_suppression=0,
         expected_count=82,
     ),
-    # Secondary modifiers test - assert secondary modifiers with override rounding.
+    # Secondary modifiers test - assert secondary modifiers with override rounding. Test: 22
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/secondary_modifiers.json",
         rounding=0,
         low_number_suppression=0,
         expected_count=333,
     ),
+#   Test: 23
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/procedure.json",
         rounding=0,
