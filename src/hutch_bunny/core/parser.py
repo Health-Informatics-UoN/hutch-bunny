@@ -36,3 +36,11 @@ parser.add_argument(
     default="[]",  # when parsed will produce an empty list
     help="The results modifiers",
 )
+
+parser.add_argument(
+    "--no-encode",
+    dest="encode",
+    action="store_false",
+    help="Boolean flag determining whether to output the results without encoding (default False)."
+)
+parser.set_defaults(encode=True)

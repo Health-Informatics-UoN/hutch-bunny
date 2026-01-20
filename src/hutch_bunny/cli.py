@@ -58,7 +58,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         args.results_modifiers
     )
 
-    result = execute_query(query_dict, results_modifier, db_client=db_client)
+    result = execute_query(query_dict, results_modifier, db_client=db_client, encode_result=args.encode)
     logger.debug(f"Results: {result.to_dict()}")
     save_to_output(result, args.output)
     logger.info(f"Saved results to {args.output}")

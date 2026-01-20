@@ -1,7 +1,9 @@
-import base64
+from importlib.metadata import version
+
 from hutch_bunny.core.rquest_models.file import File
 from hutch_bunny.core.settings import DaemonSettings
-from importlib.metadata import version
+from hutch_bunny.core.obfuscation import encode_output
+
 
 
 class MetadataService:
@@ -10,7 +12,7 @@ class MetadataService:
     def __init__(self) -> None:
         self.settings = DaemonSettings()
 
-    def generate_metadata(self) -> File:
+    def generate_metadata(self, encode_result: bool = True) -> File:
         """
         Generate metadata for a distribution query result.
 
@@ -39,13 +41,13 @@ class MetadataService:
 
         metadata = f"{header}\n{data_line}"
 
-        # Encode to base64
-        metadata_b64_bytes = base64.b64encode(metadata.encode("utf-8"))
-        metadata_size = len(metadata_b64_bytes) / 1000
-        metadata_b64 = metadata_b64_bytes.decode("utf-8")
+        if encode_result: 
+            metadata, metadata_size = encode_output(metadata)
+        else: 
+            metadata_size = len(metadata.encode("utf-8")) / 1000
 
         return File(
-            data=metadata_b64,
+            data=metadata,
             description="Metadata for the result of code.distribution analysis",
             name="metadata.bcos",
             sensitive=False,

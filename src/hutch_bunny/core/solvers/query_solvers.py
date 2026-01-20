@@ -1,4 +1,3 @@
-import base64
 from opentelemetry import trace
 
 from hutch_bunny.core.logger import logger
@@ -19,6 +18,7 @@ from hutch_bunny.core.solvers.demographics_solver import (
 from hutch_bunny.core.solvers.distribution_solver import CodeDistributionQuerySolver
 from hutch_bunny.core.services.metadata_service import MetadataService
 from hutch_bunny.core.telemetry import trace_operation
+from hutch_bunny.core.obfuscation import encode_output
 
 
 settings = Settings()
@@ -83,6 +83,7 @@ def solve_distribution(
     results_modifier: list[dict[str, str | int]],
     db_client: BaseDBClient,
     query: DistributionQuery,
+    encode_result: bool = True 
 ) -> RquestResult:
     """Solve a distribution query.
 
@@ -97,13 +98,14 @@ def solve_distribution(
     solver = _get_distribution_solver(db_client, query)
     try:
         res, count = solver.solve_query(results_modifier)
-        # Convert file data to base64
-        res_b64_bytes = base64.b64encode(res.encode("utf-8"))  # bytes
-        size = len(res_b64_bytes) / 1000  # length of file data in KB
-        res_b64 = res_b64_bytes.decode("utf-8")  # convert back to string, now base64
+        
+        if encode_result: 
+            res, size = encode_output(res)
+        else: 
+            size = len(res.encode("utf-8")) / 1000
 
         result_file = File(
-            data=res_b64,
+            data=res,
             description="Result of code.distribution analysis",
             name=query.code.file_name,
             sensitive=True,
@@ -113,7 +115,7 @@ def solve_distribution(
         )
         # Metadata file is only for distribution queries
         if query.code == DistributionQueryType.GENERIC:
-            metadata_file = metadata_service.generate_metadata()
+            metadata_file = metadata_service.generate_metadata(encode_result)
         else:
             metadata_file = None
 
