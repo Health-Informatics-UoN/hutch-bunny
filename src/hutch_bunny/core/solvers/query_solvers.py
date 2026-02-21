@@ -11,7 +11,6 @@ from hutch_bunny.core.rquest_models.distribution import (
 )
 
 from hutch_bunny.core.rquest_models.result import RquestResult
-from hutch_bunny.core.settings import Settings
 from hutch_bunny.core.solvers.demographics_solver import (
     DemographicsDistributionQuerySolver,
 )
@@ -20,9 +19,6 @@ from hutch_bunny.core.services.metadata_service import MetadataService
 from hutch_bunny.core.telemetry import trace_operation
 from hutch_bunny.core.obfuscation import encode_output
 
-
-settings = Settings()
-metadata_service = MetadataService()
 
 @trace_operation("solve_availability", span_kind=trace.SpanKind.INTERNAL)
 def solve_availability(
@@ -83,7 +79,7 @@ def solve_distribution(
     results_modifier: list[dict[str, str | int]],
     db_client: BaseDBClient,
     query: DistributionQuery,
-    encode_result: bool = True 
+    encode_result: bool = True,
 ) -> RquestResult:
     """Solve a distribution query.
 
@@ -98,10 +94,10 @@ def solve_distribution(
     solver = _get_distribution_solver(db_client, query)
     try:
         res, count = solver.solve_query(results_modifier)
-        
-        if encode_result: 
+
+        if encode_result:
             res, size = encode_output(res)
-        else: 
+        else:
             size = len(res.encode("utf-8")) / 1000
 
         result_file = File(
@@ -115,7 +111,9 @@ def solve_distribution(
         )
         # Metadata file is only for distribution queries
         if query.code == DistributionQueryType.GENERIC:
-            metadata_file = metadata_service.generate_metadata(encode_result)
+            metadata_file = MetadataService(
+                collection_id=query.collection
+            ).generate_metadata(encode_result)
         else:
             metadata_file = None
 

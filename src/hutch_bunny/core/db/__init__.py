@@ -1,7 +1,7 @@
 """Database management module for Hutch Bunny."""
 
 from hutch_bunny.core.logger import logger, INFO
-from hutch_bunny.core.settings import Settings
+from hutch_bunny.core.settings import DatasourceSettings
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -21,7 +21,8 @@ from .utils import (
     expand_short_drivers,
 )
 
-settings = Settings()
+settings = DatasourceSettings()
+
 
 def _is_snowflake_connector(drivername: str | None) -> bool:
     """
@@ -35,7 +36,12 @@ def _is_snowflake_connector(drivername: str | None) -> bool:
     if not drivername:
         return False
     dn = drivername.strip().lower()
-    return dn == "snowflake" or dn == "snowflake-connector-python" or dn.startswith("snowflake+")
+    return (
+        dn == "snowflake"
+        or dn == "snowflake-connector-python"
+        or dn.startswith("snowflake+")
+    )
+
 
 def _create_trino_client() -> TrinoDBClient:
     """Create a Trino database client."""
@@ -74,6 +80,7 @@ def _create_azure_client() -> AzureManagedIdentityDBClient:
         schema=settings.DATASOURCE_DB_SCHEMA,
     )
 
+
 def _create_duckdb_client() -> DuckDBClient:
     """Create an DuckDB client."""
 
@@ -83,6 +90,7 @@ def _create_duckdb_client() -> DuckDBClient:
         schema=settings.DATASOURCE_DB_SCHEMA,
         duckdb_temp_directory=settings.DATASOURCE_DUCKDB_TEMP_DIRECTORY,
     )
+
 
 def _create_sync_client() -> SyncDBClient:
     """Create a regular synchronous database client."""
@@ -106,9 +114,8 @@ def _create_sync_client() -> SyncDBClient:
         database=settings.DATASOURCE_DB_DATABASE,
         drivername=datasource_db_drivername,
         schema=settings.DATASOURCE_DB_SCHEMA,
-        query=settings.DATASOURCE_DB_CONNECTION_QUERY
+        query=settings.DATASOURCE_DB_CONNECTION_QUERY,
     )
-
 
 
 def _create_snowflake_client() -> SnowflakeDBClient:
@@ -118,14 +125,19 @@ def _create_snowflake_client() -> SnowflakeDBClient:
     # datasource_db_snowflake_key_path = settings.DATASOURCE_PRIVATE_KEY_PATH
     # datasource_db_snowflake_passphrase = settings.DATASOURCE_PRIVATE_KEY_PASSPHRASE
 
-
     # Validate that username and password are provided for snowflake connections
-    if not settings.DATASOURCE_DB_SNOWFLAKE_WAREHOUSE or not settings.DATASOURCE_DB_SNOWFLAKE_ROLE:
+    if (
+        not settings.DATASOURCE_DB_SNOWFLAKE_WAREHOUSE
+        or not settings.DATASOURCE_DB_SNOWFLAKE_ROLE
+    ):
         raise ValueError(
             "DATASOURCE_DB_SNOWFLAKE_WAREHOUSE and DATASOURCE_DB_SNOWFLAKE_ROLE are required when using snowflake"
         )
     # Validate that username and password are provided for encrypted snowflake connections
-    if not settings.DATASOURCE_PRIVATE_KEY_PATH or not settings.DATASOURCE_PRIVATE_KEY_PASSPHRASE:
+    if (
+        not settings.DATASOURCE_PRIVATE_KEY_PATH
+        or not settings.DATASOURCE_PRIVATE_KEY_PASSPHRASE
+    ):
         raise ValueError(
             "DATASOURCE_PRIVATE_KEY_PATH and DATASOURCE_PRIVATE_KEY_PASSPHRASE are required when using snowflake"
         )
@@ -138,10 +150,8 @@ def _create_snowflake_client() -> SnowflakeDBClient:
         password=settings.DATASOURCE_DB_PASSWORD,
         private_key_path=settings.DATASOURCE_PRIVATE_KEY_PATH,
         private_key_passphrase=settings.DATASOURCE_PRIVATE_KEY_PASSPHRASE,
-        role=settings.DATASOURCE_DB_SNOWFLAKE_ROLE
-
+        role=settings.DATASOURCE_DB_SNOWFLAKE_ROLE,
     )
-
 
 
 @retry(

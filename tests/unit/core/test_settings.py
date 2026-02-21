@@ -31,7 +31,7 @@ def test_https_validation_enforced() -> None:
 
 
 @pytest.mark.unit
-@patch("src.hutch_bunny.core.settings.logger")
+@patch("hutch_bunny.core.settings.taskapi.logger")
 def test_https_validation_not_enforced(mock_logger) -> None:
     """
     Verifies that a warning is logged when HTTPS is not enforced but not used.
@@ -59,7 +59,7 @@ def test_https_validation_not_enforced(mock_logger) -> None:
 
 
 @pytest.mark.unit
-@patch("src.hutch_bunny.core.settings.logger")
+@patch("hutch_bunny.core.settings.taskapi.logger")
 def test_https_validation_https_used(mock_logger) -> None:
     """
     Verifies that no error or warning is raised when HTTPS is used.
