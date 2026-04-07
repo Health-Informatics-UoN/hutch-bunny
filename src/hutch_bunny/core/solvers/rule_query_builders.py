@@ -22,7 +22,8 @@ from hutch_bunny.core.db.entities import (
     Observation,
     Person,
     DrugExposure,
-    ProcedureOccurrence
+    ProcedureOccurrence,
+    Specimen,
 )
 from typing import Tuple 
 import operator as op
@@ -75,13 +76,17 @@ class OMOPRuleQueryBuilder:
     using UNION operations to find all persons matching the specified criteria.
     """
 
-    def __init__(self, db_client: BaseDBClient):
+    def __init__(self, db_client: BaseDBClient, include_specimen: bool = False):
         self.db_client = db_client
+        self.include_specimen = include_specimen
         self.condition_query: Select[Tuple[int]] = select(ConditionOccurrence.person_id)
         self.drug_query: Select[Tuple[int]] = select(DrugExposure.person_id)
         self.measurement_query: Select[Tuple[int]] = select(Measurement.person_id)
         self.observation_query: Select[Tuple[int]] = select(Observation.person_id)
         self.procedure_query: Select[Tuple[int]] = select(ProcedureOccurrence.person_id)
+        self.specimen_query: Select[Tuple[int]] | None = (
+            select(Specimen.person_id) if include_specimen else None
+        )
 
     def add_concept_constraint(self, concept_id: int) -> 'OMOPRuleQueryBuilder':
         """
@@ -111,6 +116,10 @@ class OMOPRuleQueryBuilder:
         self.procedure_query = self.procedure_query.where(
             ProcedureOccurrence.procedure_concept_id == concept_id
         )
+        if self.specimen_query is not None:
+            self.specimen_query = self.specimen_query.where(
+                Specimen.specimen_concept_id == concept_id
+            )
         return self
 
     def add_age_constraint(
@@ -187,6 +196,14 @@ class OMOPRuleQueryBuilder:
             comparator,
             age_value,
         )
+        if self.specimen_query is not None:
+            self.specimen_query = self._apply_age_constraint_to_table(
+                self.specimen_query,
+                Specimen.person_id,
+                Specimen.specimen_date,
+                comparator,
+                age_value,
+            )
         return self
 
     def _apply_age_constraint_to_table(
@@ -306,6 +323,10 @@ class OMOPRuleQueryBuilder:
             self.procedure_query = self.procedure_query.where(
                 ProcedureOccurrence.procedure_date >= relative_date
             )
+            if self.specimen_query is not None:
+                self.specimen_query = self.specimen_query.where(
+                    Specimen.specimen_date >= relative_date
+                )
         else:
             self.measurement_query = self.measurement_query.where(
                 Measurement.measurement_date <= relative_date
@@ -322,6 +343,10 @@ class OMOPRuleQueryBuilder:
             self.procedure_query = self.procedure_query.where(
                 ProcedureOccurrence.procedure_date <= relative_date
             )
+            if self.specimen_query is not None:
+                self.specimen_query = self.specimen_query.where(
+                    Specimen.specimen_date <= relative_date
+                )
         return self
 
     def add_numeric_range(
@@ -421,13 +446,17 @@ class OMOPRuleQueryBuilder:
             The UNION operation automatically deduplicates person_ids that
             appear in multiple tables.
         """
-        return union(
+        queries: list[Select[Tuple[int]]] = [
             self.measurement_query,
             self.observation_query,
             self.condition_query,
             self.drug_query,
-            self.procedure_query
-        )
+            self.procedure_query,
+        ]
+        if self.specimen_query is not None:
+            queries.append(self.specimen_query)
+
+        return union(*queries)
 
 
 class PersonConstraintBuilder:

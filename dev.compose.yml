@@ -8,7 +8,7 @@ services:
       - 5432:5432
     environment:
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: omop
+      POSTGRES_DB: hutch-omop
 
   omop-lite:
     image: ghcr.io/health-informatics-uon/omop-lite

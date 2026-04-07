@@ -135,3 +135,17 @@ def test_daemon_settings_safe_model_dump() -> None:
     assert "DATASOURCE_DB_PASSWORD" not in safe_dump
     assert "TASK_API_BASE_URL" in safe_dump
     assert "TASK_API_USERNAME" in safe_dump
+
+
+@pytest.mark.unit
+def test_specimen_support_disabled_by_default() -> None:
+    settings = Settings(
+        DATASOURCE_DB_PASSWORD="db_secret",
+        DATASOURCE_DB_HOST="localhost",
+        DATASOURCE_DB_PORT=5432,
+        DATASOURCE_DB_SCHEMA="public",
+        DATASOURCE_DB_DATABASE="test_db",
+    )
+
+    assert settings.OMOP_ENABLE_SPECIMEN_SUPPORT is False
+

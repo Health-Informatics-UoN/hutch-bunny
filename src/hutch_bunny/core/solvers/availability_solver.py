@@ -32,6 +32,10 @@ from hutch_bunny.core.logger import logger
 from hutch_bunny.core.rquest_models.rule import Rule
 from hutch_bunny.core.solvers.rule_query_builders import OMOPRuleQueryBuilder, PersonConstraintBuilder
 from hutch_bunny.core.db.utils import log_query
+from hutch_bunny.core.settings import Settings
+
+
+settings = Settings()
 
 
 class ResultModifier(TypedDict):
@@ -172,7 +176,10 @@ class AvailabilitySolver():
 
     def _build_rule_query(self, rule: Rule) -> CompoundSelect:
         """Build query for a single non-Person rule."""
-        builder = OMOPRuleQueryBuilder(self.db_client)
+        builder = OMOPRuleQueryBuilder(
+            self.db_client,
+            include_specimen=settings.OMOP_ENABLE_SPECIMEN_SUPPORT,
+        )
 
         if rule.value:
             builder.add_concept_constraint(int(rule.value))
