@@ -147,5 +147,5 @@ def test_specimen_support_disabled_by_default() -> None:
         DATASOURCE_DB_DATABASE="test_db",
     )
 
-    assert settings.OMOP_ENABLE_SPECIMEN_SUPPORT is False
+    assert settings.OMOP_SPECIMEN_ENABLED is False
 

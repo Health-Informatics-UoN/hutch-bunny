@@ -178,7 +178,7 @@ class AvailabilitySolver():
         """Build query for a single non-Person rule."""
         builder = OMOPRuleQueryBuilder(
             self.db_client,
-            include_specimen=settings.OMOP_ENABLE_SPECIMEN_SUPPORT,
+            include_specimen=settings.OMOP_SPECIMEN_ENABLED,
         )
 
         if rule.value:
