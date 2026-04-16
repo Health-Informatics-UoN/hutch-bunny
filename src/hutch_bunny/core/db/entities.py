@@ -227,3 +227,23 @@ class DrugExposure(Base):
     )
     route_source_value = Column(String(50), nullable=True)
     dose_unit_source_value = Column(String(50), nullable=True)
+
+
+class Specimen(Base):
+    __tablename__ = "specimen"
+    specimen_id = Column(Integer, primary_key=True)
+    person_id = Column(Integer, ForeignKey("person.person_id"), nullable=False)
+    specimen_concept_id = Column(Integer, ForeignKey("concept.concept_id"), nullable=False)
+    specimen_type_concept_id = Column(Integer, ForeignKey("concept.concept_id"), nullable=False)
+    specimen_date = Column(Date, nullable=False)
+    specimen_datetime = Column(DateTime, nullable=True)
+    quantity = Column(Numeric, nullable=True)
+    unit_concept_id = Column(Integer, ForeignKey("concept.concept_id"), nullable=True)
+    anatomic_site_concept_id = Column(Integer, ForeignKey("concept.concept_id"), nullable=True)
+    disease_status_concept_id = Column(Integer, ForeignKey("concept.concept_id"), nullable=True)
+    specimen_source_id = Column(String(50), nullable=True)
+    specimen_source_value = Column(String(50), nullable=True)
+    unit_source_value = Column(String(50), nullable=True)
+    anatomic_site_source_value = Column(String(50), nullable=True)
+    disease_status_source_value = Column(String(50), nullable=True)
+

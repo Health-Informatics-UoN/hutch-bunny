@@ -350,7 +350,23 @@ class TestOMOPRuleQueryBuilder():
         assert "condition_occurrence.person_id" in query_str
         assert "drug_exposure.person_id" in query_str
         assert "UNION" in query_str
-    
+
+    def test_build_does_not_include_specimen_when_feature_disabled(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager)
+
+        query_str = str(builder.build())
+
+        assert "specimen.person_id" not in query_str
+
+    def test_build_includes_specimen_when_feature_enabled(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, include_specimen=True)
+
+        query_str = str(builder.build())
+
+        assert "specimen.person_id" in query_str
+
     def test_build_after_adding_concept_constraint(self) -> None:
         """Test build after adding a concept constraint."""
         mock_db_manager = Mock()
@@ -368,6 +384,15 @@ class TestOMOPRuleQueryBuilder():
         assert "measurement_concept_id" in query_str
         assert "observation_concept_id" in query_str
         assert "drug_concept_id" in query_str
+
+    def test_add_concept_constraint_applies_to_specimen_when_enabled(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, include_specimen=True)
+
+        builder.add_concept_constraint(12345)
+
+        specimen_sql = str(builder.specimen_query.compile(compile_kwargs={"literal_binds": True}))
+        assert "specimen.specimen_concept_id = 12345" in specimen_sql
 
     def test_build_with_multiple_constraints(self) -> None:
         """Test build with multiple different constraints applied."""

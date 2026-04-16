@@ -28,6 +28,7 @@ class Rule(BaseModel):
         "Measurement",
         "Medication",
         "Procedure",
+        "Specimen",
     ]
     """
     Table to search in.
