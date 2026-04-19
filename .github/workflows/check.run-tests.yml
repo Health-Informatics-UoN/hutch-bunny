@@ -25,7 +25,9 @@ jobs:
       TASK_API_BASE_URL: http://localhost:8000
       TASK_API_USERNAME: test_user
       TASK_API_PASSWORD: test_password
-      TASK_API_ENFORCE_HTTPS: false 
+      TASK_API_ENFORCE_HTTPS: false
+      OMOP_SPECIMEN_ENABLED=TRUE
+
 
     services:
       postgres:
@@ -53,8 +55,8 @@ jobs:
             -e DB_PASSWORD=postgres \
             -e DIALECT=postgresql \
             -e SYNTHETIC=true \
-            -e SYNTHETIC_NUMBER=1000 \
-            ghcr.io/health-informatics-uon/omop-lite
+            -e SYNTHETIC_NUMBER=1001 \
+            ghcr.io/health-informatics-uon/omop-lite:0.5
 
       - name: Setup uv
         uses: astral-sh/setup-uv@f94ec6bedd8674c4426838e6b50417d36b6ab231 # v5.3.1
@@ -107,7 +109,9 @@ jobs:
       TASK_API_BASE_URL: http://localhost:8000
       TASK_API_USERNAME: test_user
       TASK_API_PASSWORD: test_password
-      TASK_API_ENFORCE_HTTPS: false 
+      TASK_API_ENFORCE_HTTPS: false
+      OMOP_SPECIMEN_ENABLED=TRUE
+
 
     services:
       sqlserver:
@@ -135,7 +139,7 @@ jobs:
             -e SCHEMA_NAME=omop \
             -e SYNTHETIC=true \
             -e SYNTHETIC_NUMBER=1000 \
-            ghcr.io/health-informatics-uon/omop-lite
+            ghcr.io/health-informatics-uon/omop-lite:0.5
 
       - name: Setup uv
         uses: astral-sh/setup-uv@f94ec6bedd8674c4426838e6b50417d36b6ab231 # v5.3.1
