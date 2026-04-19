@@ -144,7 +144,7 @@ class DemographicsDistributionQuerySolver:
             ).group_by(Person.gender_concept_id)
 
         if low_number > 0:
-            stmnt = stmnt.having(func.count(distinct(Person.person_id)) > low_number)
+            stmnt = stmnt.having(func.count(distinct(Person.person_id)) >= low_number)
 
         return stmnt
 

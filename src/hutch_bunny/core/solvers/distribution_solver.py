@@ -181,7 +181,7 @@ class CodeDistributionQuerySolver:
         with self.db_client.engine.connect() as con:
             for domain_id in self.allowed_domains_map:
 
-                if settings.OMOP_SPECIMEN_ENABLED and domain_id == "Specimen":
+                if not settings.OMOP_SPECIMEN_ENABLED and domain_id == "Specimen":
                     continue
 
                 logger.debug(domain_id)
@@ -214,7 +214,7 @@ class CodeDistributionQuerySolver:
 
                 # Step 3: optional low-number filter
                 if low_number > 0:
-                    stmnt = stmnt.where(subq.c.count_agg > low_number)
+                    stmnt = stmnt.where(subq.c.count_agg >= low_number)
 
                 compiled = stmnt.compile(
                     dialect=con.engine.dialect,
