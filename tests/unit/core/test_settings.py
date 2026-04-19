@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 from src.hutch_bunny.core.settings import DaemonSettings, Settings
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 
 @pytest.mark.unit
