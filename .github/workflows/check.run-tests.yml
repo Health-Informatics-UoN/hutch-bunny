@@ -26,7 +26,7 @@ jobs:
       TASK_API_USERNAME: test_user
       TASK_API_PASSWORD: test_password
       TASK_API_ENFORCE_HTTPS: false
-      OMOP_SPECIMEN_ENABLED=TRUE
+      OMOP_SPECIMEN_ENABLED: TRUE
 
 
     services:
@@ -110,7 +110,7 @@ jobs:
       TASK_API_USERNAME: test_user
       TASK_API_PASSWORD: test_password
       TASK_API_ENFORCE_HTTPS: false
-      OMOP_SPECIMEN_ENABLED=TRUE
+      OMOP_SPECIMEN_ENABLED: TRUE
 
 
     services:
