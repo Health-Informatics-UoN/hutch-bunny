@@ -138,7 +138,7 @@ jobs:
             -e DIALECT=mssql \
             -e SCHEMA_NAME=omop \
             -e SYNTHETIC=true \
-            -e SYNTHETIC_NUMBER=1000 \
+            -e SYNTHETIC_NUMBER=1001 \
             ghcr.io/health-informatics-uon/omop-lite:0.5
 
       - name: Setup uv
