@@ -11,14 +11,14 @@ services:
       POSTGRES_DB: omop
 
   omop-lite:
-    image: ghcr.io/health-informatics-uon/omop-lite
+    image: ghcr.io/health-informatics-uon/omop-lite:0.5
     depends_on:
       - db
     environment:
       DB_PASSWORD: postgres
       DB_NAME: omop
       SYNTHETIC: true
-      SYNTHETIC_NUMBER: 1000
+      SYNTHETIC_NUMBER: 1001
 
   adminer:
     image: wodby/adminer
