@@ -12,10 +12,10 @@
         "value" : "8532"
       }, {
         "varname" : "OMOP",
-        "varcat" : "Condition",
+        "varcat" : "Specimen",
         "type" : "TEXT",
         "oper" : "=",
-        "value" : "260139"
+        "value" : "4188549"
       } ],
       "rules_oper" : "AND"
     } ],

@@ -116,7 +116,7 @@ test_cases = [
     # # Query for 8532 FEMALE AND 260139 Acute Bronchitis /Test: 11
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_and.json",
-        expected_count=220,
+        expected_count=180,
     ),
     # # Multiple in group test - assert multiple in group OR filtering with default rounding.
     # # Query for 8532 FEMALE OR 260139 Acute Bronchitis /Test: 12
