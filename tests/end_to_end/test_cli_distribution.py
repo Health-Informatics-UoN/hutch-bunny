@@ -20,7 +20,7 @@ test_cases = [
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers="[]",
-        expected_count=374,
+        expected_count=392,
         expected_values={
             "8507": 570,  # MALE
             "8532": 560,  # FEMALE
@@ -30,12 +30,13 @@ test_cases = [
             "44783196": 20,  # Surgical manipulation of joint of knee
             "255848": 10,  # Pneumonia
             "432867": 110,  # Hyperlipidemia
+            "44792555": 330, #Hemicolectomy tissue sample
         },
     ),
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers='[{"id": "Rounding", "nearest": 0}]',
-        expected_count=374,
+        expected_count=392,
         expected_values={
             "8507": 572,  # MALE
             "8532": 558,  # FEMALE
@@ -45,12 +46,13 @@ test_cases = [
             "44783196": 19,  # Surgical manipulation of joint of knee
             "255848": 11,  # Pneumonia
             "432867": 110,  # Hyperlipidemia
+            "44792555": 329,  # Hemicolectomy tissue sample
         },
     ),
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers='[{"id": "Rounding", "nearest": 100}]',
-        expected_count=374,
+        expected_count=392,
         expected_values={
             "8507": 600,  # MALE
             "8532": 600,  # FEMALE
@@ -60,12 +62,14 @@ test_cases = [
             "44783196": 0,  # Surgical manipulation of joint of knee
             "255848": 0,  # Pneumonia
             "432867": 100,  # Hyperlipidemia
+            "44792555": 300,  # Hemicolectomy tissue sample
+
         },
     ),
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers='[{"id": "Rounding", "nearest": 10}, {"id": "Low Number Suppression", "threshold": 10}]',
-        expected_count=374,
+        expected_count=392,
         expected_values={
             "8507": 570,  # MALE
             "8532": 560,  # FEMALE
@@ -75,18 +79,22 @@ test_cases = [
             "44783196": 20,  # Surgical manipulation of joint of knee
             "255848": 10,  # Pneumonia
             "432867": 110,  # Hyperlipidemia
+            "44792555": 330,  # Hemicolectomy tissue sample
+
         },
     ),
     DistributionTestCase(
         json_file_path="tests/queries/distribution/distribution.json",
         modifiers='[{"id": "Rounding", "nearest": 10}, {"id": "Low Number Suppression", "threshold": 50}]',
-        expected_count=197,
+        expected_count=210,
         expected_values={
             "8507": 570,  # MALE
             "8532": 560,  # FEMALE
             "260139": 440,  # Acute Bronchitis
             "4311629": 310,  # Impaired glucose tolerance
             "432867": 110,  # Hyperlipidemia
+            "44792555": 330,  # Hemicolectomy tissue sample
+
         },
     ),
 ]

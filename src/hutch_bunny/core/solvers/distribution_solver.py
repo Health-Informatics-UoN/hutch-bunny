@@ -14,7 +14,7 @@ from hutch_bunny.core.db.entities import (
     Observation,
     Person,
     DrugExposure,
-    ProcedureOccurrence,
+    ProcedureOccurrence, Specimen,
 )
 from tenacity import (
     retry,
@@ -27,6 +27,7 @@ from hutch_bunny.core.rquest_models.distribution import DistributionQuery
 from sqlalchemy import select
 from hutch_bunny.core.solvers.availability_solver import ResultModifier
 from hutch_bunny.core.db.utils import log_query
+from hutch_bunny.core.settings import Settings
 
 # Type alias for tables that have person_id
 PersonTable = Union[
@@ -37,6 +38,8 @@ PersonTable = Union[
     DrugExposure,
     ProcedureOccurrence,
 ]
+
+settings = Settings()
 
 
 class CodeDistributionRow(BaseModel):
@@ -100,6 +103,7 @@ class CodeDistributionQuerySolver:
         "Measurement": Measurement,
         "Observation": Observation,
         "Procedure": ProcedureOccurrence,
+        "Specimen": Specimen,
     }
     domain_concept_id_map = {
         "Condition": ConditionOccurrence.condition_concept_id,
@@ -110,6 +114,7 @@ class CodeDistributionQuerySolver:
         "Measurement": Measurement.measurement_concept_id,
         "Observation": Observation.observation_concept_id,
         "Procedure": ProcedureOccurrence.procedure_concept_id,
+        "Specimen": Specimen.specimen_concept_id,
     }
 
     # this one is unique for this resolver
@@ -175,6 +180,10 @@ class CodeDistributionQuerySolver:
 
         with self.db_client.engine.connect() as con:
             for domain_id in self.allowed_domains_map:
+
+                if not settings.OMOP_SPECIMEN_ENABLED and domain_id == "Specimen":
+                    continue
+
                 logger.debug(domain_id)
 
                 # Get table and concept column for this domain
@@ -205,7 +214,7 @@ class CodeDistributionQuerySolver:
 
                 # Step 3: optional low-number filter
                 if low_number > 0:
-                    stmnt = stmnt.where(subq.c.count_agg > low_number)
+                    stmnt = stmnt.where(subq.c.count_agg >= low_number)
 
                 compiled = stmnt.compile(
                     dialect=con.engine.dialect,
