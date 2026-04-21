@@ -11,7 +11,7 @@ services:
       POSTGRES_DB: omop
 
   omop-lite:
-    image: ghcr.io/health-informatics-uon/omop-lite:0.5
+    image: ghcr.io/health-informatics-uon/omop-lite:0.5.0
     depends_on:
       - db
     environment:
