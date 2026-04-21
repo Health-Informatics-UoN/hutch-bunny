@@ -139,7 +139,7 @@ jobs:
             -e SCHEMA_NAME=omop \
             -e SYNTHETIC=true \
             -e SYNTHETIC_NUMBER=1001 \
-            ghcr.io/health-informatics-uon/omop-lite:0.5
+            ghcr.io/health-informatics-uon/omop-lite:0.5.0
 
       - name: Setup uv
         uses: astral-sh/setup-uv@f94ec6bedd8674c4426838e6b50417d36b6ab231 # v5.3.1
