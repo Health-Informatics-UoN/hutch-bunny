@@ -53,7 +53,7 @@ class SQLDialectHandler:
         Raises:
             NotImplementedError: If the database dialect is not supported.
         """
-        if engine.dialect.name == "postgresql":
+        if engine.dialect.name in ["postgresql", "duckdb"]:
             return func.date_part("year", start_date) - year_of_birth
         elif engine.dialect.name == "mssql":
             return func.DATEPART(text("year"), start_date) - year_of_birth

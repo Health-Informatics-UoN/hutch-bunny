@@ -52,6 +52,27 @@ class TestSQLDialectHandler:
             func.date_part("year", start_date) - year_of_birth
         )
 
+    def test_get_year_difference_duckdb(self) -> None:
+        """Test DuckDB dialect returns correct function."""
+        engine = Mock()
+        engine.dialect.name = "duckdb"
+
+        metadata = MetaData()
+        test_table = Table(
+            "test", metadata,
+            Column("start_date", Date),
+            Column("year_of_birth", Date),
+        )
+
+        start_date = test_table.c.start_date
+        year_of_birth = test_table.c.year_of_birth
+
+        result = SQLDialectHandler.get_year_difference(engine, start_date, year_of_birth)
+
+        assert str(result) == str(
+            func.date_part("year", start_date) - year_of_birth
+        )
+
     def test_get_year_difference_mssql(self) -> None:
         """Test MSSQL dialect returns correct function."""
         engine = Mock()
