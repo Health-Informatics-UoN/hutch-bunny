@@ -18,6 +18,7 @@ from sqlalchemy import (
 from hutch_bunny.core.db import BaseDBClient
 from hutch_bunny.core.db.entities import (
     ConditionOccurrence,
+    Death,
     Measurement,
     Observation,
     Person,
@@ -76,7 +77,7 @@ class OMOPRuleQueryBuilder:
     using UNION operations to find all persons matching the specified criteria.
     """
 
-    def __init__(self, db_client: BaseDBClient, include_specimen: bool = False):
+    def __init__(self, db_client: BaseDBClient, include_specimen: bool = False, include_death: bool = False):
         self.db_client = db_client
         self.include_specimen = include_specimen
         self.condition_query: Select[Tuple[int]] = select(ConditionOccurrence.person_id)
@@ -86,6 +87,9 @@ class OMOPRuleQueryBuilder:
         self.procedure_query: Select[Tuple[int]] = select(ProcedureOccurrence.person_id)
         self.specimen_query: Select[Tuple[int]] | None = (
             select(Specimen.person_id) if include_specimen else None
+        )
+        self.death_query: Select[Tuple[int]] | None = (
+            select(Death.person_id) if include_death else None
         )
 
     def add_concept_constraint(self, concept_id: int) -> 'OMOPRuleQueryBuilder':
@@ -119,6 +123,10 @@ class OMOPRuleQueryBuilder:
         if self.specimen_query is not None:
             self.specimen_query = self.specimen_query.where(
                 Specimen.specimen_concept_id == concept_id
+            )
+        if self.death_query is not None:
+            self.death_query = self.death_query.where(
+                Death.cause_concept_id == concept_id
             )
         return self
 
@@ -201,6 +209,14 @@ class OMOPRuleQueryBuilder:
                 self.specimen_query,
                 Specimen.person_id,
                 Specimen.specimen_date,
+                comparator,
+                age_value,
+            )
+        if self.death_query is not None:
+            self.death_query = self._apply_age_constraint_to_table(
+                self.death_query,
+                Death.person_id,
+                Death.death_date,
                 comparator,
                 age_value,
             )
@@ -327,6 +343,10 @@ class OMOPRuleQueryBuilder:
                 self.specimen_query = self.specimen_query.where(
                     Specimen.specimen_date >= relative_date
                 )
+            if self.death_query is not None:
+                self.death_query = self.death_query.where(
+                    Death.death_date >= relative_date
+                )
         else:
             self.measurement_query = self.measurement_query.where(
                 Measurement.measurement_date <= relative_date
@@ -346,6 +366,10 @@ class OMOPRuleQueryBuilder:
             if self.specimen_query is not None:
                 self.specimen_query = self.specimen_query.where(
                     Specimen.specimen_date <= relative_date
+                )
+            if self.death_query is not None:
+                self.death_query = self.death_query.where(
+                    Death.death_date <= relative_date
                 )
         return self
 
@@ -455,6 +479,8 @@ class OMOPRuleQueryBuilder:
         ]
         if self.specimen_query is not None:
             queries.append(self.specimen_query)
+        if self.death_query is not None:
+            queries.append(self.death_query)
 
         return union(*queries)
 

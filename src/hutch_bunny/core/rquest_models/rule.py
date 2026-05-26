@@ -29,6 +29,7 @@ class Rule(BaseModel):
         "Medication",
         "Procedure",
         "Specimen",
+        "Death",
     ]
     """
     Table to search in.

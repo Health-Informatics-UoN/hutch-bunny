@@ -1,0 +1,33 @@
+{
+  "task_id": "job-death-with-condition",
+  "project": "project_id",
+  "owner": "user1",
+  "cohort": {
+    "groups": [
+      {
+        "rules": [
+          {
+            "varname": "OMOP",
+            "varcat": "Death",
+            "type": "TEXT",
+            "oper": "=",
+            "value": ""
+          },
+          {
+            "varname": "OMOP",
+            "varcat": "Condition",
+            "type": "TEXT",
+            "oper": "=",
+            "value": "260139"
+          }
+        ],
+        "rules_oper": "AND"
+      }
+    ],
+    "groups_oper": "OR"
+  },
+  "collection": "collection_id",
+  "protocol_version": "v2",
+  "char_salt": "salt",
+  "uuid": "unique_id"
+}

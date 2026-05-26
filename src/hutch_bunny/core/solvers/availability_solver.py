@@ -179,6 +179,7 @@ class AvailabilitySolver():
         builder = OMOPRuleQueryBuilder(
             self.db_client,
             include_specimen=settings.OMOP_SPECIMEN_ENABLED,
+            include_death=settings.OMOP_DEATH_ENABLED,
         )
 
         if rule.value:
