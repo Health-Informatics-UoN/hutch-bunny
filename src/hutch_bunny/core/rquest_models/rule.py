@@ -30,6 +30,7 @@ class Rule(BaseModel):
         "Procedure",
         "Specimen",
         "Death",
+        "Location",
     ]
     """
     Table to search in.
@@ -80,13 +81,15 @@ class Rule(BaseModel):
     - |10:AGE:Y (less than or equal to 10 years)
     """
 
-    secondary_modifier: list[int] | None = None
+    secondary_modifier: list[int | str] | None = None
     """
     Secondary modifier to use in the search.
 
-    This is used to on the provenance of the data on `ConditionOccurence`.
+    For most varcats: a list of OMOP concept_ids (int) representing the provenance
+    of data on `ConditionOccurrence`, for example `[32020]`.
 
-    A list of concept_ids, for example `[32020]`.
+    For `varcat: "Location"`: a list of location_source_value strings to filter on,
+    for example `["GBR", "UK"]`.
     """
 
     """

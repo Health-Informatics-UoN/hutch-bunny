@@ -64,6 +64,21 @@ class Person(Base):
     )
 
 
+class Location(Base):
+    __tablename__ = "location"
+    location_id = Column(Integer, primary_key=True)
+    address_1 = Column(String(50), nullable=True)
+    address_2 = Column(String(50), nullable=True)
+    city = Column(String(50), nullable=True)
+    state = Column(String(2), nullable=True)
+    zip = Column(String(9), nullable=True)
+    county = Column(String(20), nullable=True)
+    location_source_value = Column(String(50), nullable=True)
+    country_concept_id = Column(Integer, ForeignKey("concept.concept_id"), nullable=True)
+    latitude = Column(Numeric, nullable=True)
+    longitude = Column(Numeric, nullable=True)
+
+
 class Measurement(Base):
     __tablename__ = "measurement"
     measurement_id = Column(Integer, primary_key=True)

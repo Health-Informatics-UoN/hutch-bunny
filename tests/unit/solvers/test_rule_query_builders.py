@@ -502,15 +502,130 @@ class TestOMOPRuleQueryBuilder():
 
         builder.add_concept_constraint(99999)
         builder.add_numeric_range(1.0, 100.0)
-        
+
         result = builder.build()
-        
+
         # Count UNION occurrences (should be 3 for 4 queries)
         query_str = str(result)
         union_count = query_str.count("UNION")
-        
+
         # 4 queries connected by 3 UNIONs
         assert union_count == 4
+
+    def test_death_varcat_only_queries_death_table(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Death")
+
+        query_str = str(builder.build())
+
+        assert "death.person_id" in query_str
+        assert "measurement.person_id" not in query_str
+        assert "observation.person_id" not in query_str
+        assert "condition_occurrence.person_id" not in query_str
+        assert "drug_exposure.person_id" not in query_str
+        assert "procedure_occurrence.person_id" not in query_str
+
+    def test_death_varcat_empty_value_produces_bare_death_select(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Death")
+        # No concept constraint added (empty value case) — no WHERE clause expected
+        query_str = str(builder.build())
+        assert "death.person_id" in query_str
+        assert "WHERE" not in query_str.upper()
+
+    def test_condition_varcat_only_queries_condition_table(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Condition")
+
+        query_str = str(builder.build())
+
+        assert "condition_occurrence.person_id" in query_str
+        assert "measurement.person_id" not in query_str
+        assert "observation.person_id" not in query_str
+        assert "drug_exposure.person_id" not in query_str
+        assert "procedure_occurrence.person_id" not in query_str
+        assert "death.person_id" not in query_str
+
+    def test_death_varcat_overrides_include_death_false(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, include_death=False, varcat="Death")
+
+        query_str = str(builder.build())
+
+        assert "death.person_id" in query_str
+
+    def test_no_varcat_queries_all_standard_tables(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat=None)
+
+        query_str = str(builder.build())
+
+        assert "measurement.person_id" in query_str
+        assert "observation.person_id" in query_str
+        assert "condition_occurrence.person_id" in query_str
+        assert "drug_exposure.person_id" in query_str
+        assert "procedure_occurrence.person_id" in query_str
+
+    def test_location_varcat_produces_person_location_join(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
+
+        query_str = str(builder.build())
+
+        assert "person.person_id" in query_str
+        assert "location" in query_str
+        assert "location_id" in query_str
+        assert "measurement.person_id" not in query_str
+        assert "condition_occurrence.person_id" not in query_str
+        assert "drug_exposure.person_id" not in query_str
+        assert "observation.person_id" not in query_str
+        assert "procedure_occurrence.person_id" not in query_str
+
+    def test_location_varcat_with_source_value_adds_in_clause(self) -> None:
+        from sqlalchemy.dialects import postgresql
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
+
+        builder.add_location_source_value_constraints(["GBR"])
+
+        query_str = str(builder.build().compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True},
+        ))
+        assert "location.location_source_value" in query_str
+        assert "GBR" in query_str
+
+    def test_location_varcat_multiple_source_values_uses_in(self) -> None:
+        from sqlalchemy.dialects import postgresql
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
+
+        builder.add_location_source_value_constraints(["GBR", "UK"])
+
+        query_str = str(builder.build().compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True},
+        ))
+        assert "location.location_source_value" in query_str
+        assert "GBR" in query_str
+        assert "UK" in query_str
+        assert "IN" in query_str.upper()
+
+    def test_location_varcat_empty_value_no_where_clause(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
+        # No constraint added — empty secondary_modifier case
+        query_str = str(builder.build())
+        assert "location" in query_str
+        assert "WHERE" not in query_str.upper()
+
+    def test_no_varcat_does_not_include_location(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat=None)
+
+        query_str = str(builder.build())
+
+        assert "location" not in query_str
 
 
 class TestPersonQueryConstraintBuilder: 

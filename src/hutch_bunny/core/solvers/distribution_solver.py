@@ -11,6 +11,7 @@ from hutch_bunny.core.db.entities import (
     Concept,
     ConditionOccurrence,
     Death,
+    Location,
     Measurement,
     Observation,
     Person,
@@ -262,6 +263,120 @@ class CodeDistributionQuerySolver:
             )
             for i in range(len(counts))
         ]
+
+        tsv_string = convert_rows_to_tsv(self.output_cols, rows)
+        return tsv_string, len(rows)
+
+
+class LocationDistributionQuerySolver:
+    """
+    Solve location distribution queries.
+
+    Groups people by (location.country_concept_id, location.location_source_value),
+    joins the Concept table for country name, and returns a TSV in the same
+    column shape as CodeDistributionQuerySolver.
+    """
+
+    output_cols = [
+        "BIOBANK",
+        "CODE",
+        "COUNT",
+        "DESCRIPTION",
+        "MIN",
+        "Q1",
+        "MEDIAN",
+        "MEAN",
+        "Q3",
+        "MAX",
+        "ALTERNATIVES",
+        "DATASET",
+        "OMOP",
+        "OMOP_DESCR",
+        "CATEGORY",
+    ]
+
+    def __init__(self, db_client: BaseDBClient, query: DistributionQuery) -> None:
+        self.db_client = db_client
+        self.query = query
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(60),
+        before_sleep=before_sleep_log(logger, INFO),
+        after=after_log(logger, INFO),
+    )
+    def solve_query(self, results_modifier: list[ResultModifier]) -> Tuple[str, int]:
+        """Build location distribution table and return as TSV with row count."""
+        low_number: int = next(
+            (
+                item["threshold"] if item["threshold"] is not None else 10
+                for item in results_modifier
+                if item["id"] == "Low Number Suppression"
+            ),
+            10,
+        )
+        rounding: int = next(
+            (
+                item["nearest"] if item["nearest"] is not None else 10
+                for item in results_modifier
+                if item["id"] == "Rounding"
+            ),
+            10,
+        )
+
+        with self.db_client.engine.connect() as con:
+            # Step 1: count distinct persons per (country_concept_id, location_source_value)
+            subq = (
+                select(
+                    Location.country_concept_id.label("country_concept_id"),
+                    Location.location_source_value.label("location_source_value"),
+                    func.count(distinct(Person.person_id)).label("count_agg"),
+                )
+                .join(Person, Person.location_id == Location.location_id)
+                .group_by(Location.country_concept_id, Location.location_source_value)
+                .subquery()
+            )
+
+            # Step 2: LEFT JOIN concept for country name; apply rounding and suppression
+            count_expr = (
+                (func.round(subq.c.count_agg / rounding, 0) * rounding).label("count_agg_rounded")
+                if rounding > 0
+                else subq.c.count_agg
+            )
+            stmnt = (
+                select(
+                    count_expr,
+                    subq.c.country_concept_id,
+                    subq.c.location_source_value,
+                    Concept.concept_name,
+                )
+                .outerjoin(Concept, subq.c.country_concept_id == Concept.concept_id)
+            )
+
+            if low_number > 0:
+                stmnt = stmnt.where(subq.c.count_agg >= low_number)
+
+            log_query(stmnt, self.db_client.engine)
+            res = con.execute(stmnt).fetchall()
+
+        rows = []
+        for row in res:
+            rounded_count, country_concept_id, location_source_value, concept_name = row
+            count_val = apply_filters(int(rounded_count), results_modifier)
+            omop_str = str(country_concept_id) if country_concept_id is not None else ""
+            concept_str = concept_name if concept_name is not None else ""
+            source_val = location_source_value if location_source_value is not None else ""
+            rows.append(
+                CodeDistributionRow(
+                    biobank=self.query.collection,
+                    code=source_val,
+                    count=count_val,
+                    description=concept_str,
+                    omop=omop_str,
+                    omop_descr=concept_str,
+                    category="Location",
+                )
+            )
 
         tsv_string = convert_rows_to_tsv(self.output_cols, rows)
         return tsv_string, len(rows)
