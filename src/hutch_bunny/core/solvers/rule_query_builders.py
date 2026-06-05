@@ -63,7 +63,46 @@ class SQLDialectHandler:
             return func.YEAR(start_date) - year_of_birth
         else:
             raise NotImplementedError("Unsupported database dialect")
-        
+
+    @staticmethod
+    def get_haversine_distance(
+        engine: Engine,
+        center_lat: float,
+        center_lon: float,
+        lat_col: ColumnElement[Any],
+        lon_col: ColumnElement[Any],
+    ) -> ColumnElement[Any]:
+        """
+        Return a SQLAlchemy expression for the haversine distance in metres between
+        a fixed centre point and a pair of lat/lon columns.
+        """
+        R = 6_371_000  # earth radius in metres
+        if engine.dialect.name in ["postgresql", "duckdb"]:
+            dphi = func.radians(lat_col - center_lat) / 2
+            dlam = func.radians(lon_col - center_lon) / 2
+            a = (
+                func.sin(dphi) * func.sin(dphi)
+                + func.cos(func.radians(center_lat))
+                * func.cos(func.radians(lat_col))
+                * func.sin(dlam) * func.sin(dlam)
+            )
+            return 2 * R * func.asin(func.sqrt(a))
+        elif engine.dialect.name == "mssql":
+            dphi = func.RADIANS(lat_col - center_lat) / 2
+            dlam = func.RADIANS(lon_col - center_lon) / 2
+            a = (
+                func.POWER(func.SIN(dphi), 2)
+                + func.COS(func.RADIANS(center_lat))
+                * func.COS(func.RADIANS(lat_col))
+                * func.POWER(func.SIN(dlam), 2)
+            )
+            return 2 * R * func.ASIN(func.SQRT(a))
+        elif engine.dialect.name == "snowflake":
+            # Snowflake's HAVERSINE returns km; convert to metres
+            return func.HAVERSINE(center_lat, center_lon, lat_col, lon_col) * 1000
+        else:
+            raise NotImplementedError("Unsupported database dialect")
+
 
 class OMOPRuleQueryBuilder:
     """
@@ -509,6 +548,29 @@ class OMOPRuleQueryBuilder:
             self.location_query = self.location_query.where(
                 Location.location_source_value.in_(values)
             )
+        return self
+
+    def add_haversine_radius_constraint(
+        self,
+        center_lat: float,
+        center_lon: float,
+        radius_meters: float,
+    ) -> 'OMOPRuleQueryBuilder':
+        """Filter the location query to rows within radius_meters of (center_lat, center_lon)."""
+        if self.location_query is None:
+            return self
+        distance = SQLDialectHandler.get_haversine_distance(
+            self.db_client.engine,
+            center_lat,
+            center_lon,
+            Location.latitude,
+            Location.longitude,
+        )
+        self.location_query = self.location_query.where(
+            Location.latitude.isnot(None),
+            Location.longitude.isnot(None),
+            distance <= radius_meters,
+        )
         return self
 
     def build(self) -> CompoundSelect:

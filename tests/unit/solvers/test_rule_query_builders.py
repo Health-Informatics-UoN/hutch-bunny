@@ -627,6 +627,55 @@ class TestOMOPRuleQueryBuilder():
 
         assert "location" not in query_str
 
+    def test_haversine_radius_constraint_adds_where_clause(self) -> None:
+        """add_haversine_radius_constraint adds distance and NULL guards to location_query."""
+        mock_db_manager = Mock()
+        mock_db_manager.engine.dialect.name = "duckdb"
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
+
+        builder.add_haversine_radius_constraint(51.5074, -0.1278, 5000.0)
+
+        query_str = str(builder.build().compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True},
+        ))
+        assert "latitude" in query_str
+        assert "longitude" in query_str
+        assert "asin" in query_str.lower() or "sin" in query_str.lower()
+
+    def test_haversine_radius_constraint_excludes_null_coords(self) -> None:
+        """add_haversine_radius_constraint adds IS NOT NULL guards for lat and lon."""
+        mock_db_manager = Mock()
+        mock_db_manager.engine.dialect.name = "postgresql"
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
+
+        builder.add_haversine_radius_constraint(0.0, 0.0, 1000.0)
+
+        query_str = str(builder.build())
+        assert "IS NOT NULL" in query_str.upper() or "is not null" in query_str.lower()
+
+    def test_haversine_radius_constraint_noop_when_not_location_varcat(self) -> None:
+        """add_haversine_radius_constraint is a no-op when location_query is None."""
+        mock_db_manager = Mock()
+        mock_db_manager.engine.dialect.name = "postgresql"
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Condition")
+
+        result = builder.add_haversine_radius_constraint(51.0, -0.1, 5000.0)
+
+        assert result is builder  # fluent return
+        assert "location" not in str(builder.build())
+
+    def test_get_haversine_distance_unsupported_dialect_raises(self) -> None:
+        """get_haversine_distance raises NotImplementedError for unsupported dialects."""
+        from hutch_bunny.core.db.entities import Location
+        engine = Mock()
+        engine.dialect.name = "mysql"
+
+        with pytest.raises(NotImplementedError, match="Unsupported database dialect"):
+            SQLDialectHandler.get_haversine_distance(
+                engine, 51.5, -0.1, Location.latitude, Location.longitude
+            )
+
 
 class TestPersonQueryConstraintBuilder: 
     @pytest.fixture

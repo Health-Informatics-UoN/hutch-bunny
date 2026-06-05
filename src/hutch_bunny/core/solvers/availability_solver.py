@@ -210,6 +210,15 @@ class AvailabilitySolver():
             else:
                 builder.add_secondary_modifiers(rule.secondary_modifier)
 
+        if (
+            rule.center_lat is not None
+            and rule.center_lon is not None
+            and rule.geo_radius_meters is not None
+        ):
+            builder.add_haversine_radius_constraint(
+                rule.center_lat, rule.center_lon, rule.geo_radius_meters
+            )
+
         return builder.build()
 
     def _construct_group_query(
