@@ -11,10 +11,12 @@ def test_distribution_query_type_enum() -> None:
     assert DistributionQueryType.DEMOGRAPHICS.value == "DEMOGRAPHICS"
     assert DistributionQueryType.GENERIC.value == "GENERIC"
     assert DistributionQueryType.ICD_MAIN.value == "ICD-MAIN"
+    assert DistributionQueryType.TABLE_COUNTS.value == "TABLE_COUNTS"
 
     # Test file_name property for valid types
     assert DistributionQueryType.DEMOGRAPHICS.file_name == "demographics.distribution"
     assert DistributionQueryType.GENERIC.file_name == "code.distribution"
+    assert DistributionQueryType.TABLE_COUNTS.file_name == "table.counts"
 
     # Test file_name property for invalid type
     with pytest.raises(

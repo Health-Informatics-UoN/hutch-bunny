@@ -1,0 +1,7 @@
+{
+  "code": "TABLE_COUNTS",
+  "analysis": "DISTRIBUTION",
+  "uuid": "unique_id",
+  "collection": "collection_id",
+  "owner": "user_id"
+}

@@ -380,3 +380,64 @@ class LocationDistributionQuerySolver:
 
         tsv_string = convert_rows_to_tsv(self.output_cols, rows)
         return tsv_string, len(rows)
+
+
+class TableCountsRow(BaseModel):
+    biobank: str = Field(alias="BIOBANK")
+    table: str = Field(alias="TABLE")
+    count: int = Field(alias="COUNT")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class TableCountsDistributionQuerySolver:
+    """
+    Solve a TABLE_COUNTS distribution query.
+
+    Returns one row per OMOP table that physically exists in the connected database,
+    with the row count for that table. Tables absent from the database are omitted
+    entirely; a count of 0 means the table exists but contains no rows.
+    """
+
+    OMOP_ENTITIES: list[tuple[str, type]] = [
+        ("concept", Concept),
+        ("person", Person),
+        ("location", Location),
+        ("measurement", Measurement),
+        ("condition_occurrence", ConditionOccurrence),
+        ("observation", Observation),
+        ("procedure_occurrence", ProcedureOccurrence),
+        ("drug_exposure", DrugExposure),
+        ("death", Death),
+        ("specimen", Specimen),
+    ]
+
+    output_cols = ["BIOBANK", "TABLE", "COUNT"]
+
+    def __init__(self, db_client: BaseDBClient, query: DistributionQuery) -> None:
+        self.db_client = db_client
+        self.query = query
+
+    def solve_query(self, results_modifier: list[ResultModifier]) -> Tuple[str, int]:
+        """Count rows in each OMOP table that exists in the connected database.
+
+        Tables not present in the database are skipped. Returns a TSV string and
+        the number of rows (i.e. the number of tables found).
+        """
+        existing = {t.lower() for t in self.db_client.list_tables()}
+        rows: list[TableCountsRow] = []
+
+        with self.db_client.engine.connect() as con:
+            for table_name, entity in self.OMOP_ENTITIES:
+                if table_name not in existing:
+                    continue
+                result = con.execute(select(func.count()).select_from(entity))
+                count = result.scalar() or 0
+                rows.append(
+                    TableCountsRow(
+                        **{"BIOBANK": self.query.collection, "TABLE": table_name, "COUNT": count}
+                    )
+                )
+
+        tsv = convert_rows_to_tsv(self.output_cols, rows)
+        return tsv, len(rows)

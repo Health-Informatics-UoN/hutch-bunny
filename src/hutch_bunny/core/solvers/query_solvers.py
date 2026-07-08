@@ -15,7 +15,7 @@ from hutch_bunny.core.settings import Settings
 from hutch_bunny.core.solvers.demographics_solver import (
     DemographicsDistributionQuerySolver,
 )
-from hutch_bunny.core.solvers.distribution_solver import CodeDistributionQuerySolver, LocationDistributionQuerySolver
+from hutch_bunny.core.solvers.distribution_solver import CodeDistributionQuerySolver, LocationDistributionQuerySolver, TableCountsDistributionQuerySolver
 from hutch_bunny.core.services.metadata_service import MetadataService
 from hutch_bunny.core.telemetry import trace_operation
 from hutch_bunny.core.obfuscation import encode_output
@@ -58,7 +58,7 @@ def solve_availability(
 
 def _get_distribution_solver(
     db_client: BaseDBClient, query: DistributionQuery
-) -> CodeDistributionQuerySolver | DemographicsDistributionQuerySolver | LocationDistributionQuerySolver:
+) -> CodeDistributionQuerySolver | DemographicsDistributionQuerySolver | LocationDistributionQuerySolver | TableCountsDistributionQuerySolver:
     """Return a distribution query solver depending on the query.
     If `query.code` is "GENERIC", return a `CodeDistributionQuerySolver`.
     If `query.code` is "DEMOGRAPHICS", return a `DemographicsDistributionQuerySolver`.
@@ -78,6 +78,8 @@ def _get_distribution_solver(
         return DemographicsDistributionQuerySolver(db_client, query)
     if query.code == DistributionQueryType.LOCATION:
         return LocationDistributionQuerySolver(db_client, query)
+    if query.code == DistributionQueryType.TABLE_COUNTS:
+        return TableCountsDistributionQuerySolver(db_client, query)
     raise NotImplementedError(f"Queries with code: {query.code} are not yet supported.")
 
 
