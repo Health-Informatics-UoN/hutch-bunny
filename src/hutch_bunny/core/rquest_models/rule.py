@@ -29,12 +29,13 @@ class Rule(BaseModel):
         "Medication",
         "Procedure",
         "Specimen",
+        "Location",
     ]
     """
     Table to search in.
     """
 
-    type_: Literal["NUM", "TEXT"] = Field(default="TEXT", alias="type")
+    type_: Literal["NUM", "TEXT", "GEO_RADIUS"] = Field(default="TEXT", alias="type")
     """
     Type of value to search for.
 
@@ -79,13 +80,15 @@ class Rule(BaseModel):
     - |10:AGE:Y (less than or equal to 10 years)
     """
 
-    secondary_modifier: list[int] | None = None
+    secondary_modifier: list[int | str] | None = None
     """
     Secondary modifier to use in the search.
 
-    This is used to on the provenance of the data on `ConditionOccurence`.
+    For most varcats: a list of OMOP concept_ids (int) representing the provenance
+    of data on `ConditionOccurrence`, for example `[32020]`.
 
-    A list of concept_ids, for example `[32020]`.
+    For `varcat: "Location"`: a list of location_source_value strings to filter on,
+    for example `["GBR", "UK"]`.
     """
 
     """
@@ -94,6 +97,11 @@ class Rule(BaseModel):
     raw_range: str | None = None
     min_value: float | None = None
     max_value: float | None = None
+
+    # Parsed geo-radius values (populated when type_ == "GEO_RADIUS")
+    center_lat: float | None = None
+    center_lon: float | None = None
+    geo_radius_meters: float | None = None
 
     # Parsed time values
     time_value: str | None = None
@@ -117,8 +125,21 @@ class Rule(BaseModel):
         Returns:
             None
         """
+        # Parse geo-radius values for GEO_RADIUS type rules
+        if self.type_ == "GEO_RADIUS":
+            raw = self.value
+            self.value = ""  # clear so concept lookups don't try int(value)
+            parts = raw.split("|")
+            if len(parts) == 3:
+                try:
+                    self.center_lat = float(parts[0])
+                    self.center_lon = float(parts[1])
+                    self.geo_radius_meters = float(parts[2])
+                except ValueError:
+                    pass
+
         # Parse numeric values for NUM type rules
-        if self.type_ == "NUM":
+        elif self.type_ == "NUM":
             # For NUM type rules, the value might be in range format (1.0..3.0) 
             # or pipe-separated format (1.0|3.0)
             if ".." in self.value:

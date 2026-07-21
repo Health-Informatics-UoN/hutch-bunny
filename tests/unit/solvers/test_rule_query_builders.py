@@ -450,8 +450,142 @@ class TestOMOPRuleQueryBuilder():
         # 4 queries connected by 3 UNIONs
         assert union_count == 4
 
+    def test_condition_varcat_only_queries_condition_table(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Condition")
 
-class TestPersonQueryConstraintBuilder: 
+        query_str = str(builder.build())
+
+        assert "condition_occurrence.person_id" in query_str
+        assert "measurement.person_id" not in query_str
+        assert "observation.person_id" not in query_str
+        assert "drug_exposure.person_id" not in query_str
+        assert "procedure_occurrence.person_id" not in query_str
+
+    def test_no_varcat_queries_all_standard_tables(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat=None)
+
+        query_str = str(builder.build())
+
+        assert "measurement.person_id" in query_str
+        assert "observation.person_id" in query_str
+        assert "condition_occurrence.person_id" in query_str
+        assert "drug_exposure.person_id" in query_str
+        assert "procedure_occurrence.person_id" in query_str
+
+    def test_location_varcat_produces_person_location_join(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
+
+        query_str = str(builder.build())
+
+        assert "person.person_id" in query_str
+        assert "location" in query_str
+        assert "location_id" in query_str
+        assert "measurement.person_id" not in query_str
+        assert "condition_occurrence.person_id" not in query_str
+        assert "drug_exposure.person_id" not in query_str
+        assert "observation.person_id" not in query_str
+        assert "procedure_occurrence.person_id" not in query_str
+
+    def test_location_varcat_with_source_value_adds_in_clause(self) -> None:
+        from sqlalchemy.dialects import postgresql
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
+
+        builder.add_location_source_value_constraints(["GBR"])
+
+        query_str = str(builder.build().compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True},
+        ))
+        assert "location.location_source_value" in query_str
+        assert "GBR" in query_str
+
+    def test_location_varcat_multiple_source_values_uses_in(self) -> None:
+        from sqlalchemy.dialects import postgresql
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
+
+        builder.add_location_source_value_constraints(["GBR", "UK"])
+
+        query_str = str(builder.build().compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True},
+        ))
+        assert "location.location_source_value" in query_str
+        assert "GBR" in query_str
+        assert "UK" in query_str
+        assert "IN" in query_str.upper()
+
+    def test_location_varcat_empty_value_no_where_clause(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
+        # No constraint added — empty secondary_modifier case
+        query_str = str(builder.build())
+        assert "location" in query_str
+        assert "WHERE" not in query_str.upper()
+
+    def test_no_varcat_does_not_include_location(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat=None)
+
+        query_str = str(builder.build())
+
+        assert "location" not in query_str
+
+    def test_haversine_radius_constraint_adds_where_clause(self) -> None:
+        """add_haversine_radius_constraint adds distance and NULL guards to location_query."""
+        mock_db_manager = Mock()
+        mock_db_manager.engine.dialect.name = "duckdb"
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
+
+        builder.add_haversine_radius_constraint(51.5074, -0.1278, 5000.0)
+
+        query_str = str(builder.build().compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True},
+        ))
+        assert "latitude" in query_str
+        assert "longitude" in query_str
+        assert "asin" in query_str.lower() or "sin" in query_str.lower()
+
+    def test_haversine_radius_constraint_excludes_null_coords(self) -> None:
+        """add_haversine_radius_constraint adds IS NOT NULL guards for lat and lon."""
+        mock_db_manager = Mock()
+        mock_db_manager.engine.dialect.name = "postgresql"
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
+
+        builder.add_haversine_radius_constraint(0.0, 0.0, 1000.0)
+
+        query_str = str(builder.build())
+        assert "IS NOT NULL" in query_str.upper() or "is not null" in query_str.lower()
+
+    def test_haversine_radius_constraint_noop_when_not_location_varcat(self) -> None:
+        """add_haversine_radius_constraint is a no-op when location_query is None."""
+        mock_db_manager = Mock()
+        mock_db_manager.engine.dialect.name = "postgresql"
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Condition")
+
+        result = builder.add_haversine_radius_constraint(51.0, -0.1, 5000.0)
+
+        assert result is builder  # fluent return
+        assert "location" not in str(builder.build())
+
+    def test_get_haversine_distance_unsupported_dialect_raises(self) -> None:
+        """get_haversine_distance raises NotImplementedError for unsupported dialects."""
+        from hutch_bunny.core.db.entities import Location
+        engine = Mock()
+        engine.dialect.name = "mysql"
+
+        with pytest.raises(NotImplementedError, match="Unsupported database dialect"):
+            SQLDialectHandler.get_haversine_distance(
+                engine, 51.5, -0.1, Location.latitude, Location.longitude
+            )
+
+
+class TestPersonQueryConstraintBuilder:
     @pytest.fixture
     def mock_db_manager(self) -> Mock:
         """Create a mock database manager."""

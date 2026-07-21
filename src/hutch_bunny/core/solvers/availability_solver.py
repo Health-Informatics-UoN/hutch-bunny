@@ -179,6 +179,7 @@ class AvailabilitySolver():
         builder = OMOPRuleQueryBuilder(
             self.db_client,
             include_specimen=settings.OMOP_SPECIMEN_ENABLED,
+            varcat=rule.varcat,
         )
 
         if rule.value:
@@ -201,7 +202,23 @@ class AvailabilitySolver():
             builder.add_numeric_range(rule.min_value, rule.max_value)
 
         if rule.secondary_modifier:
-            builder.add_secondary_modifiers(rule.secondary_modifier)
+            if rule.varcat == "Location":
+                builder.add_location_source_value_constraints(
+                    [str(v) for v in rule.secondary_modifier]
+                )
+            else:
+                builder.add_secondary_modifiers(
+                    [int(v) for v in rule.secondary_modifier]
+                )
+
+        if (
+            rule.center_lat is not None
+            and rule.center_lon is not None
+            and rule.geo_radius_meters is not None
+        ):
+            builder.add_haversine_radius_constraint(
+                rule.center_lat, rule.center_lon, rule.geo_radius_meters
+            )
 
         return builder.build()
 
