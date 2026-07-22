@@ -121,9 +121,10 @@ class OMOPRuleQueryBuilder:
         self.include_specimen = include_specimen
         self.include_location = include_location
 
-        # A rule's varcat always names exactly one OMOP domain to search.
         self.condition_query: Select[Tuple[int]] | None = (
-            select(ConditionOccurrence.person_id) if varcat == Varcat.CONDITION else None
+            select(ConditionOccurrence.person_id)
+            if varcat == Varcat.CONDITION
+            else None
         )
         self.drug_query: Select[Tuple[int]] | None = (
             select(DrugExposure.person_id) if varcat == Varcat.DRUG else None
@@ -135,14 +136,15 @@ class OMOPRuleQueryBuilder:
             select(Observation.person_id) if varcat == Varcat.OBSERVATION else None
         )
         self.procedure_query: Select[Tuple[int]] | None = (
-            select(ProcedureOccurrence.person_id) if varcat == Varcat.PROCEDURE else None
+            select(ProcedureOccurrence.person_id)
+            if varcat == Varcat.PROCEDURE
+            else None
         )
         self.specimen_query: Select[Tuple[int]] | None = (
             select(Specimen.person_id)
             if varcat == Varcat.SPECIMEN and include_specimen
             else None
         )
-        # Location is only queried when explicitly targeted; it joins via person.location_id
         self.location_query: Select[Tuple[int]] | None = (
             select(Person.person_id).join(
                 Location, Person.location_id == Location.location_id
