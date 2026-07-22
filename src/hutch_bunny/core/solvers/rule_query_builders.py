@@ -159,6 +159,7 @@ class OMOPRuleQueryBuilder:
 
         Applies WHERE clauses to each table query to filter for records matching
         the specified concept ID in the appropriate concept column for each table.
+        For Location, this filters on `country_concept_id`.
 
         Args:
             concept_id: OMOP concept identifier to filter by.
@@ -189,6 +190,10 @@ class OMOPRuleQueryBuilder:
         if self.specimen_query is not None:
             self.specimen_query = self.specimen_query.where(
                 Specimen.specimen_concept_id == concept_id
+            )
+        if self.location_query is not None:
+            self.location_query = self.location_query.where(
+                Location.country_concept_id == concept_id
             )
         return self
 

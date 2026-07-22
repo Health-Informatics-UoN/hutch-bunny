@@ -53,6 +53,9 @@ class Rule(BaseModel):
     TEXT searches have a OMOP concept_id (for example `8507`)
 
     NUM searches have a range value split by `|` (for example 1.0|3.0)
+
+    For `varcat: "Location"` TEXT searches, the concept_id is matched against
+    `country_concept_id` rather than a table-specific concept column.
     """
 
     time: str | None = None
