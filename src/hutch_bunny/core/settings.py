@@ -48,6 +48,10 @@ class Settings(BaseSettings):
         description="Enable support for querying OMOP specimen table records",
         default=False,
     )
+    OMOP_LOCATION_ENABLED: bool = Field(
+        description="Enable support for querying OMOP location table records",
+        default=False,
+    )
 
     LOGGER_NAME: str = "hutch"
     LOGGER_LEVEL: str = Field(

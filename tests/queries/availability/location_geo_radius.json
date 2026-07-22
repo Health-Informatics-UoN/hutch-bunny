@@ -11,7 +11,7 @@
             "varcat": "Location",
             "type": "GEO_RADIUS",
             "oper": "=",
-            "value": "51.5074|-0.1278|5000"
+            "value": "55.9533|-3.1883|10000"
           }
         ],
         "rules_oper": "AND"

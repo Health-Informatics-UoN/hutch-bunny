@@ -30,6 +30,7 @@ from hutch_bunny.core.rquest_models.group import Group
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.rquest_models.rule import Rule
+from hutch_bunny.core.omop import Varcat
 from hutch_bunny.core.solvers.rule_query_builders import OMOPRuleQueryBuilder, PersonConstraintBuilder
 from hutch_bunny.core.db.utils import log_query
 from hutch_bunny.core.settings import Settings
@@ -162,7 +163,7 @@ class AvailabilitySolver():
 
         for rule in group.rules:
             inclusion_criteria = rule.operator == "="
-            if rule.varcat == "Person":
+            if rule.varcat == Varcat.PERSON:
                 constraints = self.person_constraint_builder.build_constraints(rule, concepts)
                 person_constraints.extend(constraints)
             else:
@@ -179,6 +180,7 @@ class AvailabilitySolver():
         builder = OMOPRuleQueryBuilder(
             self.db_client,
             include_specimen=settings.OMOP_SPECIMEN_ENABLED,
+            include_location=settings.OMOP_LOCATION_ENABLED,
             varcat=rule.varcat,
         )
 
@@ -202,7 +204,7 @@ class AvailabilitySolver():
             builder.add_numeric_range(rule.min_value, rule.max_value)
 
         if rule.secondary_modifier:
-            if rule.varcat == "Location":
+            if rule.varcat == Varcat.LOCATION:
                 builder.add_location_source_value_constraints(
                     [str(v) for v in rule.secondary_modifier]
                 )

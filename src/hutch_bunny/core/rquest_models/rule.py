@@ -2,6 +2,8 @@ import re
 from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
+from hutch_bunny.core.omop import Varcat
+
 
 class Rule(BaseModel):
     """
@@ -20,17 +22,7 @@ class Rule(BaseModel):
     - `OMOP=21490742`: For Measurement searches
     """
 
-    varcat: Literal[
-        "Person",
-        "Condition",
-        "Observation",
-        "Drug",
-        "Measurement",
-        "Medication",
-        "Procedure",
-        "Specimen",
-        "Location",
-    ]
+    varcat: Varcat
     """
     Table to search in.
     """

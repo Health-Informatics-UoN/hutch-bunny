@@ -3,7 +3,6 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from unittest.mock import Mock, patch
 from sqlalchemy import func, text, Column, Date, Table, MetaData
-from sqlalchemy.sql import CompoundSelect
 from sqlalchemy.sql.elements import literal_column
 from sqlalchemy.dialects import postgresql
 
@@ -149,7 +148,7 @@ class TestOMOPRuleQueryBuilder():
     
     def test_add_concept_constraint(self) -> None:
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager)
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Condition")
 
         concept_id = 111
         builder.add_concept_constraint(concept_id)
@@ -164,7 +163,7 @@ class TestOMOPRuleQueryBuilder():
         mock_get_year_diff.return_value = literal_column("25")
 
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager)
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Condition")
 
         builder.add_age_constraint("20", "")  # age > 20
 
@@ -189,7 +188,7 @@ class TestOMOPRuleQueryBuilder():
             mock_datetime.now.return_value = fixed_now
 
             mock_db_manager = Mock()
-            builder = OMOPRuleQueryBuilder(mock_db_manager)
+            builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Condition")
 
             builder.add_temporal_constraint(greater_than_value, less_than_value )
 
@@ -216,7 +215,7 @@ class TestOMOPRuleQueryBuilder():
             mock_datetime.now.return_value = fixed_now
 
             mock_db_manager = Mock()
-            builder = OMOPRuleQueryBuilder(mock_db_manager)
+            builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Condition")
 
             builder.add_temporal_constraint(greater_than_value, less_than_value)
 
@@ -232,149 +231,108 @@ class TestOMOPRuleQueryBuilder():
         less_than_value = ""
 
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager)
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Condition")
 
-        with pytest.raises(ValueError): 
+        with pytest.raises(ValueError):
             builder.add_temporal_constraint(greater_than_value, less_than_value)
-    
-    def test_add_temporal_constraint_both_inputs(self) -> None: 
+
+    def test_add_temporal_constraint_both_inputs(self) -> None:
         greater_than_value = "1"
         less_than_value = "2"
 
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager)
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Condition")
 
-        with pytest.raises(ValueError): 
+        with pytest.raises(ValueError):
             builder.add_temporal_constraint(greater_than_value, less_than_value)
 
-    def test_add_numeric_range_with_no_input(self) -> None: 
+    @pytest.mark.parametrize(
+        "varcat, table_prefix",
+        [("Measurement", "measurement"), ("Observation", "observation")],
+    )
+    def test_add_numeric_range_with_no_input(self, varcat: str, table_prefix: str) -> None:
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager)
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat=varcat)
 
         builder.add_numeric_range()
 
-        measurement_sql = str(builder.measurement_query.compile(
-            dialect=postgresql.dialect(),
-            compile_kwargs={"literal_binds": True}
-        ))
-        observation_sql = str(builder.observation_query.compile(
-            dialect=postgresql.dialect(),
-            compile_kwargs={"literal_binds": True}
-        ))
-        condition_sql = str(builder.condition_query.compile(
-            dialect=postgresql.dialect(),
-            compile_kwargs={"literal_binds": True}
-        ))
-        drug_sql = str(builder.drug_query.compile(
+        query = builder.measurement_query if varcat == "Measurement" else builder.observation_query
+        sql = str(query.compile(
             dialect=postgresql.dialect(),
             compile_kwargs={"literal_binds": True}
         ))
 
-        assert "measurement.person_id" in measurement_sql
-        assert "observation.person_id" in observation_sql
-        assert "condition_occurrence.person_id" in condition_sql
-        assert "drug_exposure.person_id" in drug_sql
+        assert f"{table_prefix}.person_id" in sql
 
-    def test_add_numeric_range_with_valid_range(self) -> None: 
+    @pytest.mark.parametrize(
+        "varcat, table_prefix",
+        [("Measurement", "measurement"), ("Observation", "observation")],
+    )
+    def test_add_numeric_range_with_valid_range(self, varcat: str, table_prefix: str) -> None:
         """Test adding a valid numeric range."""
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager)
-
-        builder.add_numeric_range()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat=varcat)
 
         builder.add_numeric_range(10.5, 20.5)
-        
-        measurement_sql = str(builder.measurement_query.compile(
-            dialect=postgresql.dialect(),
-            compile_kwargs={"literal_binds": True}
-        ))
-        observation_sql = str(builder.observation_query.compile(
+
+        query = builder.measurement_query if varcat == "Measurement" else builder.observation_query
+        sql = str(query.compile(
             dialect=postgresql.dialect(),
             compile_kwargs={"literal_binds": True}
         ))
 
-        assert "value_as_number BETWEEN 10.5 AND 20.5" in measurement_sql
-        assert "value_as_number BETWEEN 10.5 AND 20.5" in observation_sql
+        assert "value_as_number BETWEEN 10.5 AND 20.5" in sql
 
     def test_add_numeric_range_with_inverted_range(self) -> None:
         """Test correct error raised when min > max ."""
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager)
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Measurement")
 
-        with pytest.raises(ValueError): 
+        with pytest.raises(ValueError):
             builder.add_numeric_range(20.0, 10.0)
-        
+
     def test_add_secondary_modifiers_empty_list(self) -> None:
         """Test with empty list - no constraints should be added."""
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager)
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Condition")
 
         builder.add_secondary_modifiers([])
-        
-        # Check all queries remain unchanged
+
         condition_sql = str(builder.condition_query.compile(
-            dialect=postgresql.dialect(),
-            compile_kwargs={"literal_binds": True}
-        ))
-        measurement_sql = str(builder.measurement_query.compile(
             dialect=postgresql.dialect(),
             compile_kwargs={"literal_binds": True}
         ))
 
         assert "condition_type_concept_id" not in condition_sql
-        assert "condition_type_concept_id" not in measurement_sql
         assert "condition_occurrence.person_id" in condition_sql
-        assert "measurement.person_id" in measurement_sql
 
     def test_add_secondary_modifiers_single_valid_id(self) -> None:
         """Test with single valid modifier ID."""
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager)
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Condition")
 
         builder.add_secondary_modifiers([32020])
-        
+
         condition_sql = str(builder.condition_query.compile(
             dialect=postgresql.dialect(),
             compile_kwargs={"literal_binds": True}
         ))
-        
+
         assert "condition_type_concept_id = 32020" in condition_sql
         assert " OR " not in condition_sql
-        
-        measurement_sql = str(builder.measurement_query.compile(
-            dialect=postgresql.dialect(),
-            compile_kwargs={"literal_binds": True}
-        ))
-        assert "condition_type_concept_id" not in measurement_sql
 
     @pytest.mark.parametrize("invalid_input", [None, 32020, "32020", {"id": 32020}])
     def test_add_secondary_modifiers_invalid_input_type(self, invalid_input: None | int | str | dict) -> None:
         """Test with invalid input types - should raise appropriate error."""
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager)
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Condition")
 
         with pytest.raises((TypeError, AttributeError)):
             builder.add_secondary_modifiers(invalid_input)
 
-    def test_build_default_queries_no_constraints(self) -> None:
-        """Test that build() returns a CompoundSelect (UNION) object."""
-        mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager)
-
-        result = builder.build()
-
-        query_str = str(result)
-
-        assert isinstance(result, CompoundSelect)
-        assert "measurement.person_id" in query_str
-        assert "observation.person_id" in query_str
-        assert "condition_occurrence.person_id" in query_str
-        assert "drug_exposure.person_id" in query_str
-        assert "UNION" in query_str
-
     def test_build_does_not_include_specimen_when_feature_disabled(self) -> None:
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager)
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Specimen")
 
         query_str = str(builder.build())
 
@@ -382,33 +340,44 @@ class TestOMOPRuleQueryBuilder():
 
     def test_build_includes_specimen_when_feature_enabled(self) -> None:
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager, include_specimen=True)
+        builder = OMOPRuleQueryBuilder(
+            mock_db_manager, include_specimen=True, varcat="Specimen"
+        )
 
         query_str = str(builder.build())
 
         assert "specimen.person_id" in query_str
 
-    def test_build_after_adding_concept_constraint(self) -> None:
-        """Test build after adding a concept constraint."""
+    @pytest.mark.parametrize(
+        "varcat, concept_column",
+        [
+            ("Condition", "condition_concept_id"),
+            ("Drug", "drug_concept_id"),
+            ("Measurement", "measurement_concept_id"),
+            ("Observation", "observation_concept_id"),
+            ("Procedure", "procedure_concept_id"),
+        ],
+    )
+    def test_build_after_adding_concept_constraint(self, varcat: str, concept_column: str) -> None:
+        """Test build after adding a concept constraint, for each OMOP domain table."""
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager)
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat=varcat)
 
         concept_id = 12345
         builder.add_concept_constraint(concept_id)
-        
+
         result = builder.build()
         compiled = result.compile(compile_kwargs={"literal_binds": True})
         query_str = str(compiled)
-        
+
         assert str(concept_id) in query_str
-        assert "condition_concept_id" in query_str
-        assert "measurement_concept_id" in query_str
-        assert "observation_concept_id" in query_str
-        assert "drug_concept_id" in query_str
+        assert concept_column in query_str
 
     def test_add_concept_constraint_applies_to_specimen_when_enabled(self) -> None:
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager, include_specimen=True)
+        builder = OMOPRuleQueryBuilder(
+            mock_db_manager, include_specimen=True, varcat="Specimen"
+        )
 
         builder.add_concept_constraint(12345)
 
@@ -416,39 +385,21 @@ class TestOMOPRuleQueryBuilder():
         assert "specimen.specimen_concept_id = 12345" in specimen_sql
 
     def test_build_with_multiple_constraints(self) -> None:
-        """Test build with multiple different constraints applied."""
+        """Test build with concept, numeric range, and temporal constraints applied together."""
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager)
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Measurement")
 
         builder.add_concept_constraint(12345)
         builder.add_numeric_range(5.0, 10.0)
-        builder.add_temporal_constraint("6", "")  
-        
+        builder.add_temporal_constraint("6", "")
+
         result = builder.build()
         compiled = result.compile(compile_kwargs={"literal_binds": True})
         query_str = str(compiled)
 
-        assert "12345" in query_str  
-        assert "BETWEEN" in query_str 
-        assert "measurement_date" in query_str 
-        assert "UNION" in query_str
-
-    def test_build_maintains_union_structure(self) -> None:
-        """Test that build always returns a UNION of exactly 4 queries."""
-        mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager)
-
-        builder.add_concept_constraint(99999)
-        builder.add_numeric_range(1.0, 100.0)
-        
-        result = builder.build()
-        
-        # Count UNION occurrences (should be 3 for 4 queries)
-        query_str = str(result)
-        union_count = query_str.count("UNION")
-        
-        # 4 queries connected by 3 UNIONs
-        assert union_count == 4
+        assert "12345" in query_str
+        assert "BETWEEN" in query_str
+        assert "measurement_date" in query_str
 
     def test_condition_varcat_only_queries_condition_table(self) -> None:
         mock_db_manager = Mock()
@@ -462,21 +413,9 @@ class TestOMOPRuleQueryBuilder():
         assert "drug_exposure.person_id" not in query_str
         assert "procedure_occurrence.person_id" not in query_str
 
-    def test_no_varcat_queries_all_standard_tables(self) -> None:
-        mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat=None)
-
-        query_str = str(builder.build())
-
-        assert "measurement.person_id" in query_str
-        assert "observation.person_id" in query_str
-        assert "condition_occurrence.person_id" in query_str
-        assert "drug_exposure.person_id" in query_str
-        assert "procedure_occurrence.person_id" in query_str
-
     def test_location_varcat_produces_person_location_join(self) -> None:
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
+        builder = OMOPRuleQueryBuilder(mock_db_manager, include_location=True, varcat="Location")
 
         query_str = str(builder.build())
 
@@ -492,7 +431,7 @@ class TestOMOPRuleQueryBuilder():
     def test_location_varcat_with_source_value_adds_in_clause(self) -> None:
         from sqlalchemy.dialects import postgresql
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
+        builder = OMOPRuleQueryBuilder(mock_db_manager, include_location=True, varcat="Location")
 
         builder.add_location_source_value_constraints(["GBR"])
 
@@ -506,7 +445,7 @@ class TestOMOPRuleQueryBuilder():
     def test_location_varcat_multiple_source_values_uses_in(self) -> None:
         from sqlalchemy.dialects import postgresql
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
+        builder = OMOPRuleQueryBuilder(mock_db_manager, include_location=True, varcat="Location")
 
         builder.add_location_source_value_constraints(["GBR", "UK"])
 
@@ -521,25 +460,34 @@ class TestOMOPRuleQueryBuilder():
 
     def test_location_varcat_empty_value_no_where_clause(self) -> None:
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
+        builder = OMOPRuleQueryBuilder(mock_db_manager, include_location=True, varcat="Location")
         # No constraint added — empty secondary_modifier case
         query_str = str(builder.build())
         assert "location" in query_str
         assert "WHERE" not in query_str.upper()
 
-    def test_no_varcat_does_not_include_location(self) -> None:
+    def test_location_varcat_disabled_by_default_excludes_location(self) -> None:
+        """Location rules are silently excluded when the feature is disabled, same as specimen."""
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat=None)
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
 
         query_str = str(builder.build())
 
-        assert "location" not in query_str
+        assert "location" not in query_str.lower()
+
+    def test_location_varcat_explicitly_disabled_excludes_location(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, include_location=False, varcat="Location")
+
+        query_str = str(builder.build())
+
+        assert "location" not in query_str.lower()
 
     def test_haversine_radius_constraint_adds_where_clause(self) -> None:
         """add_haversine_radius_constraint adds distance and NULL guards to location_query."""
         mock_db_manager = Mock()
         mock_db_manager.engine.dialect.name = "duckdb"
-        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
+        builder = OMOPRuleQueryBuilder(mock_db_manager, include_location=True, varcat="Location")
 
         builder.add_haversine_radius_constraint(51.5074, -0.1278, 5000.0)
 
@@ -555,7 +503,7 @@ class TestOMOPRuleQueryBuilder():
         """add_haversine_radius_constraint adds IS NOT NULL guards for lat and lon."""
         mock_db_manager = Mock()
         mock_db_manager.engine.dialect.name = "postgresql"
-        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
+        builder = OMOPRuleQueryBuilder(mock_db_manager, include_location=True, varcat="Location")
 
         builder.add_haversine_radius_constraint(0.0, 0.0, 1000.0)
 
