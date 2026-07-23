@@ -102,12 +102,18 @@ class OMOPRuleQueryBuilder:
     Builder for constructing OMOP CDM queries from RQuest availability rules.
 
     This class implements a fluent interface pattern to progressively build
-    complex SQL queries across multiple OMOP tables (Condition, Drug, Measurement,
-    and Observation) based on various constraints including concept IDs, age at
-    event, temporal windows, numeric ranges, and secondary modifiers.
+    a SQL query against the single OMOP table implied by the rule's `varcat`
+    (Condition, Drug, Measurement, Observation, Specimen, Death, Location, ...)
+    based on various constraints including concept IDs, age at event, temporal
+    windows, numeric ranges, and secondary modifiers.
 
-    The builder maintains separate queries for each OMOP table and combines them
-    using UNION operations to find all persons matching the specified criteria.
+    Earlier versions of this builder unioned queries across every clinical
+    table regardless of `varcat`, to guard against vocabulary drift between
+    the querying party and the local CDM. That approach doesn't generalize as
+    more domains are added — some, like Location, have no equivalent
+    per-person clinical event table to union in — and made every rule's query
+    cost scale with the number of domains rather than staying constant. This
+    builder instead trusts `varcat` and targets exactly one table per rule.
     """
 
     def __init__(

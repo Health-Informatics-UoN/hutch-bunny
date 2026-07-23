@@ -12,7 +12,7 @@
             "type": "TEXT",
             "oper": "=",
             "value": "",
-            "secondary_modifier": ["GBR"]
+            "secondary_modifier": ["S01013497"]
           }
         ],
         "rules_oper": "AND"
