@@ -120,7 +120,7 @@ class OMOPRuleQueryBuilder:
     def __init__(
         self,
         db_client: BaseDBClient,
-        varcat: Varcat,
+        varcat: Varcat | None = None,
         include_specimen: bool = False,
         include_location: bool = False,
     ):
