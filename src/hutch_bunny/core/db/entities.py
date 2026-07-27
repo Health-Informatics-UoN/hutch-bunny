@@ -74,11 +74,10 @@ class Location(Base):
     zip = Column(String(9), nullable=True)
     county = Column(String(20), nullable=True)
     location_source_value = Column(String(50), nullable=True)
-    # available in v5.4, not available in v6
+    # the below columns were added in v5.4
     country_concept_id = Column(
         Integer, ForeignKey("concept.concept_id"), nullable=True
     )
-    # lat/long added in v6
     latitude = Column(Numeric, nullable=True)
     longitude = Column(Numeric, nullable=True)
 
