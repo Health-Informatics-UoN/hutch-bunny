@@ -102,18 +102,19 @@ class OMOPRuleQueryBuilder:
     Builder for constructing OMOP CDM queries from RQuest availability rules.
 
     This class implements a fluent interface pattern to progressively build
-    a SQL query against the single OMOP table implied by the rule's `varcat`
-    (Condition, Drug, Measurement, Observation, Specimen, Death, Location, ...)
-    based on various constraints including concept IDs, age at event, temporal
-    windows, numeric ranges, and secondary modifiers.
+    complex SQL queries across multiple OMOP tables (Condition, Drug, Measurement,
+    Observation, and Procedure) based on various constraints including concept IDs,
+    age at event, temporal windows, numeric ranges, and secondary modifiers.
 
-    Earlier versions of this builder unioned queries across every clinical
-    table regardless of `varcat`, to guard against vocabulary drift between
-    the querying party and the local CDM. That approach doesn't generalize as
-    more domains are added — some, like Location, have no equivalent
-    per-person clinical event table to union in — and made every rule's query
-    cost scale with the number of domains rather than staying constant. This
-    builder instead trusts `varcat` and targets exactly one table per rule.
+    The builder maintains separate queries for each OMOP table and combines them
+    using UNION operations to find all persons matching the specified criteria,
+    guarding against vocabulary drift between the querying party and the local
+    CDM. Specimen is unioned in too whenever `include_specimen` is enabled.
+
+    Location is the one exception: it has no equivalent per-person clinical
+    event table to union with the others, so a `varcat` of `Location` bypasses
+    that union entirely and targets the `location` table alone via a join
+    through `person.location_id`.
     """
 
     def __init__(
@@ -126,36 +127,33 @@ class OMOPRuleQueryBuilder:
         self.db_client = db_client
         self.include_specimen = include_specimen
         self.include_location = include_location
+        self.is_location_rule = varcat == Varcat.LOCATION
 
         self.condition_query: Select[Tuple[int]] | None = (
-            select(ConditionOccurrence.person_id)
-            if varcat == Varcat.CONDITION
-            else None
+            None if self.is_location_rule else select(ConditionOccurrence.person_id)
         )
         self.drug_query: Select[Tuple[int]] | None = (
-            select(DrugExposure.person_id) if varcat == Varcat.DRUG else None
+            None if self.is_location_rule else select(DrugExposure.person_id)
         )
         self.measurement_query: Select[Tuple[int]] | None = (
-            select(Measurement.person_id) if varcat == Varcat.MEASUREMENT else None
+            None if self.is_location_rule else select(Measurement.person_id)
         )
         self.observation_query: Select[Tuple[int]] | None = (
-            select(Observation.person_id) if varcat == Varcat.OBSERVATION else None
+            None if self.is_location_rule else select(Observation.person_id)
         )
         self.procedure_query: Select[Tuple[int]] | None = (
-            select(ProcedureOccurrence.person_id)
-            if varcat == Varcat.PROCEDURE
-            else None
+            None if self.is_location_rule else select(ProcedureOccurrence.person_id)
         )
         self.specimen_query: Select[Tuple[int]] | None = (
             select(Specimen.person_id)
-            if varcat == Varcat.SPECIMEN and include_specimen
+            if include_specimen and not self.is_location_rule
             else None
         )
         self.location_query: Select[Tuple[int]] | None = (
             select(Person.person_id).join(
                 Location, Person.location_id == Location.location_id
             )
-            if varcat == Varcat.LOCATION and include_location
+            if self.is_location_rule and include_location
             else None
         )
 
@@ -570,6 +568,10 @@ class OMOPRuleQueryBuilder:
         (measurement, observation, condition, drug) with all applied constraints.
         This returns all unique person_ids that match the criteria in any table.
 
+        For a `Location` rule, this instead returns just the location query
+        (or a stub that contributes no matches, if `OMOP_LOCATION_ENABLED` is
+        off) rather than unioning with the clinical tables above.
+
         Returns:
             CompoundSelect query that unions results from all tables.
 
@@ -577,6 +579,12 @@ class OMOPRuleQueryBuilder:
             The UNION operation automatically deduplicates person_ids that
             appear in multiple tables.
         """
+        if self.is_location_rule:
+            if self.location_query is not None:
+                return union(self.location_query)
+            # OMOP_LOCATION_ENABLED is off - contribute no matches.
+            return union(select(Person.person_id).where(text("1=0")))
+
         queries: list[Select[Tuple[int]]] = [
             q
             for q in [
@@ -590,12 +598,6 @@ class OMOPRuleQueryBuilder:
         ]
         if self.specimen_query is not None:
             queries.append(self.specimen_query)
-        if self.location_query is not None:
-            queries.append(self.location_query)
-
-        if not queries:
-            # e.g. a Location rule while OMOP_LOCATION_ENABLED is off - contribute no matches.
-            queries.append(select(Person.person_id).where(text("1=0")))
 
         return union(*queries)
 

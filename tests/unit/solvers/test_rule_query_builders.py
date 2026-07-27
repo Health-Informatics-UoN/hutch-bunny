@@ -3,6 +3,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from unittest.mock import Mock, patch
 from sqlalchemy import func, text, Column, Date, Table, MetaData
+from sqlalchemy.sql import CompoundSelect
 from sqlalchemy.sql.elements import literal_column
 from sqlalchemy.dialects import postgresql
 
@@ -246,42 +247,54 @@ class TestOMOPRuleQueryBuilder():
         with pytest.raises(ValueError):
             builder.add_temporal_constraint(greater_than_value, less_than_value)
 
-    @pytest.mark.parametrize(
-        "varcat, table_prefix",
-        [("Measurement", "measurement"), ("Observation", "observation")],
-    )
-    def test_add_numeric_range_with_no_input(self, varcat: str, table_prefix: str) -> None:
+    def test_add_numeric_range_with_no_input(self) -> None:
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat=varcat)
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Measurement")
 
         builder.add_numeric_range()
 
-        query = builder.measurement_query if varcat == "Measurement" else builder.observation_query
-        sql = str(query.compile(
+        measurement_sql = str(builder.measurement_query.compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True}
+        ))
+        observation_sql = str(builder.observation_query.compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True}
+        ))
+        condition_sql = str(builder.condition_query.compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True}
+        ))
+        drug_sql = str(builder.drug_query.compile(
             dialect=postgresql.dialect(),
             compile_kwargs={"literal_binds": True}
         ))
 
-        assert f"{table_prefix}.person_id" in sql
+        assert "measurement.person_id" in measurement_sql
+        assert "observation.person_id" in observation_sql
+        assert "condition_occurrence.person_id" in condition_sql
+        assert "drug_exposure.person_id" in drug_sql
 
-    @pytest.mark.parametrize(
-        "varcat, table_prefix",
-        [("Measurement", "measurement"), ("Observation", "observation")],
-    )
-    def test_add_numeric_range_with_valid_range(self, varcat: str, table_prefix: str) -> None:
+    def test_add_numeric_range_with_valid_range(self) -> None:
         """Test adding a valid numeric range."""
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat=varcat)
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Measurement")
+
+        builder.add_numeric_range()
 
         builder.add_numeric_range(10.5, 20.5)
 
-        query = builder.measurement_query if varcat == "Measurement" else builder.observation_query
-        sql = str(query.compile(
+        measurement_sql = str(builder.measurement_query.compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True}
+        ))
+        observation_sql = str(builder.observation_query.compile(
             dialect=postgresql.dialect(),
             compile_kwargs={"literal_binds": True}
         ))
 
-        assert "value_as_number BETWEEN 10.5 AND 20.5" in sql
+        assert "value_as_number BETWEEN 10.5 AND 20.5" in measurement_sql
+        assert "value_as_number BETWEEN 10.5 AND 20.5" in observation_sql
 
     def test_add_numeric_range_with_inverted_range(self) -> None:
         """Test correct error raised when min > max ."""
@@ -298,13 +311,20 @@ class TestOMOPRuleQueryBuilder():
 
         builder.add_secondary_modifiers([])
 
+        # Check all queries remain unchanged
         condition_sql = str(builder.condition_query.compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True}
+        ))
+        measurement_sql = str(builder.measurement_query.compile(
             dialect=postgresql.dialect(),
             compile_kwargs={"literal_binds": True}
         ))
 
         assert "condition_type_concept_id" not in condition_sql
+        assert "condition_type_concept_id" not in measurement_sql
         assert "condition_occurrence.person_id" in condition_sql
+        assert "measurement.person_id" in measurement_sql
 
     def test_add_secondary_modifiers_single_valid_id(self) -> None:
         """Test with single valid modifier ID."""
@@ -321,6 +341,12 @@ class TestOMOPRuleQueryBuilder():
         assert "condition_type_concept_id = 32020" in condition_sql
         assert " OR " not in condition_sql
 
+        measurement_sql = str(builder.measurement_query.compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True}
+        ))
+        assert "condition_type_concept_id" not in measurement_sql
+
     @pytest.mark.parametrize("invalid_input", [None, 32020, "32020", {"id": 32020}])
     def test_add_secondary_modifiers_invalid_input_type(self, invalid_input: None | int | str | dict) -> None:
         """Test with invalid input types - should raise appropriate error."""
@@ -329,6 +355,22 @@ class TestOMOPRuleQueryBuilder():
 
         with pytest.raises((TypeError, AttributeError)):
             builder.add_secondary_modifiers(invalid_input)
+
+    def test_build_default_queries_no_constraints(self) -> None:
+        """Test that build() returns a CompoundSelect (UNION) object."""
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Condition")
+
+        result = builder.build()
+
+        query_str = str(result)
+
+        assert isinstance(result, CompoundSelect)
+        assert "measurement.person_id" in query_str
+        assert "observation.person_id" in query_str
+        assert "condition_occurrence.person_id" in query_str
+        assert "drug_exposure.person_id" in query_str
+        assert "UNION" in query_str
 
     def test_build_does_not_include_specimen_when_feature_disabled(self) -> None:
         mock_db_manager = Mock()
@@ -348,20 +390,10 @@ class TestOMOPRuleQueryBuilder():
 
         assert "specimen.person_id" in query_str
 
-    @pytest.mark.parametrize(
-        "varcat, concept_column",
-        [
-            ("Condition", "condition_concept_id"),
-            ("Drug", "drug_concept_id"),
-            ("Measurement", "measurement_concept_id"),
-            ("Observation", "observation_concept_id"),
-            ("Procedure", "procedure_concept_id"),
-        ],
-    )
-    def test_build_after_adding_concept_constraint(self, varcat: str, concept_column: str) -> None:
-        """Test build after adding a concept constraint, for each OMOP domain table."""
+    def test_build_after_adding_concept_constraint(self) -> None:
+        """Test build after adding a concept constraint."""
         mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat=varcat)
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Condition")
 
         concept_id = 12345
         builder.add_concept_constraint(concept_id)
@@ -371,7 +403,10 @@ class TestOMOPRuleQueryBuilder():
         query_str = str(compiled)
 
         assert str(concept_id) in query_str
-        assert concept_column in query_str
+        assert "condition_concept_id" in query_str
+        assert "measurement_concept_id" in query_str
+        assert "observation_concept_id" in query_str
+        assert "drug_concept_id" in query_str
 
     def test_add_concept_constraint_applies_to_specimen_when_enabled(self) -> None:
         mock_db_manager = Mock()
@@ -401,17 +436,22 @@ class TestOMOPRuleQueryBuilder():
         assert "BETWEEN" in query_str
         assert "measurement_date" in query_str
 
-    def test_condition_varcat_only_queries_condition_table(self) -> None:
+    def test_build_maintains_union_structure(self) -> None:
+        """Test that build always returns a UNION of exactly 5 queries."""
         mock_db_manager = Mock()
         builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Condition")
 
-        query_str = str(builder.build())
+        builder.add_concept_constraint(99999)
+        builder.add_numeric_range(1.0, 100.0)
 
-        assert "condition_occurrence.person_id" in query_str
-        assert "measurement.person_id" not in query_str
-        assert "observation.person_id" not in query_str
-        assert "drug_exposure.person_id" not in query_str
-        assert "procedure_occurrence.person_id" not in query_str
+        result = builder.build()
+
+        # Count UNION occurrences (should be 4 for 5 queries)
+        query_str = str(result)
+        union_count = query_str.count("UNION")
+
+        # 5 queries connected by 4 UNIONs
+        assert union_count == 4
 
     def test_location_varcat_produces_person_location_join(self) -> None:
         mock_db_manager = Mock()
