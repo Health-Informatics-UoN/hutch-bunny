@@ -129,25 +129,13 @@ class OMOPRuleQueryBuilder:
         self.include_location = include_location
         self.is_location_rule = varcat == Varcat.LOCATION
 
-        self.condition_query: Select[Tuple[int]] | None = (
-            None if self.is_location_rule else select(ConditionOccurrence.person_id)
-        )
-        self.drug_query: Select[Tuple[int]] | None = (
-            None if self.is_location_rule else select(DrugExposure.person_id)
-        )
-        self.measurement_query: Select[Tuple[int]] | None = (
-            None if self.is_location_rule else select(Measurement.person_id)
-        )
-        self.observation_query: Select[Tuple[int]] | None = (
-            None if self.is_location_rule else select(Observation.person_id)
-        )
-        self.procedure_query: Select[Tuple[int]] | None = (
-            None if self.is_location_rule else select(ProcedureOccurrence.person_id)
-        )
+        self.condition_query: Select[Tuple[int]] = select(ConditionOccurrence.person_id)
+        self.drug_query: Select[Tuple[int]] = select(DrugExposure.person_id)
+        self.measurement_query: Select[Tuple[int]] = select(Measurement.person_id)
+        self.observation_query: Select[Tuple[int]] = select(Observation.person_id)
+        self.procedure_query: Select[Tuple[int]] = select(ProcedureOccurrence.person_id)
         self.specimen_query: Select[Tuple[int]] | None = (
-            select(Specimen.person_id)
-            if include_specimen and not self.is_location_rule
-            else None
+            select(Specimen.person_id) if include_specimen else None
         )
         self.location_query: Select[Tuple[int]] | None = (
             select(Person.person_id).join(
@@ -171,26 +159,21 @@ class OMOPRuleQueryBuilder:
         Returns:
             Self for method chaining.
         """
-        if self.condition_query is not None:
-            self.condition_query = self.condition_query.where(
-                ConditionOccurrence.condition_concept_id == concept_id
-            )
-        if self.drug_query is not None:
-            self.drug_query = self.drug_query.where(
-                DrugExposure.drug_concept_id == concept_id
-            )
-        if self.measurement_query is not None:
-            self.measurement_query = self.measurement_query.where(
-                Measurement.measurement_concept_id == concept_id
-            )
-        if self.observation_query is not None:
-            self.observation_query = self.observation_query.where(
-                Observation.observation_concept_id == concept_id
-            )
-        if self.procedure_query is not None:
-            self.procedure_query = self.procedure_query.where(
-                ProcedureOccurrence.procedure_concept_id == concept_id
-            )
+        self.condition_query = self.condition_query.where(
+            ConditionOccurrence.condition_concept_id == concept_id
+        )
+        self.drug_query = self.drug_query.where(
+            DrugExposure.drug_concept_id == concept_id
+        )
+        self.measurement_query = self.measurement_query.where(
+            Measurement.measurement_concept_id == concept_id
+        )
+        self.observation_query = self.observation_query.where(
+            Observation.observation_concept_id == concept_id
+        )
+        self.procedure_query = self.procedure_query.where(
+            ProcedureOccurrence.procedure_concept_id == concept_id
+        )
         if self.specimen_query is not None:
             self.specimen_query = self.specimen_query.where(
                 Specimen.specimen_concept_id == concept_id
@@ -240,46 +223,41 @@ class OMOPRuleQueryBuilder:
                 f"Age constraint with both boundaries not implemented: {greater_than_value}|{less_than_value}"
             )
 
-        if self.condition_query is not None:
-            self.condition_query = self._apply_age_constraint_to_table(
-                self.condition_query,
-                ConditionOccurrence.person_id,
-                ConditionOccurrence.condition_start_date,
-                comparator,
-                age_value,
-            )
-        if self.drug_query is not None:
-            self.drug_query = self._apply_age_constraint_to_table(
-                self.drug_query,
-                DrugExposure.person_id,
-                DrugExposure.drug_exposure_start_date,
-                comparator,
-                age_value,
-            )
-        if self.measurement_query is not None:
-            self.measurement_query = self._apply_age_constraint_to_table(
-                self.measurement_query,
-                Measurement.person_id,
-                Measurement.measurement_date,
-                comparator,
-                age_value,
-            )
-        if self.observation_query is not None:
-            self.observation_query = self._apply_age_constraint_to_table(
-                self.observation_query,
-                Observation.person_id,
-                Observation.observation_date,
-                comparator,
-                age_value,
-            )
-        if self.procedure_query is not None:
-            self.procedure_query = self._apply_age_constraint_to_table(
-                self.procedure_query,
-                ProcedureOccurrence.person_id,
-                ProcedureOccurrence.procedure_date,
-                comparator,
-                age_value,
-            )
+        self.condition_query = self._apply_age_constraint_to_table(
+            self.condition_query,
+            ConditionOccurrence.person_id,
+            ConditionOccurrence.condition_start_date,
+            comparator,
+            age_value,
+        )
+        self.drug_query = self._apply_age_constraint_to_table(
+            self.drug_query,
+            DrugExposure.person_id,
+            DrugExposure.drug_exposure_start_date,
+            comparator,
+            age_value,
+        )
+        self.measurement_query = self._apply_age_constraint_to_table(
+            self.measurement_query,
+            Measurement.person_id,
+            Measurement.measurement_date,
+            comparator,
+            age_value,
+        )
+        self.observation_query = self._apply_age_constraint_to_table(
+            self.observation_query,
+            Observation.person_id,
+            Observation.observation_date,
+            comparator,
+            age_value,
+        )
+        self.procedure_query = self._apply_age_constraint_to_table(
+            self.procedure_query,
+            ProcedureOccurrence.person_id,
+            ProcedureOccurrence.procedure_date,
+            comparator,
+            age_value,
+        )
         if self.specimen_query is not None:
             self.specimen_query = self._apply_age_constraint_to_table(
                 self.specimen_query,
@@ -387,51 +365,41 @@ class OMOPRuleQueryBuilder:
         # specified a search that was less than X months ago, i.e. <=6 months. The relative date will have been calculated
         # as today's date minus six months, therefore, the search is for any event that occurred after the relative date.
         if greater_than_time == "":
-            if self.measurement_query is not None:
-                self.measurement_query = self.measurement_query.where(
-                    Measurement.measurement_date >= relative_date
-                )
-            if self.observation_query is not None:
-                self.observation_query = self.observation_query.where(
-                    Observation.observation_date >= relative_date
-                )
-            if self.condition_query is not None:
-                self.condition_query = self.condition_query.where(
-                    ConditionOccurrence.condition_start_date >= relative_date
-                )
-            if self.drug_query is not None:
-                self.drug_query = self.drug_query.where(
-                    DrugExposure.drug_exposure_start_date >= relative_date
-                )
-            if self.procedure_query is not None:
-                self.procedure_query = self.procedure_query.where(
-                    ProcedureOccurrence.procedure_date >= relative_date
-                )
+            self.measurement_query = self.measurement_query.where(
+                Measurement.measurement_date >= relative_date
+            )
+            self.observation_query = self.observation_query.where(
+                Observation.observation_date >= relative_date
+            )
+            self.condition_query = self.condition_query.where(
+                ConditionOccurrence.condition_start_date >= relative_date
+            )
+            self.drug_query = self.drug_query.where(
+                DrugExposure.drug_exposure_start_date >= relative_date
+            )
+            self.procedure_query = self.procedure_query.where(
+                ProcedureOccurrence.procedure_date >= relative_date
+            )
             if self.specimen_query is not None:
                 self.specimen_query = self.specimen_query.where(
                     Specimen.specimen_date >= relative_date
                 )
         else:
-            if self.measurement_query is not None:
-                self.measurement_query = self.measurement_query.where(
-                    Measurement.measurement_date <= relative_date
-                )
-            if self.observation_query is not None:
-                self.observation_query = self.observation_query.where(
-                    Observation.observation_date <= relative_date
-                )
-            if self.condition_query is not None:
-                self.condition_query = self.condition_query.where(
-                    ConditionOccurrence.condition_start_date <= relative_date
-                )
-            if self.drug_query is not None:
-                self.drug_query = self.drug_query.where(
-                    DrugExposure.drug_exposure_start_date <= relative_date
-                )
-            if self.procedure_query is not None:
-                self.procedure_query = self.procedure_query.where(
-                    ProcedureOccurrence.procedure_date <= relative_date
-                )
+            self.measurement_query = self.measurement_query.where(
+                Measurement.measurement_date <= relative_date
+            )
+            self.observation_query = self.observation_query.where(
+                Observation.observation_date <= relative_date
+            )
+            self.condition_query = self.condition_query.where(
+                ConditionOccurrence.condition_start_date <= relative_date
+            )
+            self.drug_query = self.drug_query.where(
+                DrugExposure.drug_exposure_start_date <= relative_date
+            )
+            self.procedure_query = self.procedure_query.where(
+                ProcedureOccurrence.procedure_date <= relative_date
+            )
             if self.specimen_query is not None:
                 self.specimen_query = self.specimen_query.where(
                     Specimen.specimen_date <= relative_date
@@ -475,14 +443,12 @@ class OMOPRuleQueryBuilder:
                 f"Got min_value={min_val}, max_value={max_val}"
             )
 
-        if self.measurement_query is not None:
-            self.measurement_query = self.measurement_query.where(
-                Measurement.value_as_number.between(min_val, max_val)
-            )
-        if self.observation_query is not None:
-            self.observation_query = self.observation_query.where(
-                Observation.value_as_number.between(min_val, max_val)
-            )
+        self.measurement_query = self.measurement_query.where(
+            Measurement.value_as_number.between(min_val, max_val)
+        )
+        self.observation_query = self.observation_query.where(
+            Observation.value_as_number.between(min_val, max_val)
+        )
 
         return self
 
@@ -553,7 +519,7 @@ class OMOPRuleQueryBuilder:
             if modifier_id
         ]
 
-        if modifier_constraints and self.condition_query is not None:
+        if modifier_constraints:
             self.condition_query = self.condition_query.where(
                 or_(*modifier_constraints)
             )
@@ -586,15 +552,11 @@ class OMOPRuleQueryBuilder:
             return union(select(Person.person_id).where(text("1=0")))
 
         queries: list[Select[Tuple[int]]] = [
-            q
-            for q in [
-                self.measurement_query,
-                self.observation_query,
-                self.condition_query,
-                self.drug_query,
-                self.procedure_query,
-            ]
-            if q is not None
+            self.measurement_query,
+            self.observation_query,
+            self.condition_query,
+            self.drug_query,
+            self.procedure_query,
         ]
         if self.specimen_query is not None:
             queries.append(self.specimen_query)
