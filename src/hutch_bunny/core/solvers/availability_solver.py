@@ -204,14 +204,7 @@ class AvailabilitySolver():
             builder.add_numeric_range(rule.min_value, rule.max_value)
 
         if rule.secondary_modifier:
-            if rule.varcat == Varcat.LOCATION:
-                builder.add_location_source_value_constraints(
-                    [str(v) for v in rule.secondary_modifier]
-                )
-            else:
-                builder.add_secondary_modifiers(
-                    [int(v) for v in rule.secondary_modifier]
-                )
+            builder.add_secondary_modifiers(rule.secondary_modifier)
 
         if (
             rule.center_lat is not None

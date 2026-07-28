@@ -160,8 +160,7 @@ def test_rule_geo_radius_invalid_value_leaves_fields_none() -> None:
 
 def test_rule_text_location_unaffected() -> None:
     """TEXT Location rules still work and do not populate geo fields."""
-    rule = Rule(varcat="Location", type_="TEXT", value="", secondary_modifier=["GBR"])
+    rule = Rule(varcat="Location", type_="TEXT", value="4330435")
     assert rule.center_lat is None
     assert rule.center_lon is None
     assert rule.geo_radius_meters is None
-    assert rule.secondary_modifier == ["GBR"]

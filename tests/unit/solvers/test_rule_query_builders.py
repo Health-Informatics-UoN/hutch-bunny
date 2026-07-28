@@ -465,46 +465,6 @@ class TestOMOPRuleQueryBuilder():
         assert "observation.person_id" not in query_str
         assert "procedure_occurrence.person_id" not in query_str
 
-    def test_location_varcat_concept_constraint_filters_country(self) -> None:
-        mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager, include_location=True, varcat="Location")
-
-        builder.add_concept_constraint(4330435)
-
-        query_str = str(builder.build().compile(
-            dialect=postgresql.dialect(),
-            compile_kwargs={"literal_binds": True},
-        ))
-        assert "location.country_concept_id = 4330435" in query_str
-
-    def test_location_varcat_with_source_value_adds_in_clause(self) -> None:
-        mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager, include_location=True, varcat="Location")
-
-        builder.add_location_source_value_constraints(["GBR"])
-
-        query_str = str(builder.build().compile(
-            dialect=postgresql.dialect(),
-            compile_kwargs={"literal_binds": True},
-        ))
-        assert "location.location_source_value" in query_str
-        assert "GBR" in query_str
-
-    def test_location_varcat_multiple_source_values_uses_in(self) -> None:
-        mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager, include_location=True, varcat="Location")
-
-        builder.add_location_source_value_constraints(["GBR", "UK"])
-
-        query_str = str(builder.build().compile(
-            dialect=postgresql.dialect(),
-            compile_kwargs={"literal_binds": True},
-        ))
-        assert "location.location_source_value" in query_str
-        assert "GBR" in query_str
-        assert "UK" in query_str
-        assert "IN" in query_str.upper()
-
     def test_location_varcat_empty_value_no_where_clause(self) -> None:
         mock_db_manager = Mock()
         builder = OMOPRuleQueryBuilder(mock_db_manager, include_location=True, varcat="Location")

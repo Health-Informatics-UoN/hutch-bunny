@@ -151,7 +151,6 @@ class OMOPRuleQueryBuilder:
 
         Applies WHERE clauses to each table query to filter for records matching
         the specified concept ID in the appropriate concept column for each table.
-        For Location, this filters on `country_concept_id`.
 
         Args:
             concept_id: OMOP concept identifier to filter by.
@@ -177,10 +176,6 @@ class OMOPRuleQueryBuilder:
         if self.specimen_query is not None:
             self.specimen_query = self.specimen_query.where(
                 Specimen.specimen_concept_id == concept_id
-            )
-        if self.location_query is not None:
-            self.location_query = self.location_query.where(
-                Location.country_concept_id == concept_id
             )
         return self
 
@@ -450,16 +445,6 @@ class OMOPRuleQueryBuilder:
             Observation.value_as_number.between(min_val, max_val)
         )
 
-        return self
-
-    def add_location_source_value_constraints(
-        self, values: list[str]
-    ) -> "OMOPRuleQueryBuilder":
-        """Filter the location query to rows where location_source_value is in the given list."""
-        if self.location_query is not None and values:
-            self.location_query = self.location_query.where(
-                Location.location_source_value.in_(values)
-            )
         return self
 
     def add_haversine_radius_constraint(
