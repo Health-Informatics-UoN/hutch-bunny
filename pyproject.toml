@@ -1,6 +1,6 @@
 [project]
 name = "hutch-bunny"
-version = "1.7.0"
+dynamic = ["version"]
 description = "A Cohort Discovery Task API worker"
 license = { text = "MIT License" }
 readme = "README.md"
@@ -45,8 +45,11 @@ bunny = "hutch_bunny.cli:main"
 bunny-daemon = "hutch_bunny.daemon:main"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
 
 [dependency-groups]
 dev = [

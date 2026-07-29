@@ -2,6 +2,11 @@
 FROM python:3.13-slim AS builder
 COPY --from=ghcr.io/astral-sh/uv:0.6.9 /uv /uvx /bin/
 
+# Git is required for hatch-vcs / setuptools-scm to resolve the package version
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git && \
+    rm -rf /var/lib/apt/lists/*
+
 # Change the working directory to the `app` directory
 WORKDIR /app
 
