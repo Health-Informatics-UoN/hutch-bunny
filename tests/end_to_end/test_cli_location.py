@@ -63,13 +63,8 @@ def test_cli_location_disabled_returns_no_matches(json_file_path: str) -> None:
 @pytest.mark.parametrize(
     "json_file_path, expected_count",
     [
-        # NOTE: expected_count is 0 because the synthetic OMOP dataset loaded
-        # by omop-lite in CI/dev does not currently populate the `location`
-        # table or set person.location_id (LOCATION.csv is missing from the
-        # synthetic data set). This asserts the query runs cleanly
-        # end-to-end; update expected_count once omop-lite ships synthetic
-        # location data.
-        ("tests/queries/availability/location_geo_radius.json", 0),
+        # 391 persons fall within the 10km Edinburgh radius in the omop-lite >=0.7.0 synthetic data.
+        ("tests/queries/availability/location_geo_radius.json", 391),
     ],
 )
 def test_cli_location_enabled(json_file_path: str, expected_count: int) -> None:
