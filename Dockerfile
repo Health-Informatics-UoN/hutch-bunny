@@ -1,6 +1,6 @@
 # Install uv
 FROM python:3.13-slim AS builder
-COPY --from=ghcr.io/astral-sh/uv:0.6.9 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.12.0 /uv /uvx /bin/
 
 # Git is required for hatch-vcs / setuptools-scm to resolve the package version
 RUN apt-get update && \
