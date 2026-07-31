@@ -2,7 +2,7 @@
 
 Thanks for your interest in contributing to Bunny!
 
-Please find general guidance to contributing to Hutch in our [documentation](https://health-informatics-uon.github.io/hutch/contributing).
+Please find general guidance to contributing to Hutch in our [documentation](https://hutch.health/contributing).
 
 This page covers everything specific to contributing code to Bunny.
 
