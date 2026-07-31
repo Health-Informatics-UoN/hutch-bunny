@@ -15,21 +15,7 @@ This page covers everything specific to contributing code to Bunny.
 
 ## Development setup
 
-Bunny targets **Python 3.13+** (see [`.python-version`](.python-version)) and uses [`uv`](https://docs.astral.sh/uv/) for dependency management:
-
-```bash
-uv sync --frozen --dev
-```
-
-For the full setup guide — configuring a `.env`, connecting to a database, and running the daemon — see the [developer setup guide](https://hutch.health/bunny/developers/setup). For a tour of the codebase (entry points, query execution flow, solvers, DB layer), see [`CLAUDE.md`](CLAUDE.md).
-
-To run Bunny end-to-end against a local OMOP database with synthetic data (Postgres + [Relay](https://github.com/Health-Informatics-UoN/hutch-relay)), use the provided Docker Compose stack:
-
-```bash
-docker compose -f dev.compose.yml up
-```
-
-Some database backends need system libraries that `uv sync` doesn't install — SQL Server support (`pyodbc`/`pymssql`) needs `unixodbc` and the Microsoft ODBC driver, for example (see the `Dockerfile` for the exact packages). You only need these if you're developing against that specific backend locally.
+See the [developer setup guide](https://hutch.health/bunny/developers/setup).
 
 ## Pre-commit hooks
 
@@ -38,8 +24,6 @@ This repo uses [pre-commit](https://pre-commit.com/) to run Ruff (lint + format)
 ```bash
 uv run pre-commit install
 ```
-
-Please make sure these pass before pushing.
 
 ## Code style & type checking
 
@@ -85,3 +69,4 @@ New features and bug fixes should come with tests at the appropriate level: `uni
 ## Releases
 
 Releases are automated with `semantic-release` based on Conventional Commit PR titles merged to `main`: a `fix:` triggers a patch release, `feat:` a minor release, and a breaking change (`!` or a `BREAKING CHANGE:` footer) a major release. This also determines the container image tags published to `ghcr.io/hutch/bunny`.
+
