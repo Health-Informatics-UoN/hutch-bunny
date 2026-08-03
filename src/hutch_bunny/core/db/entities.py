@@ -64,6 +64,24 @@ class Person(Base):
     )
 
 
+class Location(Base):
+    __tablename__ = "location"
+    location_id = Column(Integer, primary_key=True)
+    address_1 = Column(String(50), nullable=True)
+    address_2 = Column(String(50), nullable=True)
+    city = Column(String(50), nullable=True)
+    state = Column(String(2), nullable=True)
+    zip = Column(String(9), nullable=True)
+    county = Column(String(20), nullable=True)
+    location_source_value = Column(String(50), nullable=True)
+    # the below columns were added in v5.4
+    country_concept_id = Column(
+        Integer, ForeignKey("concept.concept_id"), nullable=True
+    )
+    latitude = Column(Numeric, nullable=True)
+    longitude = Column(Numeric, nullable=True)
+
+
 class Measurement(Base):
     __tablename__ = "measurement"
     measurement_id = Column(Integer, primary_key=True)
@@ -233,17 +251,24 @@ class Specimen(Base):
     __tablename__ = "specimen"
     specimen_id = Column(Integer, primary_key=True)
     person_id = Column(Integer, ForeignKey("person.person_id"), nullable=False)
-    specimen_concept_id = Column(Integer, ForeignKey("concept.concept_id"), nullable=False)
-    specimen_type_concept_id = Column(Integer, ForeignKey("concept.concept_id"), nullable=False)
+    specimen_concept_id = Column(
+        Integer, ForeignKey("concept.concept_id"), nullable=False
+    )
+    specimen_type_concept_id = Column(
+        Integer, ForeignKey("concept.concept_id"), nullable=False
+    )
     specimen_date = Column(Date, nullable=False)
     specimen_datetime = Column(DateTime, nullable=True)
     quantity = Column(Numeric, nullable=True)
     unit_concept_id = Column(Integer, ForeignKey("concept.concept_id"), nullable=True)
-    anatomic_site_concept_id = Column(Integer, ForeignKey("concept.concept_id"), nullable=True)
-    disease_status_concept_id = Column(Integer, ForeignKey("concept.concept_id"), nullable=True)
+    anatomic_site_concept_id = Column(
+        Integer, ForeignKey("concept.concept_id"), nullable=True
+    )
+    disease_status_concept_id = Column(
+        Integer, ForeignKey("concept.concept_id"), nullable=True
+    )
     specimen_source_id = Column(String(50), nullable=True)
     specimen_source_value = Column(String(50), nullable=True)
     unit_source_value = Column(String(50), nullable=True)
     anatomic_site_source_value = Column(String(50), nullable=True)
     disease_status_source_value = Column(String(50), nullable=True)
-

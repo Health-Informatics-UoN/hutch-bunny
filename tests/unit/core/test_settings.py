@@ -150,3 +150,17 @@ def test_specimen_support_disabled_by_default() -> None:
 
         assert settings.OMOP_SPECIMEN_ENABLED is False
 
+
+@pytest.mark.unit
+def test_location_support_disabled_by_default() -> None:
+    with patch.dict("os.environ", {}, clear=True):
+        settings = Settings(
+            DATASOURCE_DB_PASSWORD="db_secret",
+            DATASOURCE_DB_HOST="localhost",
+            DATASOURCE_DB_PORT=5432,
+            DATASOURCE_DB_SCHEMA="public",
+            DATASOURCE_DB_DATABASE="test_db",
+        )
+
+        assert settings.OMOP_LOCATION_ENABLED is False
+

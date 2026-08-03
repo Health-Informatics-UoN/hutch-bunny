@@ -128,3 +128,39 @@ def test_rule_invalid_varcat() -> None:
     """Test rule with invalid varcat"""
     with pytest.raises(ValueError):
         Rule(varcat="InvalidCategory")  # type: ignore
+
+
+def test_rule_geo_radius_parses_value() -> None:
+    """GEO_RADIUS type parses lat|lon|radius from value into typed fields."""
+    rule = Rule(
+        varname="OMOP",
+        varcat="Location",
+        type_="GEO_RADIUS",
+        value="51.5074|-0.1278|5000",
+    )
+    assert rule.center_lat == pytest.approx(51.5074)
+    assert rule.center_lon == pytest.approx(-0.1278)
+    assert rule.geo_radius_meters == pytest.approx(5000.0)
+    assert rule.value == ""  # cleared so concept lookups are unaffected
+
+
+def test_rule_geo_radius_clears_value() -> None:
+    """GEO_RADIUS rule always clears the value field after parsing."""
+    rule = Rule(varcat="Location", type_="GEO_RADIUS", value="0.0|0.0|100")
+    assert rule.value == ""
+
+
+def test_rule_geo_radius_invalid_value_leaves_fields_none() -> None:
+    """Malformed GEO_RADIUS value leaves geo fields as None rather than raising."""
+    rule = Rule(varcat="Location", type_="GEO_RADIUS", value="not|valid")
+    assert rule.center_lat is None
+    assert rule.center_lon is None
+    assert rule.geo_radius_meters is None
+
+
+def test_rule_text_location_unaffected() -> None:
+    """TEXT Location rules still work and do not populate geo fields."""
+    rule = Rule(varcat="Location", type_="TEXT", value="4330435")
+    assert rule.center_lat is None
+    assert rule.center_lon is None
+    assert rule.geo_radius_meters is None

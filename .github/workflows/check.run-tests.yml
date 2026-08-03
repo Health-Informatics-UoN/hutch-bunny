@@ -56,7 +56,7 @@ jobs:
             -e DIALECT=postgresql \
             -e SYNTHETIC=true \
             -e SYNTHETIC_NUMBER=1001 \
-            ghcr.io/health-informatics-uon/omop-lite:0.5.0
+            ghcr.io/health-informatics-uon/omop-lite:0.7.0
 
       - name: Setup uv
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
@@ -139,7 +139,7 @@ jobs:
             -e SCHEMA_NAME=omop \
             -e SYNTHETIC=true \
             -e SYNTHETIC_NUMBER=1001 \
-            ghcr.io/health-informatics-uon/omop-lite:0.5.0
+            ghcr.io/health-informatics-uon/omop-lite:0.7.0
 
       - name: Setup uv
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
@@ -147,7 +147,7 @@ jobs:
           version: "0.12.0"
           enable-cache: true
           cache-dependency-glob: "uv.lock"
-      
+
       - name: Setup Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:

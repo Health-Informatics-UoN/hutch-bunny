@@ -30,6 +30,7 @@ from hutch_bunny.core.rquest_models.group import Group
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.rquest_models.rule import Rule
+from hutch_bunny.core.omop import Varcat
 from hutch_bunny.core.solvers.rule_query_builders import OMOPRuleQueryBuilder, PersonConstraintBuilder
 from hutch_bunny.core.db.utils import log_query
 from hutch_bunny.core.settings import Settings
@@ -162,7 +163,7 @@ class AvailabilitySolver():
 
         for rule in group.rules:
             inclusion_criteria = rule.operator == "="
-            if rule.varcat == "Person":
+            if rule.varcat == Varcat.PERSON:
                 constraints = self.person_constraint_builder.build_constraints(rule, concepts)
                 person_constraints.extend(constraints)
             else:
@@ -179,6 +180,8 @@ class AvailabilitySolver():
         builder = OMOPRuleQueryBuilder(
             self.db_client,
             include_specimen=settings.OMOP_SPECIMEN_ENABLED,
+            include_location=settings.OMOP_LOCATION_ENABLED,
+            varcat=rule.varcat,
         )
 
         if rule.value:
@@ -202,6 +205,15 @@ class AvailabilitySolver():
 
         if rule.secondary_modifier:
             builder.add_secondary_modifiers(rule.secondary_modifier)
+
+        if (
+            rule.center_lat is not None
+            and rule.center_lon is not None
+            and rule.geo_radius_meters is not None
+        ):
+            builder.add_haversine_radius_constraint(
+                rule.center_lat, rule.center_lon, rule.geo_radius_meters
+            )
 
         return builder.build()
 

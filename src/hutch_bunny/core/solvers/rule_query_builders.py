@@ -4,7 +4,7 @@ from typing import Any, Callable
 from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy import (
     CompoundSelect,
-    Engine, 
+    Engine,
     or_,
     and_,
     func,
@@ -12,12 +12,13 @@ from sqlalchemy import (
     ColumnElement,
     select,
     Select,
-    text, 
-    union
+    text,
+    union,
 )
 from hutch_bunny.core.db import BaseDBClient
 from hutch_bunny.core.db.entities import (
     ConditionOccurrence,
+    Location,
     Measurement,
     Observation,
     Person,
@@ -25,31 +26,31 @@ from hutch_bunny.core.db.entities import (
     ProcedureOccurrence,
     Specimen,
 )
-from typing import Tuple 
+from typing import Tuple
 import operator as op
 
 from hutch_bunny.core.rquest_models.rule import Rule
+from hutch_bunny.core.omop import Varcat
 
 
 class SQLDialectHandler:
     """Handles SQL dialect-specific operations for cross-database compatibility."""
+
     @staticmethod
     def get_year_difference(
-        engine: Engine,
-        start_date: ClauseElement,
-        year_of_birth: ClauseElement 
+        engine: Engine, start_date: ClauseElement, year_of_birth: ClauseElement
     ) -> ColumnElement[int]:
         """
         Calculate year difference between a date and year of birth using dialect-specific SQL.
-        
+
         Args:
             engine: SQLAlchemy engine to determine the SQL dialect.
             start_date: Date column to calculate age from.
             year_of_birth: Year of birth column.
-            
+
         Returns:
             SQLAlchemy expression for year difference calculation.
-            
+
         Raises:
             NotImplementedError: If the database dialect is not supported.
         """
@@ -61,24 +62,73 @@ class SQLDialectHandler:
             return func.YEAR(start_date) - year_of_birth
         else:
             raise NotImplementedError("Unsupported database dialect")
-        
+
+    @staticmethod
+    def get_haversine_distance(
+        engine: Engine,
+        center_lat: float,
+        center_lon: float,
+        lat_col: ColumnElement[Any],
+        lon_col: ColumnElement[Any],
+    ) -> ColumnElement[Any]:
+        """
+        Return a SQLAlchemy expression for the haversine distance in metres between
+        a fixed centre point and a pair of lat/lon columns.
+        """
+        R = 6_371_000  # earth radius in metres
+        if engine.dialect.name in ["postgresql", "duckdb"]:
+            dphi = func.radians(lat_col - center_lat) / 2
+            dlam = func.radians(lon_col - center_lon) / 2
+            a = func.sin(dphi) * func.sin(dphi) + func.cos(
+                func.radians(center_lat)
+            ) * func.cos(func.radians(lat_col)) * func.sin(dlam) * func.sin(dlam)
+            return 2 * R * func.asin(func.sqrt(a))
+        elif engine.dialect.name == "mssql":
+            dphi = func.RADIANS(lat_col - center_lat) / 2
+            dlam = func.RADIANS(lon_col - center_lon) / 2
+            a = func.POWER(func.SIN(dphi), 2) + func.COS(
+                func.RADIANS(center_lat)
+            ) * func.COS(func.RADIANS(lat_col)) * func.POWER(func.SIN(dlam), 2)
+            return 2 * R * func.ASIN(func.SQRT(a))
+        elif engine.dialect.name == "snowflake":
+            # Snowflake's HAVERSINE returns km; convert to metres
+            return func.HAVERSINE(center_lat, center_lon, lat_col, lon_col) * 1000
+        else:
+            raise NotImplementedError("Unsupported database dialect")
+
 
 class OMOPRuleQueryBuilder:
     """
     Builder for constructing OMOP CDM queries from RQuest availability rules.
-    
+
     This class implements a fluent interface pattern to progressively build
     complex SQL queries across multiple OMOP tables (Condition, Drug, Measurement,
-    and Observation) based on various constraints including concept IDs, age at
-    event, temporal windows, numeric ranges, and secondary modifiers.
-    
+    Observation, and Procedure) based on various constraints including concept IDs,
+    age at event, temporal windows, numeric ranges, and secondary modifiers.
+
     The builder maintains separate queries for each OMOP table and combines them
-    using UNION operations to find all persons matching the specified criteria.
+    using UNION operations to find all persons matching the specified criteria,
+    guarding against vocabulary drift between the querying party and the local
+    CDM. Specimen is unioned in too whenever `include_specimen` is enabled.
+
+    Location is the one exception: it has no equivalent per-person clinical
+    event table to union with the others, so a `varcat` of `Location` bypasses
+    that union entirely and targets the `location` table alone via a join
+    through `person.location_id`.
     """
 
-    def __init__(self, db_client: BaseDBClient, include_specimen: bool = False):
+    def __init__(
+        self,
+        db_client: BaseDBClient,
+        varcat: Varcat | None = None,
+        include_specimen: bool = False,
+        include_location: bool = False,
+    ):
         self.db_client = db_client
         self.include_specimen = include_specimen
+        self.include_location = include_location
+        self.is_location_rule = varcat == Varcat.LOCATION
+
         self.condition_query: Select[Tuple[int]] = select(ConditionOccurrence.person_id)
         self.drug_query: Select[Tuple[int]] = select(DrugExposure.person_id)
         self.measurement_query: Select[Tuple[int]] = select(Measurement.person_id)
@@ -87,17 +137,24 @@ class OMOPRuleQueryBuilder:
         self.specimen_query: Select[Tuple[int]] | None = (
             select(Specimen.person_id) if include_specimen else None
         )
+        self.location_query: Select[Tuple[int]] | None = (
+            select(Person.person_id).join(
+                Location, Person.location_id == Location.location_id
+            )
+            if self.is_location_rule and include_location
+            else None
+        )
 
-    def add_concept_constraint(self, concept_id: int) -> 'OMOPRuleQueryBuilder':
+    def add_concept_constraint(self, concept_id: int) -> "OMOPRuleQueryBuilder":
         """
         Add OMOP concept ID constraints to filter records across all tables.
-        
+
         Applies WHERE clauses to each table query to filter for records matching
         the specified concept ID in the appropriate concept column for each table.
-        
+
         Args:
             concept_id: OMOP concept identifier to filter by.
-            
+
         Returns:
             Self for method chaining.
         """
@@ -123,10 +180,8 @@ class OMOPRuleQueryBuilder:
         return self
 
     def add_age_constraint(
-        self,
-        greater_than_value: str | None,
-        less_than_value: str | None
-    ) -> 'OMOPRuleQueryBuilder':
+        self, greater_than_value: str | None, less_than_value: str | None
+    ) -> "OMOPRuleQueryBuilder":
         """
         Apply age-at-event constraints to condition, drug, measurement, and observation queries.
 
@@ -149,7 +204,7 @@ class OMOPRuleQueryBuilder:
         """
         if not greater_than_value and not less_than_value:
             return self
-        
+
         if less_than_value:
             comparator = op.le
             age_value = int(less_than_value)
@@ -159,7 +214,9 @@ class OMOPRuleQueryBuilder:
         else:
             # Both values present - this would be a range
             # Currently we instead apply lower and upper constraints independently
-            raise ValueError(f"Age constraint with both boundaries not implemented: {greater_than_value}|{less_than_value}")
+            raise ValueError(
+                f"Age constraint with both boundaries not implemented: {greater_than_value}|{less_than_value}"
+            )
 
         self.condition_query = self._apply_age_constraint_to_table(
             self.condition_query,
@@ -228,24 +285,19 @@ class OMOPRuleQueryBuilder:
             The table query with the age constraint applied.
         """
         age_difference = SQLDialectHandler.get_year_difference(
-            self.db_client.engine, 
-            table_date_column, 
-            Person.year_of_birth  
+            self.db_client.engine, table_date_column, Person.year_of_birth
         )
 
         constraint = operator_func(age_difference, age_value)
 
         # Use JOIN instead of EXISTS for better performance
-        return table_query.join(
-            Person, 
-            Person.person_id == table_person_id
-        ).where(constraint)
+        return table_query.join(Person, Person.person_id == table_person_id).where(
+            constraint
+        )
 
     def add_temporal_constraint(
-        self,
-        greater_than_time: str,
-        less_than_time: str
-    ) -> 'OMOPRuleQueryBuilder':
+        self, greater_than_time: str, less_than_time: str
+    ) -> "OMOPRuleQueryBuilder":
         """
         Adds a temporal constraint to OMOP queries relative to the current date,
         using pre-parsed time values representing months.
@@ -285,7 +337,7 @@ class OMOPRuleQueryBuilder:
                 "Temporal constraint requires exactly one time value. "
                 "Both greater_than_time and less_than_time are empty."
             )
-        
+
         if greater_than_time and less_than_time:
             raise ValueError(
                 "Temporal constraint requires exactly one time value. "
@@ -298,7 +350,7 @@ class OMOPRuleQueryBuilder:
         else:
             time_value_supplied = greater_than_time
 
-        time_to_use = int(time_value_supplied) *-1
+        time_to_use = int(time_value_supplied) * -1
 
         today_date = datetime.now()
 
@@ -350,35 +402,33 @@ class OMOPRuleQueryBuilder:
         return self
 
     def add_numeric_range(
-        self,
-        min_value: float | None = None,
-        max_value: float | None = None
-    ) -> 'OMOPRuleQueryBuilder':
+        self, min_value: float | None = None, max_value: float | None = None
+    ) -> "OMOPRuleQueryBuilder":
         """
         Add numeric range constraints to measurement and observation queries.
 
         Applies BETWEEN constraint to value_as_number columns in measurement
         and observation tables. Used for lab value ranges, vital signs, etc.
-        
+
         Args:
             min_value: Minimum value (inclusive)
             max_value: Maximum value (inclusive)
-            
+
         Returns:
             Self for method chaining
-            
+
         Raises:
             ValueError: If only one bound is provided or if min > max
         """
         if min_value is None and max_value is None:
             return self
-        
+
         if min_value is None or max_value is None:
             raise ValueError(
                 "Both min_value and max_value must be provided for numeric range. "
                 f"Got min_value={min_value}, max_value={max_value}"
             )
-        
+
         min_val = float(min_value)
         max_val = float(max_value)
 
@@ -389,15 +439,40 @@ class OMOPRuleQueryBuilder:
             )
 
         self.measurement_query = self.measurement_query.where(
-        Measurement.value_as_number.between(min_val, max_val)
+            Measurement.value_as_number.between(min_val, max_val)
         )
         self.observation_query = self.observation_query.where(
             Observation.value_as_number.between(min_val, max_val)
         )
 
         return self
-    
-    def add_secondary_modifiers(self, secondary_modifiers: list[int]) -> 'OMOPRuleQueryBuilder':
+
+    def add_haversine_radius_constraint(
+        self,
+        center_lat: float,
+        center_lon: float,
+        radius_meters: float,
+    ) -> "OMOPRuleQueryBuilder":
+        """Filter the location query to rows within radius_meters of (center_lat, center_lon)."""
+        if self.location_query is None:
+            return self
+        distance = SQLDialectHandler.get_haversine_distance(
+            self.db_client.engine,
+            center_lat,
+            center_lon,
+            Location.latitude,
+            Location.longitude,
+        )
+        self.location_query = self.location_query.where(
+            Location.latitude.isnot(None),
+            Location.longitude.isnot(None),
+            distance <= radius_meters,
+        )
+        return self
+
+    def add_secondary_modifiers(
+        self, secondary_modifiers: list[int]
+    ) -> "OMOPRuleQueryBuilder":
         """
         Filter the condition query by condition_type_concept_id values.
 
@@ -411,41 +486,56 @@ class OMOPRuleQueryBuilder:
 
         Returns:
             OMOPRuleQueryBuilder: The current instance for method chaining.
-        """   
+        """
         if not isinstance(secondary_modifiers, list):
-            raise TypeError(f"Expected list[int], got {type(secondary_modifiers).__name__}")
+            raise TypeError(
+                f"Expected list[int], got {type(secondary_modifiers).__name__}"
+            )
 
         if any(not isinstance(mod, int) for mod in secondary_modifiers):
             raise TypeError("All secondary modifier IDs must be integers")
-        
+
         if not secondary_modifiers:
             return self
 
         modifier_constraints = [
             ConditionOccurrence.condition_type_concept_id == modifier_id
-            for modifier_id in secondary_modifiers if modifier_id
+            for modifier_id in secondary_modifiers
+            if modifier_id
         ]
 
         if modifier_constraints:
-            self.condition_query = self.condition_query.where(or_(*modifier_constraints))
+            self.condition_query = self.condition_query.where(
+                or_(*modifier_constraints)
+            )
 
         return self
 
     def build(self) -> CompoundSelect:
         """
         Combine all table queries into a single UNION query.
-        
+
         Creates a UNION of person_id selections from all four OMOP tables
         (measurement, observation, condition, drug) with all applied constraints.
         This returns all unique person_ids that match the criteria in any table.
-        
+
+        For a `Location` rule, this instead returns just the location query
+        (or a stub that contributes no matches, if `OMOP_LOCATION_ENABLED` is
+        off) rather than unioning with the clinical tables above.
+
         Returns:
             CompoundSelect query that unions results from all tables.
-            
+
         Note:
             The UNION operation automatically deduplicates person_ids that
             appear in multiple tables.
         """
+        if self.is_location_rule:
+            if self.location_query is not None:
+                return union(self.location_query)
+            # OMOP_LOCATION_ENABLED is off - contribute no matches.
+            return union(select(Person.person_id).where(text("1=0")))
+
         queries: list[Select[Tuple[int]]] = [
             self.measurement_query,
             self.observation_query,
@@ -462,7 +552,7 @@ class OMOPRuleQueryBuilder:
 class PersonConstraintBuilder:
     """
     Builder for constructing Person table constraints from RQuest rules.
-    
+
     This class translates person-level rules (demographics like age, gender,
     race, ethnicity) into SQLAlchemy filter expressions that can be applied
     to queries on the Person table. It handles concept domain mapping to
@@ -473,27 +563,29 @@ class PersonConstraintBuilder:
     def __init__(self, db_client: BaseDBClient):
         self.db_client = db_client
 
-    def build_constraints(self, rule: Rule, concepts: dict[str, str]) -> list[ColumnElement[bool]]:
+    def build_constraints(
+        self, rule: Rule, concepts: dict[str, str]
+    ) -> list[ColumnElement[bool]]:
         """
         Generate SQLAlchemy filter expressions for Person table based on a rule.
-        
+
         Analyzes the rule type and concept domain to determine the appropriate
         constraint type (age range, gender, race, or ethnicity) and generates
         the corresponding SQL filter expressions.
-        
+
         Args:
             rule: RQuest rule containing constraint parameters including varname,
                 value, operator, and numeric ranges.
-            concepts: Mapping of concept IDs to their OMOP domains (e.g., 
+            concepts: Mapping of concept IDs to their OMOP domains (e.g.,
                 {'8507': 'Gender', '8516': 'Race'}). Used to determine which
                 Person column to filter.
-                
+
         Returns:
             List of SQLAlchemy boolean expressions to be applied as WHERE clauses.
             Empty list if the rule doesn't apply to Person table.
         """
 
-        #This is the age search that does not use an OMOP concept, and is an RQuest specific addition
+        # This is the age search that does not use an OMOP concept, and is an RQuest specific addition
         if rule.varname == "AGE":
             return self._build_age_constraints(rule)
 
@@ -504,7 +596,9 @@ class PersonConstraintBuilder:
         elif concept_domain == "Race":
             return self._build_race_constraint(rule, self._build_age_constraint(rule))
         elif concept_domain == "Ethnicity":
-            return self._build_ethnicity_constraint(rule, self._build_age_constraint(rule))
+            return self._build_ethnicity_constraint(
+                rule, self._build_age_constraint(rule)
+            )
 
         return []
 
@@ -525,14 +619,9 @@ class PersonConstraintBuilder:
             return []
 
         age = SQLDialectHandler.get_year_difference(
-            self.db_client.engine,
-            func.current_timestamp(),
-            Person.year_of_birth 
+            self.db_client.engine, func.current_timestamp(), Person.year_of_birth
         )
-        return [
-            and_(age >= rule.min_value,
-            age <= rule.max_value)
-        ]
+        return [and_(age >= rule.min_value, age <= rule.max_value)]
 
     def _build_age_constraint(self, rule: Rule) -> list[ColumnElement[bool]]:
         """Build a dynamic age constraint with comparator."""
@@ -543,7 +632,7 @@ class PersonConstraintBuilder:
 
         comparator: Callable[[int, int], bool] | None = None
 
-        age_value:int = 0
+        age_value: int = 0
 
         # Determine comparator and age_value based on which side is set
         if rule.greater_than_value is not None and rule.greater_than_value != "":
@@ -562,7 +651,9 @@ class PersonConstraintBuilder:
 
         return [numeric_constraint]
 
-    def _build_gender_constraint(self, rule: Rule, age_constraints: list[ColumnElement[bool]]) -> list[ColumnElement[bool]]:
+    def _build_gender_constraint(
+        self, rule: Rule, age_constraints: list[ColumnElement[bool]]
+    ) -> list[ColumnElement[bool]]:
         """Build gender constraint, optionally combining with an age constraint."""
 
         # Base gender filter
@@ -576,7 +667,9 @@ class PersonConstraintBuilder:
 
         return [combined_constraint if rule.operator == "=" else ~combined_constraint]
 
-    def _build_race_constraint(self, rule: Rule, age_constraints: list[ColumnElement[bool]]) -> list[ColumnElement[bool]]:
+    def _build_race_constraint(
+        self, rule: Rule, age_constraints: list[ColumnElement[bool]]
+    ) -> list[ColumnElement[bool]]:
         """Build race constraint."""
         constraint = Person.race_concept_id == int(rule.value)
 
@@ -588,7 +681,9 @@ class PersonConstraintBuilder:
 
         return [combined_constraint if rule.operator == "=" else ~combined_constraint]
 
-    def _build_ethnicity_constraint(self, rule: Rule, age_constraints: list[ColumnElement[bool]]) -> list[ColumnElement[bool]]:
+    def _build_ethnicity_constraint(
+        self, rule: Rule, age_constraints: list[ColumnElement[bool]]
+    ) -> list[ColumnElement[bool]]:
         """Build ethnicity constraint."""
         constraint = Person.ethnicity_concept_id == int(rule.value)
 

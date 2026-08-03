@@ -450,6 +450,95 @@ class TestOMOPRuleQueryBuilder():
         # 4 queries connected by 3 UNIONs
         assert union_count == 4
 
+    def test_location_varcat_produces_person_location_join(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, include_location=True, varcat="Location")
+
+        query_str = str(builder.build())
+
+        assert "person.person_id" in query_str
+        assert "location" in query_str
+        assert "location_id" in query_str
+        assert "measurement.person_id" not in query_str
+        assert "condition_occurrence.person_id" not in query_str
+        assert "drug_exposure.person_id" not in query_str
+        assert "observation.person_id" not in query_str
+        assert "procedure_occurrence.person_id" not in query_str
+
+    def test_location_varcat_empty_value_no_where_clause(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, include_location=True, varcat="Location")
+        # No constraint added — empty secondary_modifier case
+        query_str = str(builder.build())
+        assert "location" in query_str
+        assert "WHERE" not in query_str.upper()
+
+    def test_location_varcat_disabled_by_default_excludes_location(self) -> None:
+        """Location rules are silently excluded when the feature is disabled, same as specimen."""
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Location")
+
+        query_str = str(builder.build())
+
+        assert "location" not in query_str.lower()
+
+    def test_location_varcat_explicitly_disabled_excludes_location(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, include_location=False, varcat="Location")
+
+        query_str = str(builder.build())
+
+        assert "location" not in query_str.lower()
+
+    def test_haversine_radius_constraint_adds_where_clause(self) -> None:
+        """add_haversine_radius_constraint adds distance and NULL guards to location_query."""
+        mock_db_manager = Mock()
+        mock_db_manager.engine.dialect.name = "duckdb"
+        builder = OMOPRuleQueryBuilder(mock_db_manager, include_location=True, varcat="Location")
+
+        builder.add_haversine_radius_constraint(51.5074, -0.1278, 5000.0)
+
+        query_str = str(builder.build().compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True},
+        ))
+        assert "latitude" in query_str
+        assert "longitude" in query_str
+        assert "asin" in query_str.lower() or "sin" in query_str.lower()
+
+    def test_haversine_radius_constraint_excludes_null_coords(self) -> None:
+        """add_haversine_radius_constraint adds IS NOT NULL guards for lat and lon."""
+        mock_db_manager = Mock()
+        mock_db_manager.engine.dialect.name = "postgresql"
+        builder = OMOPRuleQueryBuilder(mock_db_manager, include_location=True, varcat="Location")
+
+        builder.add_haversine_radius_constraint(0.0, 0.0, 1000.0)
+
+        query_str = str(builder.build())
+        assert "IS NOT NULL" in query_str.upper() or "is not null" in query_str.lower()
+
+    def test_haversine_radius_constraint_noop_when_not_location_varcat(self) -> None:
+        """add_haversine_radius_constraint is a no-op when location_query is None."""
+        mock_db_manager = Mock()
+        mock_db_manager.engine.dialect.name = "postgresql"
+        builder = OMOPRuleQueryBuilder(mock_db_manager)
+
+        result = builder.add_haversine_radius_constraint(51.0, -0.1, 5000.0)
+
+        assert result is builder  # fluent return
+        assert "location" not in str(builder.build())
+
+    def test_get_haversine_distance_unsupported_dialect_raises(self) -> None:
+        """get_haversine_distance raises NotImplementedError for unsupported dialects."""
+        from hutch_bunny.core.db.entities import Location
+        engine = Mock()
+        engine.dialect.name = "mysql"
+
+        with pytest.raises(NotImplementedError, match="Unsupported database dialect"):
+            SQLDialectHandler.get_haversine_distance(
+                engine, 51.5, -0.1, Location.latitude, Location.longitude
+            )
+
 
 class TestPersonQueryConstraintBuilder: 
     @pytest.fixture
