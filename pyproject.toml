@@ -1,6 +1,6 @@
 [project]
 name = "hutch-bunny"
-version = "1.7.0"
+dynamic = ["version"]
 description = "A Cohort Discovery Task API worker"
 license = { text = "MIT License" }
 readme = "README.md"
@@ -19,25 +19,25 @@ maintainers = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-  "numpy>=2.2.1",
-  "psycopg[binary]>=3.2.3",
+  "numpy>=2.5.1",
+  "psycopg[binary]>=3.3.4",
   "python-dotenv>=1.2.2",
-  "requests>=2.32.3", # daemon-only
-  "sqlalchemy>=2.0.36",
-  "trino>=0.331.0", # for SQL Server
+  "requests>=2.34.2", # daemon-only
+  "sqlalchemy>=2.0.51",
+  "trino>=0.338.0", # for SQL Server
   "pydantic-settings>=2.14.2",
-  "tenacity>=9.1.2", # for retry
-  "azure-identity>=1.23.0",
+  "tenacity>=9.1.4", # for retry
+  "azure-identity>=1.25.3",
   "pyodbc>=5.2.0",
-  "pymssql>=2.3.7",
+  "pymssql>=2.3.13",
   "duckdb-engine>=0.17.0",
-  "opentelemetry-api>=1.20.0",
+  "opentelemetry-api>=1.44.0",
   "opentelemetry-sdk>=1.20.0",
   "opentelemetry-instrumentation-sqlalchemy>=0.41b0",
   "opentelemetry-instrumentation-requests>=0.41b0",
   "opentelemetry-exporter-otlp>=1.20.0",
-  "cryptography>=48.0.1",
-  "snowflake-sqlalchemy>=1.8.2",
+  "cryptography>=49.0.0",
+  "snowflake-sqlalchemy>=1.11.0",
 ]
 
 [project.scripts]
@@ -45,19 +45,22 @@ bunny = "hutch_bunny.cli:main"
 bunny-daemon = "hutch_bunny.daemon:main"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
 
 [dependency-groups]
 dev = [
-    "ruff>=0.8.6",
-    "pytest>=9.0.3",
-    "mypy>=1.14.1",
-    "types-requests>=2.32.0.20241016",
-    "coverage>=7.6.12",
-    "pytest-cov>=6.0.0",
-    "pre-commit>=4.1.0",
-    "types-python-dateutil>=2.9.0.20250516",
+    "ruff>=0.16.1",
+    "pytest>=9.1.1",
+    "mypy>=2.3.0",
+    "types-requests>=2.33.0.20260712",
+    "coverage>=7.15.2",
+    "pytest-cov>=7.1.0",
+    "pre-commit>=4.6.1",
+    "types-python-dateutil>=2.9.0.20260716",
 ]
 
 [tool.pytest.ini_options]
