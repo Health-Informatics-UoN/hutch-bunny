@@ -53,7 +53,7 @@ source = "vcs"
 
 [dependency-groups]
 dev = [
-    "ruff>=0.16.0",
+    "ruff>=0.16.1",
     "pytest>=9.1.1",
     "mypy>=2.3.0",
     "types-requests>=2.33.0.20260712",
