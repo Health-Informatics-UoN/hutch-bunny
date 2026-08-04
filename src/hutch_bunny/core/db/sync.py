@@ -1,10 +1,15 @@
-from typing import Any, Sequence, Mapping
+from collections.abc import Mapping, Sequence
+from typing import Any
+
 from sqlalchemy import create_engine
+from sqlalchemy.engine import URL as SQLAURL
+from sqlalchemy.engine import Engine, Row
 from sqlalchemy.inspection import inspect
-from sqlalchemy.engine import URL as SQLAURL, Row, Engine
 from sqlalchemy.sql import Executable
+
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.settings import Settings
+
 from .base import BaseDBClient
 
 settings = Settings()
@@ -116,11 +121,11 @@ class SyncDBClient(BaseDBClient):
 
         if missing_indexes:
             logger.warning(
-                (
+                
                     "Missing indexes in the database: "
                     f"{', '.join(missing_indexes)}. "
                     "Queries will be slower and we recommend adding these indexes."
-                )
+                
             )
 
     def execute_and_fetch(self, stmnt: Executable) -> Sequence[Row[Any]]:  # type: ignore

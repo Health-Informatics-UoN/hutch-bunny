@@ -1,7 +1,9 @@
-import pytest
 from unittest.mock import Mock, patch
-from src.hutch_bunny.core.upstream.task_handler import handle_task
+
+import pytest
+
 from src.hutch_bunny.core.rquest_models.result import RquestResult
+from src.hutch_bunny.core.upstream.task_handler import handle_task
 
 
 @pytest.fixture

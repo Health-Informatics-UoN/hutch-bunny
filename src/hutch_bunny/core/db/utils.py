@@ -1,10 +1,10 @@
 """Database utilities and constants for Hutch Bunny."""
-from opentelemetry import trace 
-from sqlalchemy.engine import Engine 
+from opentelemetry import trace
+from sqlalchemy.engine import Engine
 from sqlalchemy.sql import Executable
 
-from hutch_bunny.core.logger import logger 
-from hutch_bunny.core.telemetry import trace_operation 
+from hutch_bunny.core.logger import logger
+from hutch_bunny.core.telemetry import trace_operation
 
 # These are db specific constants, not intended for users to override,
 # here to avoid magic strings and provide clarity / ease of change in future.

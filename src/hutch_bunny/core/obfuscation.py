@@ -1,8 +1,8 @@
-import base64 
+import base64
 from copy import deepcopy
 
 
-def low_number_suppression(value: int | float, threshold: int = 10) -> int | float:
+def low_number_suppression(value: float, threshold: int = 10) -> int | float:
     """Suppress values that fall below a given threshold.
 
     Args:
@@ -21,7 +21,7 @@ def low_number_suppression(value: int | float, threshold: int = 10) -> int | flo
     return value if value >= threshold else 0
 
 
-def rounding(value: int | float, nearest: int = 10) -> int | float:
+def rounding(value: float, nearest: int = 10) -> int | float:
     """Round the value to the nearest base number, e.g. 10.
     If nearest is 0, the value is returned unchanged.
 
@@ -43,7 +43,7 @@ def rounding(value: int | float, nearest: int = 10) -> int | float:
     return nearest * round(value / nearest)
 
 
-def apply_filters(value: int | float, filters: list) -> int:
+def apply_filters(value: float, filters: list) -> int:
     """Iterate over a list of filters and apply them to the supplied value.
 
     Makes a deep copy of the filters list to avoid mutating the original list.

@@ -1,13 +1,16 @@
-from sqlalchemy import create_engine
-from sqlalchemy.inspection import inspect
-from sqlalchemy.engine import Row, Engine
-from sqlalchemy.sql import Executable
-from typing import Any, Sequence
-from snowflake.sqlalchemy import URL as SnowflakeURL
+from collections.abc import Sequence
+from typing import Any
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
+from snowflake.sqlalchemy import URL as SnowflakeURL
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine, Row
+from sqlalchemy.inspection import inspect
+from sqlalchemy.sql import Executable
+
 from hutch_bunny.core.logger import logger
+
 from .base import BaseDBClient
 
 
@@ -259,7 +262,6 @@ class SnowflakeDBClient(BaseDBClient):
         Index checking is not applicable for Snowflake.
         """
         logger.debug("Index checking skipped for Snowflake (uses clustering keys)")
-        pass
 
     def execute_and_fetch(self, stmnt: Executable) -> Sequence[Row[Any]]:  # type: ignore
         with self.engine.begin() as conn:

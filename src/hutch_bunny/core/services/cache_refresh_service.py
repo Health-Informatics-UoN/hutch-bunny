@@ -1,12 +1,12 @@
 import threading
 import time
 from datetime import datetime, timedelta
-from typing import Optional
-from hutch_bunny.core.logger import logger
-from hutch_bunny.core.settings import DaemonSettings
+
 from hutch_bunny.core.db import get_db_client
 from hutch_bunny.core.execute_query import execute_query
+from hutch_bunny.core.logger import logger
 from hutch_bunny.core.results_modifiers import results_modifiers
+from hutch_bunny.core.settings import DaemonSettings
 
 
 class CacheRefreshService: 
@@ -15,7 +15,7 @@ class CacheRefreshService:
     def __init__(self, settings: DaemonSettings): 
         self.settings = settings
         self.running = False 
-        self.thread: Optional[threading.Thread] = None 
+        self.thread: threading.Thread | None = None 
         self.last_refresh = None 
 
     def start(self) -> None: 

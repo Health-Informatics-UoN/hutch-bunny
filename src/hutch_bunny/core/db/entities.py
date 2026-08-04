@@ -2,11 +2,11 @@ from sqlalchemy import (
     BigInteger,
     Column,
     Date,
+    DateTime,
     ForeignKey,
     Integer,
     Numeric,
     String,
-    DateTime,
     Text,
 )
 from sqlalchemy.orm import DeclarativeBase
@@ -15,7 +15,6 @@ from sqlalchemy.orm import DeclarativeBase
 class Base(DeclarativeBase):
     """Base class for all models."""
 
-    pass
 
 
 class Concept(Base):

@@ -1,8 +1,10 @@
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
+import requests
+
 from hutch_bunny.core.upstream.polling_service import PollingService
 from hutch_bunny.core.upstream.task_api_client import TaskApiClient
-import requests
 
 
 @pytest.fixture

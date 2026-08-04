@@ -1,33 +1,34 @@
 import os
-from hutch_bunny.core.logger import logger, INFO
-from typing import Tuple, Type, Union, Sequence
+from collections.abc import Sequence
+from typing import Union
 
-from sqlalchemy import distinct, func
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import distinct, func, select
+from tenacity import (
+    after_log,
+    before_sleep_log,
+    retry,
+    stop_after_attempt,
+    wait_fixed,
+)
 
-from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.db import BaseDBClient
 from hutch_bunny.core.db.entities import (
     Concept,
     ConditionOccurrence,
+    DrugExposure,
     Measurement,
     Observation,
     Person,
-    DrugExposure,
-    ProcedureOccurrence, Specimen,
+    ProcedureOccurrence,
+    Specimen,
 )
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_fixed,
-    before_sleep_log,
-    after_log,
-)
-from hutch_bunny.core.rquest_models.distribution import DistributionQuery
-from sqlalchemy import select
-from hutch_bunny.core.solvers.availability_solver import ResultModifier
 from hutch_bunny.core.db.utils import log_query
+from hutch_bunny.core.logger import INFO, logger
+from hutch_bunny.core.obfuscation import apply_filters
+from hutch_bunny.core.rquest_models.distribution import DistributionQuery
 from hutch_bunny.core.settings import Settings
+from hutch_bunny.core.solvers.availability_solver import ResultModifier
 
 # Type alias for tables that have person_id
 PersonTable = Union[
@@ -94,7 +95,7 @@ class CodeDistributionQuerySolver:
         output_cols (list): A list of column names for the output table.
     """
 
-    allowed_domains_map: dict[str, Type[PersonTable]] = {
+    allowed_domains_map: dict[str, type[PersonTable]] = {
         "Condition": ConditionOccurrence,
         "Ethnicity": Person,
         "Drug": DrugExposure,
@@ -146,7 +147,7 @@ class CodeDistributionQuerySolver:
         before_sleep=before_sleep_log(logger, INFO),
         after=after_log(logger, INFO),
     )
-    def solve_query(self, results_modifier: list[ResultModifier]) -> Tuple[str, int]:
+    def solve_query(self, results_modifier: list[ResultModifier]) -> tuple[str, int]:
 
         """Build table of distribution query and return as a TAB separated string
         along with the number of rows.

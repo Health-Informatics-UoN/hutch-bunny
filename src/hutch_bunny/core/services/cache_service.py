@@ -1,11 +1,11 @@
-import json
 import hashlib
+import json
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
+
 from hutch_bunny.core.logger import logger
+from hutch_bunny.core.rquest_models.result import RquestResult
 from hutch_bunny.core.settings import Settings
-from hutch_bunny.core.rquest_models.result import RquestResult 
 
 
 class DistributionCacheService: 
@@ -51,7 +51,7 @@ class DistributionCacheService:
         expiry_time = file_time + timedelta(hours=self.ttl_hours)
         return datetime.now() < expiry_time
     
-    def get(self, query_dict: dict[str, object], modifiers: list) -> Optional[RquestResult]: 
+    def get(self, query_dict: dict[str, object], modifiers: list) -> RquestResult | None: 
         """Retrieve cached result if available and valid."""
         if not self.enabled: 
             return None 

@@ -1,13 +1,18 @@
-import pytest
 from datetime import datetime
-from dateutil.relativedelta import relativedelta
 from unittest.mock import Mock, patch
-from sqlalchemy import func, text, Column, Date, Table, MetaData
+
+import pytest
+from dateutil.relativedelta import relativedelta
+from sqlalchemy import Column, Date, MetaData, Table, func, text
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.sql import CompoundSelect
 from sqlalchemy.sql.elements import literal_column
-from sqlalchemy.dialects import postgresql
 
-from hutch_bunny.core.solvers.rule_query_builders import SQLDialectHandler, OMOPRuleQueryBuilder, PersonConstraintBuilder
+from hutch_bunny.core.solvers.rule_query_builders import (
+    OMOPRuleQueryBuilder,
+    PersonConstraintBuilder,
+    SQLDialectHandler,
+)
 
 
 class TestSQLDialectHandler:
@@ -145,7 +150,7 @@ class TestSQLDialectHandler:
         assert "year" in compiled
 
 
-class TestOMOPRuleQueryBuilder():
+class TestOMOPRuleQueryBuilder:
     
     def test_add_concept_constraint(self) -> None:
         mock_db_manager = Mock()

@@ -1,7 +1,8 @@
 import subprocess
-import pytest
 import sys
 from dataclasses import dataclass
+
+import pytest
 
 
 @dataclass

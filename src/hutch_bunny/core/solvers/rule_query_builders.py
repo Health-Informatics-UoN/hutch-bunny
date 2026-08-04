@@ -1,36 +1,37 @@
+import operator as op
+from collections.abc import Callable
 from datetime import datetime
+from typing import Any
+
 from dateutil.relativedelta import relativedelta
-from typing import Any, Callable
-from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy import (
-    CompoundSelect,
-    Engine,
-    or_,
-    and_,
-    func,
     BinaryExpression,
     ColumnElement,
-    select,
+    CompoundSelect,
+    Engine,
     Select,
+    and_,
+    func,
+    or_,
+    select,
     text,
     union,
 )
+from sqlalchemy.sql.expression import ClauseElement
+
 from hutch_bunny.core.db import BaseDBClient
 from hutch_bunny.core.db.entities import (
     ConditionOccurrence,
+    DrugExposure,
     Location,
     Measurement,
     Observation,
     Person,
-    DrugExposure,
     ProcedureOccurrence,
     Specimen,
 )
-from typing import Tuple
-import operator as op
-
-from hutch_bunny.core.rquest_models.rule import Rule
 from hutch_bunny.core.omop import Varcat
+from hutch_bunny.core.rquest_models.rule import Rule
 
 
 class SQLDialectHandler:
@@ -129,15 +130,15 @@ class OMOPRuleQueryBuilder:
         self.include_location = include_location
         self.is_location_rule = varcat == Varcat.LOCATION
 
-        self.condition_query: Select[Tuple[int]] = select(ConditionOccurrence.person_id)
-        self.drug_query: Select[Tuple[int]] = select(DrugExposure.person_id)
-        self.measurement_query: Select[Tuple[int]] = select(Measurement.person_id)
-        self.observation_query: Select[Tuple[int]] = select(Observation.person_id)
-        self.procedure_query: Select[Tuple[int]] = select(ProcedureOccurrence.person_id)
-        self.specimen_query: Select[Tuple[int]] | None = (
+        self.condition_query: Select[tuple[int]] = select(ConditionOccurrence.person_id)
+        self.drug_query: Select[tuple[int]] = select(DrugExposure.person_id)
+        self.measurement_query: Select[tuple[int]] = select(Measurement.person_id)
+        self.observation_query: Select[tuple[int]] = select(Observation.person_id)
+        self.procedure_query: Select[tuple[int]] = select(ProcedureOccurrence.person_id)
+        self.specimen_query: Select[tuple[int]] | None = (
             select(Specimen.person_id) if include_specimen else None
         )
-        self.location_query: Select[Tuple[int]] | None = (
+        self.location_query: Select[tuple[int]] | None = (
             select(Person.person_id).join(
                 Location, Person.location_id == Location.location_id
             )
@@ -265,12 +266,12 @@ class OMOPRuleQueryBuilder:
 
     def _apply_age_constraint_to_table(
         self,
-        table_query: Select[Tuple[int]],
+        table_query: Select[tuple[int]],
         table_person_id: ClauseElement,
         table_date_column: ClauseElement,
         operator_func: Callable[[Any, Any], BinaryExpression[bool]],
         age_value: int,
-    ) -> Select[Tuple[int]]:
+    ) -> Select[tuple[int]]:
         """
         Helper method to apply age constraints to a table query.
 
@@ -536,7 +537,7 @@ class OMOPRuleQueryBuilder:
             # OMOP_LOCATION_ENABLED is off - contribute no matches.
             return union(select(Person.person_id).where(text("1=0")))
 
-        queries: list[Select[Tuple[int]]] = [
+        queries: list[Select[tuple[int]]] = [
             self.measurement_query,
             self.observation_query,
             self.condition_query,

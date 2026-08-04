@@ -1,10 +1,12 @@
+from copy import deepcopy
+
+import pytest
+
 from hutch_bunny.core.obfuscation import (
     apply_filters,
     low_number_suppression,
     rounding,
 )
-from copy import deepcopy
-import pytest
 
 
 @pytest.mark.unit

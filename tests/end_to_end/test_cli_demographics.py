@@ -1,11 +1,12 @@
-import subprocess
-from typing import Dict, Any 
-import pytest
-import os
-import json
-import sys
 import base64
+import json
+import os
+import subprocess
+import sys
 from dataclasses import dataclass
+from typing import Any
+
+import pytest
 
 
 @dataclass
@@ -14,7 +15,7 @@ class DemographicsTestCase:
     modifiers: str
     expected_count: int  # Number of lines in the output file
     expected_gender_count: int
-    expected_values: Dict[str, Dict[str, int]]  # Maps category to its expected values
+    expected_values: dict[str, dict[str, int]]  # Maps category to its expected values
 
 
 test_cases = [

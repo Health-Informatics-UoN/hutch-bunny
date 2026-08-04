@@ -1,21 +1,22 @@
 """Database management module for Hutch Bunny."""
 
-from hutch_bunny.core.logger import logger, INFO
-from hutch_bunny.core.settings import Settings
 from tenacity import (
+    after_log,
+    before_sleep_log,
     retry,
     stop_after_attempt,
     wait_fixed,
-    before_sleep_log,
-    after_log,
 )
 
+from hutch_bunny.core.logger import INFO, logger
+from hutch_bunny.core.settings import Settings
+
+from .azure import AzureManagedIdentityDBClient
 from .base import BaseDBClient
+from .duckdb import DuckDBClient
 from .snowflake import SnowflakeDBClient
 from .sync import SyncDBClient
 from .trino import TrinoDBClient
-from .azure import AzureManagedIdentityDBClient
-from .duckdb import DuckDBClient
 from .utils import (
     DEFAULT_TRINO_PORT,
     expand_short_drivers,
@@ -171,12 +172,12 @@ def get_db_client() -> BaseDBClient:
 
 
 __all__ = [
+    "DEFAULT_TRINO_PORT",
+    "AzureManagedIdentityDBClient",
     "BaseDBClient",
+    "SnowflakeDBClient",
     "SyncDBClient",
     "TrinoDBClient",
-    "AzureManagedIdentityDBClient",
-    "SnowflakeDBClient",
-    "get_db_client",
-    "DEFAULT_TRINO_PORT",
     "expand_short_drivers",
+    "get_db_client",
 ]

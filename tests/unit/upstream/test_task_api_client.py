@@ -1,9 +1,11 @@
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import patch, Mock
-from requests.models import Response
-from requests.exceptions import RequestException
-from src.hutch_bunny.core.upstream.task_api_client import TaskApiClient, SupportedMethod
 from requests.auth import HTTPBasicAuth
+from requests.exceptions import RequestException
+from requests.models import Response
+
+from src.hutch_bunny.core.upstream.task_api_client import SupportedMethod, TaskApiClient
 
 
 @pytest.fixture

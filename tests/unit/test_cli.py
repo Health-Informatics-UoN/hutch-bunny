@@ -1,5 +1,5 @@
+import json
 from typing import Any
-import json  
 from unittest.mock import Mock, patch
 
 from hutch_bunny.cli import main as cli_main

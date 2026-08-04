@@ -1,17 +1,17 @@
-from opentelemetry import trace 
+from opentelemetry import trace
 
-from hutch_bunny.core.logger import logger
-from hutch_bunny.core.solvers import query_solvers
 from hutch_bunny.core.db import BaseDBClient
+from hutch_bunny.core.logger import logger
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.rquest_models.distribution import (
     DistributionQuery,
     DistributionQueryType,
 )
 from hutch_bunny.core.rquest_models.result import RquestResult
-from hutch_bunny.core.telemetry import trace_operation
-from hutch_bunny.core.settings import Settings 
 from hutch_bunny.core.services.cache_service import DistributionCacheService
+from hutch_bunny.core.settings import Settings
+from hutch_bunny.core.solvers import query_solvers
+from hutch_bunny.core.telemetry import trace_operation
 
 
 @trace_operation("execute_query", span_kind=trace.SpanKind.INTERNAL)
@@ -41,7 +41,7 @@ def execute_query(
     logger.info("Processing query...")
     logger.debug(query_dict)
 
-    if "analysis" in query_dict.keys():
+    if "analysis" in query_dict:
         logger.debug("Processing distribution query...")
 
         if settings is None: 

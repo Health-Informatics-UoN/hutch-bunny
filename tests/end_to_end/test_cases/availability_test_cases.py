@@ -1,6 +1,5 @@
-from dataclasses import dataclass
-from typing import Optional
 import json
+from dataclasses import dataclass
 
 
 @dataclass
@@ -20,8 +19,8 @@ class AvailabilityTestCase:
 
     json_file_path: str
     expected_count: int
-    rounding: Optional[int] = None
-    low_number_suppression: Optional[int] = None
+    rounding: int | None = None
+    low_number_suppression: int | None = None
 
     def get_modifiers_json(self) -> str:
         """Convert the modifiers to a JSON string format."""

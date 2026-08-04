@@ -1,13 +1,14 @@
-import pytest
 from unittest.mock import Mock
+
+import pytest
 from sqlalchemy import Select
 
+from hutch_bunny.core.rquest_models.distribution import DistributionQuery
 from hutch_bunny.core.solvers.availability_solver import ResultModifier
 from hutch_bunny.core.solvers.demographics_solver import (
     DemographicsDistributionQuerySolver,
     DemographicsRow,
 )
-from hutch_bunny.core.rquest_models.distribution import DistributionQuery
 
 
 @pytest.fixture

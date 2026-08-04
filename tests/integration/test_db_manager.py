@@ -1,7 +1,8 @@
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from hutch_bunny.core.db import  BaseDBClient, SnowflakeDBClient
+import pytest
+
+from hutch_bunny.core.db import BaseDBClient, SnowflakeDBClient
 
 
 @pytest.mark.integration
@@ -106,14 +107,13 @@ def test_check_indexes_exist_with_missing_indexes(db_client: BaseDBClient) -> No
         db_client.inspector,
         "get_indexes",
         side_effect=mock_inspector.get_indexes,
-    ):
-        with patch("hutch_bunny.core.db.sync.logger") as mock_logger:
-            # Call the method directly
-            db_client._check_indexes_exist()
+    ), patch("hutch_bunny.core.db.sync.logger") as mock_logger:
+        # Call the method directly
+        db_client._check_indexes_exist()
 
-            # Verify a warning was logged
-            mock_logger.warning.assert_called_once()
+        # Verify a warning was logged
+        mock_logger.warning.assert_called_once()
 
-            # Verify the warning message contains information about missing indexes
-            warning_msg = mock_logger.warning.call_args[0][0]
-            assert "Missing indexes in the database" in warning_msg
+        # Verify the warning message contains information about missing indexes
+        warning_msg = mock_logger.warning.call_args[0][0]
+        assert "Missing indexes in the database" in warning_msg

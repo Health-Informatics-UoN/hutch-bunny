@@ -1,25 +1,23 @@
 from opentelemetry import trace
 
-from hutch_bunny.core.logger import logger
-from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
 from hutch_bunny.core.db import BaseDBClient
+from hutch_bunny.core.logger import logger
+from hutch_bunny.core.obfuscation import encode_output
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
-from hutch_bunny.core.rquest_models.file import File
 from hutch_bunny.core.rquest_models.distribution import (
     DistributionQuery,
     DistributionQueryType,
 )
-
+from hutch_bunny.core.rquest_models.file import File
 from hutch_bunny.core.rquest_models.result import RquestResult
+from hutch_bunny.core.services.metadata_service import MetadataService
 from hutch_bunny.core.settings import Settings
+from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
 from hutch_bunny.core.solvers.demographics_solver import (
     DemographicsDistributionQuerySolver,
 )
 from hutch_bunny.core.solvers.distribution_solver import CodeDistributionQuerySolver
-from hutch_bunny.core.services.metadata_service import MetadataService
 from hutch_bunny.core.telemetry import trace_operation
-from hutch_bunny.core.obfuscation import encode_output
-
 
 settings = Settings()
 metadata_service = MetadataService()

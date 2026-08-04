@@ -1,18 +1,20 @@
-import os
-import time 
-import threading
-import pytest
 import json
+import os
+import threading
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import Mock, patch
+
+import pytest
+
 from hutch_bunny.core.execute_query import execute_query
-from hutch_bunny.core.services.cache_service import DistributionCacheService
-from hutch_bunny.core.services.cache_refresh_service import CacheRefreshService 
 from hutch_bunny.core.rquest_models.result import RquestResult
+from hutch_bunny.core.services.cache_refresh_service import CacheRefreshService
+from hutch_bunny.core.services.cache_service import DistributionCacheService
 from hutch_bunny.core.upstream.polling_service import PollingService
 from hutch_bunny.core.upstream.task_handler import handle_task
- 
+
 
 @pytest.fixture
 def mock_settings(tmp_path: Path) -> Mock:

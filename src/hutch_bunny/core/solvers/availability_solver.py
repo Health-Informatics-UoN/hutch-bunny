@@ -1,40 +1,39 @@
 from logging import DEBUG
-from typing import TypedDict, Union, Literal
+from typing import Literal, TypedDict
+
 from sqlalchemy import (
-    CompoundSelect,
-    func,
     ColumnElement,
-    select,
+    CompoundSelect,
     Select,
+    func,
     intersect,
+    literal,
+    or_,
+    select,
     union,
-    literal, 
-    or_
-)
-from hutch_bunny.core.db import BaseDBClient
-from hutch_bunny.core.db.entities import (
-    Concept,
-    Person
 )
 from tenacity import (
+    after_log,
+    before_sleep_log,
     retry,
     stop_after_attempt,
     wait_fixed,
-    before_sleep_log,
-    after_log,
 )
-from typing import Tuple 
 
-from hutch_bunny.core.obfuscation import apply_filters
-from hutch_bunny.core.rquest_models.group import Group
-from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
-from hutch_bunny.core.logger import logger
-from hutch_bunny.core.rquest_models.rule import Rule
-from hutch_bunny.core.omop import Varcat
-from hutch_bunny.core.solvers.rule_query_builders import OMOPRuleQueryBuilder, PersonConstraintBuilder
+from hutch_bunny.core.db import BaseDBClient
+from hutch_bunny.core.db.entities import Concept, Person
 from hutch_bunny.core.db.utils import log_query
+from hutch_bunny.core.logger import logger
+from hutch_bunny.core.obfuscation import apply_filters
+from hutch_bunny.core.omop import Varcat
+from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
+from hutch_bunny.core.rquest_models.group import Group
+from hutch_bunny.core.rquest_models.rule import Rule
 from hutch_bunny.core.settings import Settings
-
+from hutch_bunny.core.solvers.rule_query_builders import (
+    OMOPRuleQueryBuilder,
+    PersonConstraintBuilder,
+)
 
 settings = Settings()
 
@@ -52,7 +51,7 @@ class RuleTableQuery(TypedDict):
     inclusion: bool
 
 
-class AvailabilitySolver():
+class AvailabilitySolver:
 
     def __init__(self, db_client: BaseDBClient, query: AvailabilityQuery) -> None:
         self.db_client = db_client
@@ -145,7 +144,7 @@ class AvailabilitySolver():
         self,
         group: Group,
         concepts: dict[str, str]
-    ) -> Union[Select[Tuple[int]], CompoundSelect]:
+    ) -> Select[tuple[int]] | CompoundSelect:
         """
         Build query for a single group - a nested SQL expression.
 
@@ -222,7 +221,7 @@ class AvailabilitySolver():
         current_group: Group,
         person_constraints_for_group: list[ColumnElement[bool]],
         rule_table_queries: list[RuleTableQuery]
-    ) -> Union[Select[Tuple[int]], CompoundSelect]:
+    ) -> Select[tuple[int]] | CompoundSelect:
         """
         Construct the query for a single group by processing inclusion/exclusion rules.
 
@@ -235,8 +234,8 @@ class AvailabilitySolver():
             The constructed group query
         """
         # Build the group query using UNION approach
-        inclusion_queries: list[Union[Select[Tuple[int]], CompoundSelect]] = []
-        exclusion_queries: list[Union[Select[Tuple[int]], CompoundSelect]] = []
+        inclusion_queries: list[Select[tuple[int]] | CompoundSelect] = []
+        exclusion_queries: list[Select[tuple[int]] | CompoundSelect] = []
 
         # Add person constraints as a separate query
         if person_constraints_for_group:
@@ -271,7 +270,7 @@ class AvailabilitySolver():
         if inclusion_queries:
             if current_group.rules_operator == "AND":
                 # For AND logic, use INTERSECT which is more efficient than joins
-                group_query: Union[Select[Tuple[int]], CompoundSelect] = inclusion_queries[0]
+                group_query: Select[tuple[int]] | CompoundSelect = inclusion_queries[0]
                 for query in inclusion_queries[1:]:
                     group_query = intersect(group_query, query)
             else:
@@ -304,10 +303,10 @@ class AvailabilitySolver():
 
     def _construct_final_query(
         self,
-        all_groups_queries: list[Union[Select[Tuple[int]], CompoundSelect]],
+        all_groups_queries: list[Select[tuple[int]] | CompoundSelect],
         rounding: int,
         low_number: int
-    ) -> Select[Tuple[int]]:
+    ) -> Select[tuple[int]]:
         """
         Construct the final query by applying OR/AND logic between groups using CTEs.
 

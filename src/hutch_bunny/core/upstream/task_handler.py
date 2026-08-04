@@ -1,12 +1,12 @@
 from opentelemetry import trace
 
 from hutch_bunny.core.db import BaseDBClient
-from hutch_bunny.core.settings import DaemonSettings
 from hutch_bunny.core.execute_query import execute_query
-from hutch_bunny.core.upstream.task_api_client import TaskApiClient
-from hutch_bunny.core.results_modifiers import results_modifiers
 from hutch_bunny.core.logger import logger
+from hutch_bunny.core.results_modifiers import results_modifiers
+from hutch_bunny.core.settings import DaemonSettings
 from hutch_bunny.core.telemetry import trace_operation
+from hutch_bunny.core.upstream.task_api_client import TaskApiClient
 
 
 @trace_operation("handle_task", span_kind=trace.SpanKind.CONSUMER)

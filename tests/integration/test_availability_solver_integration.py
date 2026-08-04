@@ -1,13 +1,14 @@
-from unittest.mock import Mock, patch
 from datetime import datetime
-import pytest 
-from sqlalchemy import select, cast, Integer
+from unittest.mock import Mock, patch
 
-from hutch_bunny.core.rquest_models.rule import Rule
-from hutch_bunny.core.rquest_models.group import Group
-from hutch_bunny.core.db.entities import Person 
-from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
+import pytest
+from sqlalchemy import Integer, cast, select
+
+from hutch_bunny.core.db.entities import Person
 from hutch_bunny.core.db.sync import SyncDBClient
+from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
+from hutch_bunny.core.rquest_models.group import Group
+from hutch_bunny.core.rquest_models.rule import Rule
 from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
 
 

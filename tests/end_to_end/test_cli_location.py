@@ -1,9 +1,10 @@
-import subprocess
-import pytest
-import os
 import json
+import os
+import subprocess
 import sys
 from typing import Any
+
+import pytest
 
 LOCATION_QUERY_FILES = [
     "tests/queries/availability/location_geo_radius.json",

@@ -1,10 +1,12 @@
 
-import pytest
 import base64
-from unittest.mock import patch, MagicMock
+from importlib.metadata import version
+from unittest.mock import MagicMock, patch
+
+import pytest
+
 from hutch_bunny.core.services.metadata_service import MetadataService
 from hutch_bunny.core.settings import DaemonSettings
-from importlib.metadata import version
 
 
 @pytest.fixture

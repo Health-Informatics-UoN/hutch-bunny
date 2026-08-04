@@ -1,11 +1,12 @@
-import subprocess
-import pytest
-import os
-import json
-import sys
 import base64
+import json
+import os
+import subprocess
+import sys
 from dataclasses import dataclass
-from typing import Dict, Any 
+from typing import Any
+
+import pytest
 
 
 @dataclass
@@ -13,7 +14,7 @@ class DistributionTestCase:
     json_file_path: str
     modifiers: str
     expected_count: int  # Number of lines in the output file
-    expected_values: Dict[str, int]  # Map of OMOP codes to their expected counts
+    expected_values: dict[str, int]  # Map of OMOP codes to their expected counts
 
 
 test_cases = [

@@ -1,6 +1,5 @@
 import logging
 
-
 # Define logging level constants for retry
 INFO = logging.INFO
 

@@ -1,15 +1,16 @@
 import logging
-import pytest
-from unittest.mock import MagicMock, patch
-from typing import Generator
 import os
+from collections.abc import Generator
 from importlib import reload
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Import the entire modules instead of specific functions
 # To allow reload of settings for testing
 import hutch_bunny.core.logger
 import hutch_bunny.core.settings
-from hutch_bunny.core.settings import Settings, DaemonSettings
+from hutch_bunny.core.settings import DaemonSettings, Settings
 
 
 @pytest.fixture
@@ -22,7 +23,7 @@ def log_record() -> MagicMock:
 
 
 @pytest.fixture
-def mock_logger() -> Generator[MagicMock, None, None]:
+def mock_logger() -> Generator[MagicMock]:
     """Fixture to mock the logger"""
     with patch("hutch_bunny.core.logger.logger") as mock_logger:
         yield mock_logger

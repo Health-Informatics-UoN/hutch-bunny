@@ -1,9 +1,8 @@
 from importlib.metadata import version
 
+from hutch_bunny.core.obfuscation import encode_output
 from hutch_bunny.core.rquest_models.file import File
 from hutch_bunny.core.settings import DaemonSettings
-from hutch_bunny.core.obfuscation import encode_output
-
 
 
 class MetadataService:

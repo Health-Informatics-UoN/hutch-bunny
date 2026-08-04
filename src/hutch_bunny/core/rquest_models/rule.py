@@ -1,5 +1,6 @@
 import re
 from typing import Any, Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from hutch_bunny.core.omop import Varcat
