@@ -1,4 +1,5 @@
 import os
+from typing import ClassVar
 
 from pydantic import BaseModel
 from sqlalchemy import Select, distinct, func, select
@@ -56,11 +57,11 @@ class DemographicsDistributionQuerySolver:
     """
 
     # Constants
-    GENDER_CONCEPT_IDS = [8507, 8532]  # MALE, FEMALE
+    GENDER_CONCEPT_IDS: ClassVar[list[int]] = [8507, 8532]  # MALE, FEMALE
     DEFAULT_LOW_NUMBER = 10
     DEFAULT_ROUNDING = 10
 
-    output_cols = [
+    output_cols: ClassVar[list[str]] = [
         "BIOBANK",
         "CODE",
         "DESCRIPTION",

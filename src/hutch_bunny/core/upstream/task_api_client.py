@@ -43,8 +43,7 @@ class TaskApiClient:
             Response: The response object returned by the requests library.
         """
         logger.debug(
-            "Sending %s request to %s with data %s and kwargs %s"
-            % (method.value, url, data, kwargs)
+            f"Sending {method.value} request to {url} with data {data} and kwargs {kwargs}"
         )
         basicAuth = HTTPBasicAuth(self.username, self.password)
         response = requests.request(
@@ -55,7 +54,7 @@ class TaskApiClient:
         return response
 
     def post(
-        self, endpoint: str | None = None, data: dict = dict(), **kwargs
+        self, endpoint: str | None = None, data: dict | None = None, **kwargs
     ) -> Response:
         """
         Sends a POST request to the specified endpoint with data and additional parameters.
@@ -68,6 +67,8 @@ class TaskApiClient:
         Returns:
             Response: The response object returned by the requests library.
         """
+        if data is None:
+            data = {}
         url = f"{self.base_url}/{endpoint}"
         return self._request(
             SupportedMethod.POST,

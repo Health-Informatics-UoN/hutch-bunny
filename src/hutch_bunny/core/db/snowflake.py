@@ -51,8 +51,7 @@ class SnowflakeDBClient(BaseDBClient):
         if private_key_path:
             logger.info("Using key pair authentication for Snowflake")
             self._private_key_bytes = self._load_private_key(
-                private_key_path,
-                private_key_passphrase
+                private_key_path, private_key_passphrase
             )
             self._password = None
         elif password:
@@ -93,14 +92,14 @@ class SnowflakeDBClient(BaseDBClient):
                 p_key = serialization.load_pem_private_key(
                     key_file.read(),
                     password=passphrase.encode() if passphrase else None,
-                    backend=default_backend()
+                    backend=default_backend(),
                 )
 
             # Serialize to DER format for Snowflake connector
             pkb = p_key.private_bytes(
                 encoding=serialization.Encoding.DER,
                 format=serialization.PrivateFormat.PKCS8,
-                encryption_algorithm=serialization.NoEncryption()
+                encryption_algorithm=serialization.NoEncryption(),
             )
 
             logger.debug(" Private key loaded and decrypted successfully")
@@ -124,24 +123,24 @@ class SnowflakeDBClient(BaseDBClient):
         # Build connection parameters dictionary for connect_args
         # These get passed directly to snowflake.connector.connect()
         connect_args = {
-            'user': self.username,
-            'account': self.account,
-            'warehouse': self.warehouse,
-            'database': self.database,
+            "user": self.username,
+            "account": self.account,
+            "warehouse": self.warehouse,
+            "database": self.database,
         }
 
         if self.schema:
-            connect_args['schema'] = self.schema
+            connect_args["schema"] = self.schema
 
         if self.role:
-            connect_args['role'] = self.role
+            connect_args["role"] = self.role
 
         # Add authentication
         if self._private_key_bytes:
-            connect_args['private_key'] = self._private_key_bytes
+            connect_args["private_key"] = self._private_key_bytes
             logger.debug("  Auth: Private key")
         else:
-            connect_args['password'] = self._password
+            connect_args["password"] = self._password
             logger.debug("  Auth: Password")
 
         # Create a minimal SnowflakeURL - the real connection params are in connect_args
@@ -167,9 +166,7 @@ class SnowflakeDBClient(BaseDBClient):
 
         # Set default schema for queries
         if self.schema is not None:
-            engine.update_execution_options(
-                schema_translate_map={None: self.schema}
-            )
+            engine.update_execution_options(schema_translate_map={None: self.schema})
 
         logger.debug("SQLAlchemy Engine for Snowflake created successfully!")
 
@@ -178,7 +175,8 @@ class SnowflakeDBClient(BaseDBClient):
             logger.debug("Testing connection...")
             with engine.connect() as conn:
                 result = conn.exec_driver_sql(
-                    "SELECT CURRENT_USER(), CURRENT_DATABASE(), CURRENT_SCHEMA(), CURRENT_ROLE()")
+                    "SELECT CURRENT_USER(), CURRENT_DATABASE(), CURRENT_SCHEMA(), CURRENT_ROLE()"
+                )
                 row = result.fetchone()
                 logger.debug(f"  Connected as user: {row[0]}")
                 logger.debug(f"  Current database: {row[1]}")
@@ -236,7 +234,9 @@ class SnowflakeDBClient(BaseDBClient):
             # Snowflake returns uppercase, so normalize for comparison
             existing_objects = {obj.upper() for obj in existing_objects}
 
-            logger.debug(f"  Found {len(existing_objects)} tables/views: {sorted(existing_objects)}")
+            logger.debug(
+                f"  Found {len(existing_objects)} tables/views: {sorted(existing_objects)}"
+            )
 
         except Exception as e:
             logger.error(f"Failed to retrieve tables and views from Snowflake: {e}")

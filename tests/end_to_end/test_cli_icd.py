@@ -52,6 +52,7 @@ def test_cli_icd(test_case: ICDTestCase) -> None:
         ],
         capture_output=True,
         text=True,
+        check=False,
     )
 
     # Assert ICD-MAIN queries are not supported

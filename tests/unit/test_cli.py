@@ -5,9 +5,9 @@ from unittest.mock import Mock, patch
 from hutch_bunny.cli import main as cli_main
 
 
-def test_no_encode_flag_set_correctly(monkeypatch: Any) -> None: 
+def test_no_encode_flag_set_correctly(monkeypatch: Any) -> None:
     """
-    Test CLI flag for switching off encoding is parsed correctly. 
+    Test CLI flag for switching off encoding is parsed correctly.
     """
     monkeypatch.setattr(
         "sys.argv",
@@ -33,9 +33,9 @@ def test_no_encode_flag_set_correctly(monkeypatch: Any) -> None:
         assert mock_execute.call_args.kwargs["encode_result"] is False
 
 
-def test_encode_default_is_true(monkeypatch: Any) -> None: 
+def test_encode_default_is_true(monkeypatch: Any) -> None:
     """
-    Test CLI flag for switching off encoding is defaults to true when --no-encode is not specified. 
+    Test CLI flag for switching off encoding is defaults to true when --no-encode is not specified.
     """
     monkeypatch.setattr(
         "sys.argv",
@@ -57,4 +57,4 @@ def test_encode_default_is_true(monkeypatch: Any) -> None:
 
         cli_main()
 
-        assert mock_execute.call_args.kwargs["encode_result"] is True 
+        assert mock_execute.call_args.kwargs["encode_result"] is True

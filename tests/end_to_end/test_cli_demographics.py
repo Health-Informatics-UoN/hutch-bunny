@@ -65,12 +65,12 @@ test_cases = [
 
 
 def assert_demographics_output(
-    output_file_path: str, 
-    expected_count: int, 
-    expected_gender_count: int, 
-    expected_values: dict[Any, Any], 
-    encode_result: bool = True
-) -> None: 
+    output_file_path: str,
+    expected_count: int,
+    expected_gender_count: int,
+    expected_values: dict[Any, Any],
+    encode_result: bool = True,
+) -> None:
     """
     Validate the output file from the CLI distribution command.
 
@@ -117,7 +117,7 @@ def assert_demographics_output(
 
     # Assert expected values in output file
     file_data = output_data["queryResult"]["files"][0]["file_data"]
-    if encode_result: 
+    if encode_result:
         file_data = base64.b64decode(file_data).decode("utf-8")
     lines = file_data.split("\n")
     assert (
@@ -175,7 +175,7 @@ def test_cli_demographics(test_case: DemographicsTestCase) -> None:
         output_file_path,
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
 
     # Assert
     assert result.returncode == 0, f"CLI failed with error: {result.stderr}"
@@ -184,12 +184,12 @@ def test_cli_demographics(test_case: DemographicsTestCase) -> None:
     assert os.path.exists(output_file_path), "Output file was not created."
 
     assert_demographics_output(
-        output_file_path, 
-        test_case.expected_count, 
-        test_case.expected_gender_count, 
-        test_case.expected_values, 
-        encode_result=True
-    ) 
+        output_file_path,
+        test_case.expected_count,
+        test_case.expected_gender_count,
+        test_case.expected_values,
+        encode_result=True,
+    )
 
     # Clean up
     os.remove(output_file_path)
@@ -197,9 +197,9 @@ def test_cli_demographics(test_case: DemographicsTestCase) -> None:
 
 @pytest.mark.end_to_end
 @pytest.mark.parametrize("test_case", test_cases)
-def test_cli_demographics_inline(test_case: DemographicsTestCase) -> None: 
+def test_cli_demographics_inline(test_case: DemographicsTestCase) -> None:
     """
-    Test the CLI command for demographics queries with an inline JSON string as opposed to filepath. 
+    Test the CLI command for demographics queries with an inline JSON string as opposed to filepath.
 
     This test will run the CLI demographics command with the --body-json option, corresponding JSON query string
     and assert the output is as expected.
@@ -214,8 +214,8 @@ def test_cli_demographics_inline(test_case: DemographicsTestCase) -> None:
     output_file_path = "tests/queries/distribution/output.json"
 
     with open(test_case.json_file_path) as f:
-            query_json = json.dumps(json.load(f))
-        
+        query_json = json.dumps(json.load(f))
+
     cmd = [
         sys.executable,
         "-m",
@@ -228,7 +228,7 @@ def test_cli_demographics_inline(test_case: DemographicsTestCase) -> None:
         output_file_path,
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
 
     # Assert
     assert result.returncode == 0, f"CLI failed with error: {result.stderr}"
@@ -237,11 +237,11 @@ def test_cli_demographics_inline(test_case: DemographicsTestCase) -> None:
     assert os.path.exists(output_file_path), "Output file was not created."
 
     assert_demographics_output(
-        output_file_path, 
-        test_case.expected_count, 
-        test_case.expected_gender_count, 
-        test_case.expected_values, 
-        encode_result=True 
+        output_file_path,
+        test_case.expected_count,
+        test_case.expected_gender_count,
+        test_case.expected_values,
+        encode_result=True,
     )
 
     # Clean up
@@ -250,11 +250,11 @@ def test_cli_demographics_inline(test_case: DemographicsTestCase) -> None:
 
 @pytest.mark.end_to_end
 @pytest.mark.parametrize("test_case", test_cases)
-def test_cli_demographics_with_no_encoding(test_case: DemographicsTestCase) -> None: 
+def test_cli_demographics_with_no_encoding(test_case: DemographicsTestCase) -> None:
     """
     Test the CLI command for demographics queries without encoding of the output.
 
-    This test will run the CLI demographics command with the given JSON file, modifiers and --no-encode flag 
+    This test will run the CLI demographics command with the given JSON file, modifiers and --no-encode flag
     and assert the output is as expected.
 
     Args:
@@ -275,10 +275,10 @@ def test_cli_demographics_with_no_encoding(test_case: DemographicsTestCase) -> N
         test_case.modifiers,
         "--output",
         output_file_path,
-        "--no-encode"
+        "--no-encode",
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
 
     # Assert
     assert result.returncode == 0, f"CLI failed with error: {result.stderr}"
@@ -287,11 +287,11 @@ def test_cli_demographics_with_no_encoding(test_case: DemographicsTestCase) -> N
     assert os.path.exists(output_file_path), "Output file was not created."
 
     assert_demographics_output(
-        output_file_path, 
-        test_case.expected_count, 
-        test_case.expected_gender_count, 
-        test_case.expected_values, 
-        encode_result=False
+        output_file_path,
+        test_case.expected_count,
+        test_case.expected_gender_count,
+        test_case.expected_values,
+        encode_result=False,
     )
 
     # Clean up

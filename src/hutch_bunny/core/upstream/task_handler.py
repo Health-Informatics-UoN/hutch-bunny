@@ -36,10 +36,7 @@ def handle_task(
     )
     try:
         result = execute_query(
-            task_data,
-            result_modifier,
-            db_client=db_client,
-            settings=settings
+            task_data, result_modifier, db_client=db_client, settings=settings
         )
         task_api_client.send_results(result)
     except NotImplementedError as e:
@@ -48,6 +45,6 @@ def handle_task(
     except ValueError as e:
         logger.error(f"Invalid task input: {e}. Data: {task_data}")
         return
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - the daemon must keep polling even after an unexpected task failure
         logger.error(f"Unexpected error handling task: {e}", exc_info=True)
         return

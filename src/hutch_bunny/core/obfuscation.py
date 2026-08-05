@@ -70,10 +70,10 @@ def apply_filters(value: float, filters: list) -> int:
 def encode_output(data: str) -> tuple[str, float]:
     """
     Encode output data to base64.
-    
+
     Args:
         data: The string data to encode
-    
+
     Returns:
         Tuple of (base64_encoded_data, size_in_kb)
     """

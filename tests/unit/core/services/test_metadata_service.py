@@ -1,4 +1,3 @@
-
 import base64
 from importlib.metadata import version
 from unittest.mock import MagicMock, patch
@@ -33,7 +32,6 @@ def test_generate_metadata(metadata_service: MetadataService) -> None:
     """Test metadata file generation."""
     metadata_file = metadata_service.generate_metadata()
 
-
     # Check file properties
     assert metadata_file.name == "metadata.bcos"
     assert (
@@ -46,7 +44,9 @@ def test_generate_metadata(metadata_service: MetadataService) -> None:
 
     # Check that data is base64 encoded and contains expected content
     decoded_data = base64.b64decode(metadata_file.data).decode("utf-8")
-    assert "BIOBANK\tPROTOCOL\tOS\tBCLINK\tDATAMODEL\tROUNDING\tTHRESHOLD" in decoded_data
+    assert (
+        "BIOBANK\tPROTOCOL\tOS\tBCLINK\tDATAMODEL\tROUNDING\tTHRESHOLD" in decoded_data
+    )
     assert "test_collection" in decoded_data  # biobank (collection_id)
     assert "Bunny" in decoded_data
     assert version("hutch-bunny") in decoded_data  # bclink (version)

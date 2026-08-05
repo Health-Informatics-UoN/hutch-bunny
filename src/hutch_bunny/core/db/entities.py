@@ -16,7 +16,6 @@ class Base(DeclarativeBase):
     """Base class for all models."""
 
 
-
 class Concept(Base):
     __tablename__ = "concept"
     concept_id = Column(Integer, primary_key=True)

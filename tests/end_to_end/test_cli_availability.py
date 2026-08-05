@@ -46,7 +46,7 @@ def test_cli_availability(test_case: AvailabilityTestCase, input_method: str) ->
     else:
         with open(test_case.json_file_path) as f:
             query_json = json.dumps(json.load(f))
-        
+
         cmd = [
             sys.executable,
             "-m",
@@ -59,8 +59,8 @@ def test_cli_availability(test_case: AvailabilityTestCase, input_method: str) ->
             output_file_path,
         ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+
     # Assert
     assert result.returncode == 0, f"CLI failed with error: {result.stderr}"
 

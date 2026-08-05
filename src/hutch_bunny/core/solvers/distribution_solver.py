@@ -1,6 +1,6 @@
 import os
 from collections.abc import Sequence
-from typing import Union
+from typing import Any, ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import distinct, func, select
@@ -31,14 +31,14 @@ from hutch_bunny.core.settings import Settings
 from hutch_bunny.core.solvers.availability_solver import ResultModifier
 
 # Type alias for tables that have person_id
-PersonTable = Union[
-    ConditionOccurrence,
-    Measurement,
-    Observation,
-    Person,
-    DrugExposure,
-    ProcedureOccurrence,
-]
+PersonTable = (
+    ConditionOccurrence
+    | Measurement
+    | Observation
+    | Person
+    | DrugExposure
+    | ProcedureOccurrence
+)
 
 settings = Settings()
 
@@ -47,9 +47,10 @@ class CodeDistributionRow(BaseModel):
     """
     A single row in the distribution output.
     """
+
     biobank: str = Field(alias="BIOBANK")
     code: str = Field(alias="CODE")
-    count: int = Field(alias="COUNT")  
+    count: int = Field(alias="COUNT")
     description: str = Field(default="", alias="DESCRIPTION")
     min_val: str = Field(default="", alias="MIN")
     q1: str = Field(default="", alias="Q1")
@@ -66,18 +67,15 @@ class CodeDistributionRow(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-def convert_rows_to_tsv(
-    output_cols: list[str],
-    rows: Sequence[BaseModel]
-) -> str:
+def convert_rows_to_tsv(output_cols: list[str], rows: Sequence[BaseModel]) -> str:
     """Convert list of Pydantic models to TSV string."""
     results = ["\t".join(output_cols)]
-    
+
     for row in rows:
         row_dict = row.model_dump(by_alias=True, mode="json")
         row_values = [str(row_dict.get(col, "")) for col in output_cols]
         results.append("\t".join(row_values))
-    
+
     return os.linesep.join(results)
 
 
@@ -95,7 +93,7 @@ class CodeDistributionQuerySolver:
         output_cols (list): A list of column names for the output table.
     """
 
-    allowed_domains_map: dict[str, type[PersonTable]] = {
+    allowed_domains_map: ClassVar[dict[str, type[PersonTable]]] = {
         "Condition": ConditionOccurrence,
         "Ethnicity": Person,
         "Drug": DrugExposure,
@@ -106,7 +104,7 @@ class CodeDistributionQuerySolver:
         "Procedure": ProcedureOccurrence,
         "Specimen": Specimen,
     }
-    domain_concept_id_map = {
+    domain_concept_id_map: ClassVar[dict[str, Any]] = {
         "Condition": ConditionOccurrence.condition_concept_id,
         "Ethnicity": Person.ethnicity_concept_id,
         "Drug": DrugExposure.drug_concept_id,
@@ -119,7 +117,7 @@ class CodeDistributionQuerySolver:
     }
 
     # this one is unique for this resolver
-    output_cols = [
+    output_cols: ClassVar[list[str]] = [
         "BIOBANK",
         "CODE",
         "COUNT",
@@ -148,7 +146,6 @@ class CodeDistributionQuerySolver:
         after=after_log(logger, INFO),
     )
     def solve_query(self, results_modifier: list[ResultModifier]) -> tuple[str, int]:
-
         """Build table of distribution query and return as a TAB separated string
         along with the number of rows.
 
@@ -181,7 +178,6 @@ class CodeDistributionQuerySolver:
 
         with self.db_client.engine.connect() as con:
             for domain_id in self.allowed_domains_map:
-
                 if not settings.OMOP_SPECIMEN_ENABLED and domain_id == "Specimen":
                     continue
 
@@ -195,31 +191,30 @@ class CodeDistributionQuerySolver:
                 subq = (
                     select(
                         concept_col.label("concept_id"),
-                        func.count(distinct(table.person_id)).label("count_agg")
+                        func.count(distinct(table.person_id)).label("count_agg"),
                     )
                     .group_by(concept_col)
                     .subquery()
                 )
 
                 # Step 2: join with Concept table
-                stmnt = (
-                    select(
-                        # Apply rounding only here, after the join
-                        (func.round(subq.c.count_agg / rounding, 0) * rounding).label("count_agg_rounded")
-                        if rounding > 0 else subq.c.count_agg,
-                        Concept.concept_id,
-                        Concept.concept_name
+                stmnt = select(
+                    # Apply rounding only here, after the join
+                    (func.round(subq.c.count_agg / rounding, 0) * rounding).label(
+                        "count_agg_rounded"
                     )
-                    .join(Concept, subq.c.concept_id == Concept.concept_id)
-                )
+                    if rounding > 0
+                    else subq.c.count_agg,
+                    Concept.concept_id,
+                    Concept.concept_name,
+                ).join(Concept, subq.c.concept_id == Concept.concept_id)
 
                 # Step 3: optional low-number filter
                 if low_number > 0:
                     stmnt = stmnt.where(subq.c.count_agg >= low_number)
 
                 compiled = stmnt.compile(
-                    dialect=con.engine.dialect,
-                    compile_kwargs={"literal_binds": True}
+                    dialect=con.engine.dialect, compile_kwargs={"literal_binds": True}
                 )
                 logger.debug(compiled)
                 # Execute

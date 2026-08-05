@@ -22,14 +22,14 @@ def main() -> None:
 
     logger.info(f"Starting Bunny version {version('hutch_bunny')} ")
     logger.debug("Settings: %s", settings.safe_model_dump())
-    
+
     # Setting database connection
     db_client = get_db_client()
-    
+
     cache_refresh = CacheRefreshService(settings)
     cache_refresh.start()
 
-    try: 
+    try:
         client = TaskApiClient(settings=settings)
         polling_service = PollingService(
             client,
@@ -37,7 +37,7 @@ def main() -> None:
             settings,
         )
         polling_service.poll_for_tasks()
-    finally: 
+    finally:
         cache_refresh.stop()
 
 

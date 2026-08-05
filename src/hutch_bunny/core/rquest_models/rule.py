@@ -106,12 +106,12 @@ class Rule(BaseModel):
         arbitrary_types_allowed=True,
     )
 
-    def model_post_init(self, __context: Any) -> None:
+    def model_post_init(self, context: Any, /) -> None:
         """
         Initialize numeric values and parse time values after model creation
 
         Args:
-            __context: The context of the model creation.
+            context: The context of the model creation.
 
         Returns:
             None
@@ -131,14 +131,14 @@ class Rule(BaseModel):
 
         # Parse numeric values for NUM type rules
         elif self.type_ == "NUM":
-            # For NUM type rules, the value might be in range format (1.0..3.0) 
+            # For NUM type rules, the value might be in range format (1.0..3.0)
             # or pipe-separated format (1.0|3.0)
             if ".." in self.value:
                 self.min_value, self.max_value = self._parse_numeric(self.value)
             else:
                 # Handle pipe-separated format (1.0|3.0)
                 self.min_value, self.max_value = self._parse_pipe_separated(self.value)
-            
+
             parts = self.varname.split("=")
             v = parts[1] if len(parts) > 1 else None
             self.raw_range = self.value
@@ -146,7 +146,9 @@ class Rule(BaseModel):
         else:
             # For non-NUM rules, parse range from raw_range if provided
             if self.raw_range and self.raw_range != "":
-                self.min_value, self.max_value = self._parse_pipe_separated(self.raw_range)
+                self.min_value, self.max_value = self._parse_pipe_separated(
+                    self.raw_range
+                )
             else:
                 self.min_value, self.max_value = None, None
 
@@ -201,7 +203,7 @@ class Rule(BaseModel):
     def _parse_time(self) -> None:
         """
         Parse time string into components.
-        
+
         Time format: "value|:CATEGORY:UNIT" or "|value:CATEGORY:UNIT"
         Examples:
         - "10|:AGE:Y" (greater than or equal to 10 years)
@@ -209,13 +211,13 @@ class Rule(BaseModel):
         """
         if not self.time:
             return
-            
+
         try:
             time_value, time_category, time_unit = self.time.split(":")
             self.time_value = time_value
             self.time_category = time_category
             self.time_unit = time_unit
-            
+
             # Parse left and right values from time_value
             if "|" in time_value:
                 left_value, right_value = time_value.split("|")

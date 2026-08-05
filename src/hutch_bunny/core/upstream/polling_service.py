@@ -10,6 +10,7 @@ from hutch_bunny.core.upstream.task_api_client import TaskApiClient
 
 tracer = trace.get_tracer("hutch-bunny.polling")
 
+
 class PollingService:
     """
     Polls the task API for tasks and processes them.

@@ -35,7 +35,6 @@ def test_check_tables_exist_with_missing_tables(db_client: BaseDBClient) -> None
         # Snowflake doesn't check indexes (uses clustering keys)
         pytest.skip("Index checking is not applicable for Snowflake")
 
-
     mock_inspector = MagicMock()
     mock_inspector.get_table_names.return_value = [
         "concept",
@@ -103,11 +102,14 @@ def test_check_indexes_exist_with_missing_indexes(db_client: BaseDBClient) -> No
     mock_inspector = MagicMock()
     mock_inspector.get_indexes.return_value = []
 
-    with patch.object(
-        db_client.inspector,
-        "get_indexes",
-        side_effect=mock_inspector.get_indexes,
-    ), patch("hutch_bunny.core.db.sync.logger") as mock_logger:
+    with (
+        patch.object(
+            db_client.inspector,
+            "get_indexes",
+            side_effect=mock_inspector.get_indexes,
+        ),
+        patch("hutch_bunny.core.db.sync.logger") as mock_logger,
+    ):
         # Call the method directly
         db_client._check_indexes_exist()
 

@@ -54,5 +54,7 @@ def test_solve_availability_is_ok(availability_result: RquestResult) -> None:
 
 
 @pytest.mark.integration
-def test_solve_availability_count_matches(availability_result: RquestResult, availability_example: RquestResult) -> None:
+def test_solve_availability_count_matches(
+    availability_result: RquestResult, availability_example: RquestResult
+) -> None:
     assert availability_result.count == availability_example.count

@@ -34,7 +34,7 @@ class SyncDBClient(BaseDBClient):
             host=host,
             port=port,
             database=database,
-            query=query
+            query=query,
         )
 
         self.schema = schema if schema is not None and len(schema) > 0 else None
@@ -121,11 +121,9 @@ class SyncDBClient(BaseDBClient):
 
         if missing_indexes:
             logger.warning(
-                
-                    "Missing indexes in the database: "
-                    f"{', '.join(missing_indexes)}. "
-                    "Queries will be slower and we recommend adding these indexes."
-                
+                "Missing indexes in the database: "
+                f"{', '.join(missing_indexes)}. "
+                "Queries will be slower and we recommend adding these indexes."
             )
 
     def execute_and_fetch(self, stmnt: Executable) -> Sequence[Row[Any]]:  # type: ignore

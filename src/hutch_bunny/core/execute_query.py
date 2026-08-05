@@ -19,13 +19,13 @@ def execute_query(
     query_dict: dict[str, object],
     results_modifier: list[dict[str, str | int]],
     db_client: BaseDBClient,
-    settings: Settings | None = None, 
-    encode_result: bool = True 
+    settings: Settings | None = None,
+    encode_result: bool = True,
 ) -> RquestResult:
     """
-    Executes either an availability query or a distribution query, and returns results filtered by modifiers. 
+    Executes either an availability query or a distribution query, and returns results filtered by modifiers.
 
-    Caching support is enabled for distribution queries. 
+    Caching support is enabled for distribution queries.
 
     Parameters
     ----------
@@ -44,14 +44,14 @@ def execute_query(
     if "analysis" in query_dict:
         logger.debug("Processing distribution query...")
 
-        if settings is None: 
+        if settings is None:
             settings = Settings()
-        
+
         cache_service = DistributionCacheService(settings)
-        
+
         if settings.CACHE_ENABLED:
             cached_result = cache_service.get(query_dict, results_modifier)
-            if cached_result: 
+            if cached_result:
                 logger.info("Returning cached distribution result")
                 return cached_result
 
@@ -65,7 +65,10 @@ def execute_query(
                     "ICD-MAIN queries are not yet supported. See: https://github.com/Health-Informatics-UoN/hutch-bunny/issues/30"
                 )
             result = query_solvers.solve_distribution(
-                results_modifier, db_client=db_client, query=distribution_query, encode_result=encode_result
+                results_modifier,
+                db_client=db_client,
+                query=distribution_query,
+                encode_result=encode_result,
             )
             cache_service.set(query_dict, results_modifier, result)
             return result

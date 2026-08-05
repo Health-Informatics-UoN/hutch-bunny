@@ -18,6 +18,7 @@ settings = Settings()
 def db_client() -> BaseDBClient:
     return get_db_client()
 
+
 @pytest.fixture
 def availability_query_onerule_equals() -> AvailabilityQuery:
     return AvailabilityQuery(

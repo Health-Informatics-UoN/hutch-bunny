@@ -1,6 +1,6 @@
 import operator as op
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from dateutil.relativedelta import relativedelta
@@ -353,7 +353,7 @@ class OMOPRuleQueryBuilder:
 
         time_to_use = int(time_value_supplied) * -1
 
-        today_date = datetime.now()
+        today_date = datetime.now(UTC)
 
         relative_date = today_date + relativedelta(months=time_to_use)
 
@@ -644,7 +644,7 @@ class PersonConstraintBuilder:
             age_value = int(rule.less_than_value)
 
         # Compute age
-        current_year = datetime.now().year
+        current_year = datetime.now(UTC).year
         age = current_year - Person.year_of_birth
 
         # Build numeric constraint using the comparator

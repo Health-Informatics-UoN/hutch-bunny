@@ -1,4 +1,5 @@
 """Database utilities and constants for Hutch Bunny."""
+
 from opentelemetry import trace
 from sqlalchemy.engine import Engine
 from sqlalchemy.sql import Executable
@@ -40,11 +41,9 @@ def log_query(stmnt: Executable, engine: Engine) -> None:
     """Log the compiled SQL query."""
     try:
         compiled = stmnt.compile(
-            dialect=engine.dialect,
-            compile_kwargs={"literal_binds": True}
+            dialect=engine.dialect, compile_kwargs={"literal_binds": True}
         )
         logger.info(f"Executing SQL query:\n{compiled}")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - compilation can fail in dialect-specific ways; fall back to logging the raw statement
         logger.info(f"Executing SQL query:\n{stmnt}")
         logger.debug(f"Could not compile with literal binds: {e}")
-

@@ -43,6 +43,7 @@ class ResultModifier(TypedDict):
     threshold: int | None
     nearest: int | None
 
+
 Key = Literal["threshold", "nearest"]
 
 
@@ -52,7 +53,6 @@ class RuleTableQuery(TypedDict):
 
 
 class AvailabilitySolver:
-
     def __init__(self, db_client: BaseDBClient, query: AvailabilityQuery) -> None:
         self.db_client = db_client
         self.query = query
@@ -62,7 +62,7 @@ class AvailabilitySolver:
         stop=stop_after_attempt(3),
         wait=wait_fixed(60),
         before_sleep=before_sleep_log(logger, DEBUG),
-        after=after_log(logger, DEBUG)
+        after=after_log(logger, DEBUG),
     )
     def solve_query(self, results_modifiers: list[ResultModifier]) -> int:
         """
@@ -73,7 +73,9 @@ class AvailabilitySolver:
         4. Executing the final query and applying filters
         """
         concepts = self._find_concepts(self.query.cohort.groups)
-        low_number = self._extract_modifier(results_modifiers, "Low Number Suppression", "threshold", 10)
+        low_number = self._extract_modifier(
+            results_modifiers, "Low Number Suppression", "threshold", 10
+        )
         rounding = self._extract_modifier(results_modifiers, "Rounding", "nearest", 10)
 
         with self.db_client.engine.connect() as con:
@@ -84,15 +86,13 @@ class AvailabilitySolver:
                 group_queries.append(group_query)
 
             final_query = self._construct_final_query(
-                group_queries,
-                rounding, 
-                low_number
+                group_queries, rounding, low_number
             )
 
             try:
                 output = con.execute(final_query).fetchone()
                 count = int(output[0]) if output is not None else 0
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - query execution can fail in driver-specific ways
                 logger.error(str(e))
 
         return apply_filters(count, results_modifiers)
@@ -141,9 +141,7 @@ class AvailabilitySolver:
         return default_value
 
     def _build_group_query(
-        self,
-        group: Group,
-        concepts: dict[str, str]
+        self, group: Group, concepts: dict[str, str]
     ) -> Select[tuple[int]] | CompoundSelect:
         """
         Build query for a single group - a nested SQL expression.
@@ -163,16 +161,19 @@ class AvailabilitySolver:
         for rule in group.rules:
             inclusion_criteria = rule.operator == "="
             if rule.varcat == Varcat.PERSON:
-                constraints = self.person_constraint_builder.build_constraints(rule, concepts)
+                constraints = self.person_constraint_builder.build_constraints(
+                    rule, concepts
+                )
                 person_constraints.extend(constraints)
             else:
                 rule_union = self._build_rule_query(rule)
-                rule_table_queries.append({
-                    'union_query': rule_union,
-                    'inclusion': inclusion_criteria
-                })
+                rule_table_queries.append(
+                    {"union_query": rule_union, "inclusion": inclusion_criteria}
+                )
 
-        return self._construct_group_query(group, person_constraints, rule_table_queries)
+        return self._construct_group_query(
+            group, person_constraints, rule_table_queries
+        )
 
     def _build_rule_query(self, rule: Rule) -> CompoundSelect:
         """Build query for a single non-Person rule."""
@@ -191,12 +192,12 @@ class AvailabilitySolver:
         if valid_time_constraint and rule.time_category == "AGE":
             builder.add_age_constraint(
                 greater_than_value=rule.greater_than_value,
-                less_than_value=rule.less_than_value
+                less_than_value=rule.less_than_value,
             )
         elif valid_time_constraint and rule.time_category == "TIME":
             builder.add_temporal_constraint(
                 greater_than_time=rule.greater_than_value or "",
-                less_than_time=rule.less_than_value or ""
+                less_than_time=rule.less_than_value or "",
             )
 
         if rule.min_value is not None and rule.max_value is not None:
@@ -220,7 +221,7 @@ class AvailabilitySolver:
         self,
         current_group: Group,
         person_constraints_for_group: list[ColumnElement[bool]],
-        rule_table_queries: list[RuleTableQuery]
+        rule_table_queries: list[RuleTableQuery],
     ) -> Select[tuple[int]] | CompoundSelect:
         """
         Construct the query for a single group by processing inclusion/exclusion rules.
@@ -239,20 +240,27 @@ class AvailabilitySolver:
 
         # Add person constraints as a separate query
         if person_constraints_for_group:
-            if current_group.rules_operator == "OR" and len(person_constraints_for_group) > 1:
+            if (
+                current_group.rules_operator == "OR"
+                and len(person_constraints_for_group) > 1
+            ):
                 # For OR logic, combine Person constraints with OR
-                person_query = select(Person.person_id).where(or_(*person_constraints_for_group))
+                person_query = select(Person.person_id).where(
+                    or_(*person_constraints_for_group)
+                )
             else:
                 # For AND logic or single constraint, use AND (default)
-                person_query = select(Person.person_id).where(*person_constraints_for_group)
+                person_query = select(Person.person_id).where(
+                    *person_constraints_for_group
+                )
             inclusion_queries.append(person_query)
 
         # Add table queries for each rule
         if rule_table_queries:
             logger.debug(f"Processing {len(rule_table_queries)} rule table queries")
             for i, rule_data in enumerate(rule_table_queries):
-                union_query = rule_data['union_query']
-                inclusion = rule_data['inclusion']
+                union_query = rule_data["union_query"]
+                inclusion = rule_data["inclusion"]
                 logger.debug(f"Rule {i}: inclusion={inclusion}")
 
                 if inclusion:
@@ -305,7 +313,7 @@ class AvailabilitySolver:
         self,
         all_groups_queries: list[Select[tuple[int]] | CompoundSelect],
         rounding: int,
-        low_number: int
+        low_number: int,
     ) -> Select[tuple[int]]:
         """
         Construct the final query by applying OR/AND logic between groups using CTEs.
@@ -336,7 +344,9 @@ class AvailabilitySolver:
                         func.round((func.count() / rounding), 0) * rounding
                     ).select_from(final_union.subquery())
                 else:
-                    full_query_all_groups = select(func.count()).select_from(final_union.subquery())
+                    full_query_all_groups = select(func.count()).select_from(
+                        final_union.subquery()
+                    )
             else:
                 # Fallback to empty query
                 full_query_all_groups = select(func.count()).where(literal(False))
@@ -359,7 +369,9 @@ class AvailabilitySolver:
                         func.round((func.count() / rounding), 0) * rounding
                     ).select_from(final_intersect.subquery())
                 else:
-                    full_query_all_groups = select(func.count()).select_from(final_intersect.subquery())
+                    full_query_all_groups = select(func.count()).select_from(
+                        final_intersect.subquery()
+                    )
 
             else:
                 # Fallback to empty query
@@ -370,9 +382,6 @@ class AvailabilitySolver:
                 func.count() >= low_number
             )
 
-        log_query(
-            full_query_all_groups, 
-            self.db_client.engine
-        )
+        log_query(full_query_all_groups, self.db_client.engine)
 
         return full_query_all_groups

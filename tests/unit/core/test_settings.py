@@ -165,4 +165,3 @@ def test_location_support_disabled_by_default() -> None:
         )
 
         assert settings.OMOP_LOCATION_ENABLED is False
-
