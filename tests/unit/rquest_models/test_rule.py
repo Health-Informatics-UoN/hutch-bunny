@@ -1,4 +1,5 @@
 import pytest
+
 from hutch_bunny.core.rquest_models.rule import Rule
 
 

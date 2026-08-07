@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict, field_validator
+
 from hutch_bunny.core.rquest_models.cohort import Cohort
 
 

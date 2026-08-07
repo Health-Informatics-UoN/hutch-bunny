@@ -1,12 +1,12 @@
 from opentelemetry import trace
 
 from hutch_bunny.core.db import BaseDBClient
-from hutch_bunny.core.settings import DaemonSettings
 from hutch_bunny.core.execute_query import execute_query
-from hutch_bunny.core.upstream.task_api_client import TaskApiClient
-from hutch_bunny.core.results_modifiers import results_modifiers
 from hutch_bunny.core.logger import logger
+from hutch_bunny.core.results_modifiers import results_modifiers
+from hutch_bunny.core.settings import DaemonSettings
 from hutch_bunny.core.telemetry import trace_operation
+from hutch_bunny.core.upstream.task_api_client import TaskApiClient
 
 
 @trace_operation("handle_task", span_kind=trace.SpanKind.CONSUMER)
@@ -36,10 +36,7 @@ def handle_task(
     )
     try:
         result = execute_query(
-            task_data,
-            result_modifier,
-            db_client=db_client,
-            settings=settings
+            task_data, result_modifier, db_client=db_client, settings=settings
         )
         task_api_client.send_results(result)
     except NotImplementedError as e:
@@ -48,6 +45,6 @@ def handle_task(
     except ValueError as e:
         logger.error(f"Invalid task input: {e}. Data: {task_data}")
         return
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - the daemon must keep polling even after an unexpected task failure
         logger.error(f"Unexpected error handling task: {e}", exc_info=True)
         return

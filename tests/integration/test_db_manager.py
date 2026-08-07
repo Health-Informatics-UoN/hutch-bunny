@@ -1,7 +1,8 @@
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from hutch_bunny.core.db import  BaseDBClient, SnowflakeDBClient
+import pytest
+
+from hutch_bunny.core.db import BaseDBClient, SnowflakeDBClient
 
 
 @pytest.mark.integration
@@ -33,7 +34,6 @@ def test_check_tables_exist_with_missing_tables(db_client: BaseDBClient) -> None
     if isinstance(db_client, SnowflakeDBClient):
         # Snowflake doesn't check indexes (uses clustering keys)
         pytest.skip("Index checking is not applicable for Snowflake")
-
 
     mock_inspector = MagicMock()
     mock_inspector.get_table_names.return_value = [
@@ -102,18 +102,20 @@ def test_check_indexes_exist_with_missing_indexes(db_client: BaseDBClient) -> No
     mock_inspector = MagicMock()
     mock_inspector.get_indexes.return_value = []
 
-    with patch.object(
-        db_client.inspector,
-        "get_indexes",
-        side_effect=mock_inspector.get_indexes,
+    with (
+        patch.object(
+            db_client.inspector,
+            "get_indexes",
+            side_effect=mock_inspector.get_indexes,
+        ),
+        patch("hutch_bunny.core.db.sync.logger") as mock_logger,
     ):
-        with patch("hutch_bunny.core.db.sync.logger") as mock_logger:
-            # Call the method directly
-            db_client._check_indexes_exist()
+        # Call the method directly
+        db_client._check_indexes_exist()
 
-            # Verify a warning was logged
-            mock_logger.warning.assert_called_once()
+        # Verify a warning was logged
+        mock_logger.warning.assert_called_once()
 
-            # Verify the warning message contains information about missing indexes
-            warning_msg = mock_logger.warning.call_args[0][0]
-            assert "Missing indexes in the database" in warning_msg
+        # Verify the warning message contains information about missing indexes
+        warning_msg = mock_logger.warning.call_args[0][0]
+        assert "Missing indexes in the database" in warning_msg

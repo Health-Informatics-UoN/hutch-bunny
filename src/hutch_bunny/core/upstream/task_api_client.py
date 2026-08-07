@@ -1,12 +1,13 @@
-from hutch_bunny.core.logger import logger
 import time
-from requests.models import Response
 from enum import Enum
+
 import requests
 from requests.auth import HTTPBasicAuth
+from requests.models import Response
+
+from hutch_bunny.core.logger import logger
 from hutch_bunny.core.rquest_models.result import RquestResult
 from hutch_bunny.core.settings import DaemonSettings
-from typing import Optional
 
 
 class SupportedMethod(Enum):
@@ -27,7 +28,7 @@ class TaskApiClient:
         self.password = settings.TASK_API_PASSWORD
 
     def _request(
-        self, method: SupportedMethod, url: str, data: Optional[dict] = None, **kwargs
+        self, method: SupportedMethod, url: str, data: dict | None = None, **kwargs
     ) -> Response:
         """
         Sends an HTTP request using the specified method to the given URL with optional data and additional parameters.
@@ -42,8 +43,7 @@ class TaskApiClient:
             Response: The response object returned by the requests library.
         """
         logger.debug(
-            "Sending %s request to %s with data %s and kwargs %s"
-            % (method.value, url, data, kwargs)
+            f"Sending {method.value} request to {url} with data {data} and kwargs {kwargs}"
         )
         basicAuth = HTTPBasicAuth(self.username, self.password)
         response = requests.request(
@@ -54,7 +54,7 @@ class TaskApiClient:
         return response
 
     def post(
-        self, endpoint: Optional[str] = None, data: dict = dict(), **kwargs
+        self, endpoint: str | None = None, data: dict | None = None, **kwargs
     ) -> Response:
         """
         Sends a POST request to the specified endpoint with data and additional parameters.
@@ -67,6 +67,8 @@ class TaskApiClient:
         Returns:
             Response: The response object returned by the requests library.
         """
+        if data is None:
+            data = {}
         url = f"{self.base_url}/{endpoint}"
         return self._request(
             SupportedMethod.POST,
@@ -75,7 +77,7 @@ class TaskApiClient:
             headers={"Content-Type": "application/json"},
         )
 
-    def get(self, endpoint: Optional[str] = None, **kwargs) -> Response:
+    def get(self, endpoint: str | None = None, **kwargs) -> Response:
         """
         Sends a GET request to the specified endpoint with optional additional parameters.
 

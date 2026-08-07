@@ -1,9 +1,12 @@
 import struct
 from typing import Any
-from sqlalchemy import create_engine, inspect, event
-from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
+
 from azure.core.credentials import TokenCredential
+from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
+from sqlalchemy import create_engine, event, inspect
+
 from hutch_bunny.core.logger import logger
+
 from .sync import SyncDBClient
 
 
@@ -39,7 +42,7 @@ class AzureManagedIdentityDBClient(SyncDBClient):
         from urllib.parse import quote
 
         url = f"Driver={drivername};Server=tcp:{host},{port};Database={database};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30"
-        url = "mssql+pyodbc:///?odbc_connect={0}".format(quote(url))
+        url = f"mssql+pyodbc:///?odbc_connect={quote(url)}"
 
         self.schema = schema if schema is not None and len(schema) > 0 else None
         self._engine = create_engine(url=url)

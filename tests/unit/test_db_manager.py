@@ -1,5 +1,7 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
+
 from hutch_bunny.core.db import SyncDBClient
 
 
@@ -158,24 +160,26 @@ def test_check_indexes_exist_missing_indexes(
     mock_inspector.get_indexes.return_value = []
 
     # Create a SyncDBClient instance with mocked dependencies
-    with patch("hutch_bunny.core.db.sync.inspect", return_value=mock_inspector):
-        with patch("hutch_bunny.core.db.sync.logger") as mock_logger:
-            # Mock _check_tables_exist to prevent it from running
-            with patch.object(SyncDBClient, "_check_tables_exist"):
-                db_client = SyncDBClient(
-                    username="test_user",
-                    password="test_password",
-                    host="test_host",
-                    port=5432,
-                    database="test_db",
-                    drivername="postgresql+psycopg",
-                )
-                db_client._engine = mock_engine
-                db_client._inspector = mock_inspector
+    with (
+        patch("hutch_bunny.core.db.sync.inspect", return_value=mock_inspector),
+        patch("hutch_bunny.core.db.sync.logger") as mock_logger,
+        # Mock _check_tables_exist to prevent it from running
+        patch.object(SyncDBClient, "_check_tables_exist"),
+    ):
+        db_client = SyncDBClient(
+            username="test_user",
+            password="test_password",
+            host="test_host",
+            port=5432,
+            database="test_db",
+            drivername="postgresql+psycopg",
+        )
+        db_client._engine = mock_engine
+        db_client._inspector = mock_inspector
 
-                # Assert a warning was logged
-                mock_logger.warning.assert_called_once()
+        # Assert a warning was logged
+        mock_logger.warning.assert_called_once()
 
-                # Assert the message contains information about missing indexes
-                warning_msg = mock_logger.warning.call_args[0][0]
-                assert "Missing indexes in the database" in warning_msg
+        # Assert the message contains information about missing indexes
+        warning_msg = mock_logger.warning.call_args[0][0]
+        assert "Missing indexes in the database" in warning_msg

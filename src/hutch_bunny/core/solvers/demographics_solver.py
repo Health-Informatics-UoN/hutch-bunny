@@ -1,23 +1,23 @@
 import os
-from typing import Tuple, List, Dict
+from typing import ClassVar
+
 from pydantic import BaseModel
-
 from sqlalchemy import Select, distinct, func, select
+from tenacity import (
+    after_log,
+    before_sleep_log,
+    retry,
+    stop_after_attempt,
+    wait_fixed,
+)
 
-from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.db import BaseDBClient
 from hutch_bunny.core.db.entities import (
     Concept,
     Person,
 )
-from hutch_bunny.core.logger import logger, INFO
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_fixed,
-    before_sleep_log,
-    after_log,
-)
+from hutch_bunny.core.logger import INFO, logger
+from hutch_bunny.core.obfuscation import apply_filters
 from hutch_bunny.core.rquest_models.distribution import DistributionQuery
 from hutch_bunny.core.solvers.availability_solver import ResultModifier
 
@@ -57,11 +57,11 @@ class DemographicsDistributionQuerySolver:
     """
 
     # Constants
-    GENDER_CONCEPT_IDS = [8507, 8532]  # MALE, FEMALE
+    GENDER_CONCEPT_IDS: ClassVar[list[int]] = [8507, 8532]  # MALE, FEMALE
     DEFAULT_LOW_NUMBER = 10
     DEFAULT_ROUNDING = 10
 
-    output_cols = [
+    output_cols: ClassVar[list[str]] = [
         "BIOBANK",
         "CODE",
         "DESCRIPTION",
@@ -84,8 +84,8 @@ class DemographicsDistributionQuerySolver:
         self.query = query
 
     def _get_modifier_values(
-        self, results_modifier: List[ResultModifier]
-    ) -> Tuple[int, int]:
+        self, results_modifier: list[ResultModifier]
+    ) -> tuple[int, int]:
         """
         Extract modifier values from the results modifier list.
 
@@ -120,7 +120,7 @@ class DemographicsDistributionQuerySolver:
 
     def _build_gender_query(
         self, rounding: int, low_number: int
-    ) -> Select[Tuple[int, int]]:
+    ) -> Select[tuple[int, int]]:
         """Build the query for gender distribution.
 
         Args:
@@ -148,7 +148,7 @@ class DemographicsDistributionQuerySolver:
 
         return stmnt
 
-    def _get_concept_data(self) -> Dict[int, str]:
+    def _get_concept_data(self) -> dict[int, str]:
         """
         Get concept descriptions for gender concepts.
 
@@ -164,9 +164,9 @@ class DemographicsDistributionQuerySolver:
 
     def _build_alternatives_string(
         self,
-        counts_by_gender: Dict[int, int],
-        concept_names: Dict[int, str],
-        results_modifier: List[ResultModifier],
+        counts_by_gender: dict[int, int],
+        concept_names: dict[int, str],
+        results_modifier: list[ResultModifier],
     ) -> str:
         """
         Build the alternatives string for gender distribution.
@@ -192,7 +192,7 @@ class DemographicsDistributionQuerySolver:
 
     def _create_demographics_rows(
         self, total_count: int, alternatives: str
-    ) -> List[DemographicsRow]:
+    ) -> list[DemographicsRow]:
         """
         Create the demographics rows for the output.
 
@@ -225,7 +225,7 @@ class DemographicsDistributionQuerySolver:
         before_sleep=before_sleep_log(logger, INFO),
         after=after_log(logger, INFO),
     )
-    def solve_query(self, results_modifier: List[ResultModifier]) -> Tuple[str, int]:
+    def solve_query(self, results_modifier: list[ResultModifier]) -> tuple[str, int]:
         """Build table of demographics query and return as a TAB separated string
         along with the number of rows.
 

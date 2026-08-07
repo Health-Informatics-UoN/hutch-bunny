@@ -1,28 +1,27 @@
 from opentelemetry import trace
 
-from hutch_bunny.core.logger import logger
-from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
 from hutch_bunny.core.db import BaseDBClient
+from hutch_bunny.core.logger import logger
+from hutch_bunny.core.obfuscation import encode_output
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
-from hutch_bunny.core.rquest_models.file import File
 from hutch_bunny.core.rquest_models.distribution import (
     DistributionQuery,
     DistributionQueryType,
 )
-
+from hutch_bunny.core.rquest_models.file import File
 from hutch_bunny.core.rquest_models.result import RquestResult
+from hutch_bunny.core.services.metadata_service import MetadataService
 from hutch_bunny.core.settings import Settings
+from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
 from hutch_bunny.core.solvers.demographics_solver import (
     DemographicsDistributionQuerySolver,
 )
 from hutch_bunny.core.solvers.distribution_solver import CodeDistributionQuerySolver
-from hutch_bunny.core.services.metadata_service import MetadataService
 from hutch_bunny.core.telemetry import trace_operation
-from hutch_bunny.core.obfuscation import encode_output
-
 
 settings = Settings()
 metadata_service = MetadataService()
+
 
 @trace_operation("solve_availability", span_kind=trace.SpanKind.INTERNAL)
 def solve_availability(
@@ -47,7 +46,7 @@ def solve_availability(
             status="ok", count=count_, collection_id=query.collection, uuid=query.uuid
         )
         logger.info("Solved availability query")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - any solver failure must resolve to an error result, not crash
         logger.error(str(e))
         result = RquestResult(
             status="error", count=0, collection_id=query.collection, uuid=query.uuid
@@ -83,7 +82,7 @@ def solve_distribution(
     results_modifier: list[dict[str, str | int]],
     db_client: BaseDBClient,
     query: DistributionQuery,
-    encode_result: bool = True 
+    encode_result: bool = True,
 ) -> RquestResult:
     """Solve a distribution query.
 
@@ -98,10 +97,10 @@ def solve_distribution(
     solver = _get_distribution_solver(db_client, query)
     try:
         res, count = solver.solve_query(results_modifier)
-        
-        if encode_result: 
+
+        if encode_result:
             res, size = encode_output(res)
-        else: 
+        else:
             size = len(res.encode("utf-8")) / 1000
 
         result_file = File(
@@ -127,7 +126,7 @@ def solve_distribution(
             files=[result_file, metadata_file] if metadata_file else [result_file],
             collection_id=query.collection,
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - any solver failure must resolve to an error result, not crash
         logger.error(str(e))
         result = RquestResult(
             uuid=query.uuid,

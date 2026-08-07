@@ -1,17 +1,17 @@
-import sys 
 import json
-from typing import Sequence
+import sys
+from collections.abc import Sequence
+from importlib.metadata import version
 
+from hutch_bunny.core.db import get_db_client
+from hutch_bunny.core.execute_query import execute_query
+from hutch_bunny.core.logger import configure_logger, logger
+from hutch_bunny.core.parser import parser
 from hutch_bunny.core.results_modifiers import (
     get_results_modifiers_from_str,
 )
-from hutch_bunny.core.execute_query import execute_query
 from hutch_bunny.core.rquest_models.result import RquestResult
-from hutch_bunny.core.parser import parser
-from hutch_bunny.core.logger import configure_logger, logger
-from hutch_bunny.core.db import get_db_client
 from hutch_bunny.core.settings import Settings
-from importlib.metadata import version
 
 
 def save_to_output(result: RquestResult, destination: str) -> None:
@@ -31,7 +31,7 @@ def save_to_output(result: RquestResult, destination: str) -> None:
         with open(destination, "w") as output_file:
             file_body = json.dumps(result.to_dict())
             output_file.write(file_body)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - report any write failure rather than crash the CLI
         logger.error(str(e), exc_info=True)
 
 
@@ -44,13 +44,13 @@ def main(argv: Sequence[str] | None = None) -> None:
     db_client = get_db_client()
     args = parser.parse_args(argv)
 
-    if args.body_json: 
+    if args.body_json:
         try:
             query_dict = json.loads(args.body_json)
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON input: {e}")
             sys.exit(1)
-    else: 
+    else:
         with open(args.body) as body:
             query_dict = json.load(body)
 
@@ -58,7 +58,9 @@ def main(argv: Sequence[str] | None = None) -> None:
         args.results_modifiers
     )
 
-    result = execute_query(query_dict, results_modifier, db_client=db_client, encode_result=args.encode)
+    result = execute_query(
+        query_dict, results_modifier, db_client=db_client, encode_result=args.encode
+    )
     logger.debug(f"Results: {result.to_dict()}")
     save_to_output(result, args.output)
     logger.info(f"Saved results to {args.output}")
