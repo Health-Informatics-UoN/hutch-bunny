@@ -36,7 +36,7 @@ dependencies = [
   "opentelemetry-instrumentation-sqlalchemy>=0.41b0",
   "opentelemetry-instrumentation-requests>=0.41b0",
   "opentelemetry-exporter-otlp>=1.20.0",
-  "cryptography>=49.0.0",
+  "cryptography>=50.0.0",
   "snowflake-sqlalchemy>=1.11.0",
 ]
 
