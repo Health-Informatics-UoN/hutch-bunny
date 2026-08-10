@@ -60,7 +60,7 @@ dev = [
     "coverage>=7.15.4",
     "pytest-cov>=7.1.0",
     "pre-commit>=4.6.1",
-    "types-python-dateutil>=2.9.0.20260716",
+    "types-python-dateutil>=2.9.0.20260807",
 ]
 
 [tool.pytest.ini_options]
