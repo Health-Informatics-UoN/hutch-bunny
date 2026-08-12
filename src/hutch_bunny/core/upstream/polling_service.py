@@ -1,13 +1,15 @@
-from hutch_bunny.core.logger import logger
 import time
-from typing import Callable
+from collections.abc import Callable
+
 import requests
+from opentelemetry import trace
+
+from hutch_bunny.core.logger import logger
 from hutch_bunny.core.settings import DaemonSettings
 from hutch_bunny.core.upstream.task_api_client import TaskApiClient
 
-from opentelemetry import trace
-
 tracer = trace.get_tracer("hutch-bunny.polling")
+
 
 class PollingService:
     """

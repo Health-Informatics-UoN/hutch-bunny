@@ -1,9 +1,10 @@
-import subprocess
-import pytest
-import os
 import json
+import os
+import subprocess
 import sys
 from typing import Any
+
+import pytest
 
 LOCATION_QUERY_FILES = [
     "tests/queries/availability/location_geo_radius.json",
@@ -34,7 +35,7 @@ def _run_cli(
         output_file_path,
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True, env=env)
+    result = subprocess.run(cmd, capture_output=True, text=True, env=env, check=False)
     assert result.returncode == 0, f"CLI failed with error: {result.stderr}"
     assert os.path.exists(output_file_path), "Output file was not created."
 

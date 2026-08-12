@@ -1,3 +1,5 @@
+import pytest
+
 from hutch_bunny.core.db import SyncDBClient
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.rquest_models.distribution import DistributionQuery
@@ -5,7 +7,6 @@ from hutch_bunny.core.solvers.query_solvers import (
     solve_availability,
     solve_distribution,
 )
-import pytest
 
 
 @pytest.mark.integration

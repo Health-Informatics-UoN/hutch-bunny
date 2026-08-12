@@ -1,6 +1,5 @@
-from dataclasses import dataclass
-from typing import Optional
 import json
+from dataclasses import dataclass
 
 
 @dataclass
@@ -20,8 +19,8 @@ class AvailabilityTestCase:
 
     json_file_path: str
     expected_count: int
-    rounding: Optional[int] = None
-    low_number_suppression: Optional[int] = None
+    rounding: int | None = None
+    low_number_suppression: int | None = None
 
     def get_modifiers_json(self) -> str:
         """Convert the modifiers to a JSON string format."""
@@ -36,7 +35,6 @@ class AvailabilityTestCase:
                     "threshold": self.low_number_suppression,
                 }
             )
-
 
         return json.dumps(modifiers_list)
 
@@ -135,7 +133,6 @@ test_cases = [
     # 8532 Female AND 432867 Hyperlipidemia
     # Age >= 50 years when it occurred
     # Rounding and threshold is not set, so will default to 10 /Test: 14
-
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_and_with_age1.json",
         expected_count=30,
@@ -144,7 +141,6 @@ test_cases = [
     # 8532 Female AND 432867 Hyperlipidemia
     # Age >= 50 years when it occurred
     # Threshold is not set, so will default to 10 /Test: 15
-
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_and_with_age1.json",
         rounding=0,
@@ -154,7 +150,6 @@ test_cases = [
     # 8532 Female AND 432867 Hyperlipidemia
     # Age <= 50 years when it occurred
     # Rounding and threshold is not set, so will default to 10 /Test: 16
-
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/multiple_in_group_and_with_age2.json",
         expected_count=30,
@@ -205,7 +200,7 @@ test_cases = [
         low_number_suppression=0,
         expected_count=333,
     ),
-#   Test: 23
+    #   Test: 23
     AvailabilityTestCase(
         json_file_path="tests/queries/availability/procedure.json",
         rounding=0,

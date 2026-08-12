@@ -1,4 +1,5 @@
 from sqlalchemy import create_engine, inspect
+
 from .sync import SyncDBClient
 
 
@@ -21,13 +22,16 @@ class DuckDBClient(SyncDBClient):
 
         self.schema = schema if schema is not None and len(schema) > 0 else None
 
-        self._engine = create_engine("duckdb:///" + path_to_db, connect_args={
-            'read_only': True,
-            'config': {
-                'memory_limit': duckdb_memory_limit,
-                'temp_directory': duckdb_temp_directory
-            }
-        })
+        self._engine = create_engine(
+            "duckdb:///" + path_to_db,
+            connect_args={
+                "read_only": True,
+                "config": {
+                    "memory_limit": duckdb_memory_limit,
+                    "temp_directory": duckdb_temp_directory,
+                },
+            },
+        )
 
         if self.schema is not None:
             self._engine.update_execution_options(

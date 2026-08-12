@@ -1,8 +1,11 @@
-from typing import Any, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
+
 from sqlalchemy import create_engine, inspect
-from trino.sqlalchemy import URL as TrinoURL  # type: ignore
-from sqlalchemy.engine import Row, Engine
+from sqlalchemy.engine import Engine, Row
 from sqlalchemy.sql import Executable
+from trino.sqlalchemy import URL as TrinoURL  # type: ignore
+
 from .base import BaseDBClient
 
 
@@ -13,10 +16,10 @@ class TrinoDBClient(BaseDBClient):
         host: str,
         port: int,
         catalog: str,
-        password: Optional[str] = None,
-        drivername: Optional[str] = None,
-        schema: Optional[str] = None,
-        database: Optional[str] = None,
+        password: str | None = None,
+        drivername: str | None = None,
+        schema: str | None = None,
+        database: str | None = None,
     ) -> None:
         """Create a DB client that interacts with Trino.
 

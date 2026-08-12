@@ -1,10 +1,11 @@
 import pytest
+
 from hutch_bunny.core.db import SyncDBClient
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
+from hutch_bunny.core.rquest_models.result import RquestResult
 from hutch_bunny.core.solvers.query_solvers import (
     solve_availability,
 )
-from hutch_bunny.core.rquest_models.result import RquestResult
 
 
 @pytest.fixture
@@ -53,5 +54,7 @@ def test_solve_availability_is_ok(availability_result: RquestResult) -> None:
 
 
 @pytest.mark.integration
-def test_solve_availability_count_matches(availability_result: RquestResult, availability_example: RquestResult) -> None:
+def test_solve_availability_count_matches(
+    availability_result: RquestResult, availability_example: RquestResult
+) -> None:
     assert availability_result.count == availability_example.count

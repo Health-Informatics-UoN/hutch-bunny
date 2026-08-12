@@ -1,5 +1,7 @@
 from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
+
 from hutch_bunny.core.rquest_models.file import File
 
 

@@ -1,8 +1,9 @@
-from typing import Any, Sequence
-from sqlalchemy.sql import Executable
-from sqlalchemy.engine import Row, Engine
-from typing import ParamSpec, TypeVar
 from abc import abstractmethod
+from collections.abc import Sequence
+from typing import Any, ParamSpec, TypeVar
+
+from sqlalchemy.engine import Engine, Row
+from sqlalchemy.sql import Executable
 
 P = ParamSpec("P")
 R = TypeVar("R")

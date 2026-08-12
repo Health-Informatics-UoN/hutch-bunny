@@ -1,16 +1,17 @@
 import os
+
 os.environ["TASK_API_BASE_URL"] = "https://localhost:8000"
 import pytest
-from hutch_bunny.core.solvers.query_solvers import solve_distribution
+
+from hutch_bunny.core.db import BaseDBClient, SyncDBClient, get_db_client
 from hutch_bunny.core.rquest_models.distribution import (
     DistributionQuery,
     DistributionQueryType,
 )
-from hutch_bunny.core.db import SyncDBClient, BaseDBClient
-from hutch_bunny.core.rquest_models.result import RquestResult
 from hutch_bunny.core.rquest_models.file import File
+from hutch_bunny.core.rquest_models.result import RquestResult
 from hutch_bunny.core.settings import Settings
-from hutch_bunny.core.db import get_db_client
+from hutch_bunny.core.solvers.query_solvers import solve_distribution
 
 settings = Settings()
 
