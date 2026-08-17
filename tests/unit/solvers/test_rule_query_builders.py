@@ -388,6 +388,68 @@ class TestOMOPRuleQueryBuilder():
 
         assert "specimen.person_id" in query_str
 
+    def test_build_does_not_include_death_when_feature_disabled(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager)
+
+        query_str = str(builder.build())
+
+        assert "death.person_id" not in query_str
+
+    def test_build_includes_death_when_feature_enabled(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, include_death=True)
+
+        query_str = str(builder.build())
+
+        assert "death.person_id" in query_str
+
+    def test_add_concept_constraint_applies_to_death_when_enabled(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, include_death=True)
+
+        builder.add_concept_constraint(12345)
+
+        death_sql = str(builder.death_query.compile(compile_kwargs={"literal_binds": True}))
+        assert "death.cause_concept_id = 12345" in death_sql
+
+    def test_add_concept_constraint_does_not_apply_to_death_when_disabled(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager)
+
+        builder.add_concept_constraint(12345)
+
+        assert builder.death_query is None
+
+    @patch("hutch_bunny.core.solvers.rule_query_builders.SQLDialectHandler.get_year_difference")
+    def test_add_age_constraint_applies_to_death_when_enabled(self, mock_get_year_diff: Mock) -> None:
+        from sqlalchemy.sql.elements import literal_column
+        mock_get_year_diff.return_value = literal_column("25")
+
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, include_death=True)
+
+        builder.add_age_constraint("20", "")
+
+        death_sql = str(builder.death_query.compile(compile_kwargs={"literal_binds": True}))
+        assert "25 >= 20" in death_sql
+
+    def test_add_temporal_constraint_applies_to_death_when_enabled(self) -> None:
+        fixed_now = datetime(2025, 8, 7, 12, 0, 0)
+        relative_date = fixed_now + relativedelta(months=-1)
+        expected_date_str = relative_date.strftime("%Y-%m-%d %H:%M:%S")
+
+        with patch("hutch_bunny.core.solvers.rule_query_builders.datetime") as mock_datetime:
+            mock_datetime.now.return_value = fixed_now
+
+            mock_db_manager = Mock()
+            builder = OMOPRuleQueryBuilder(mock_db_manager, include_death=True)
+
+            builder.add_temporal_constraint("", "1")
+
+            death_sql = str(builder.death_query.compile(compile_kwargs={"literal_binds": True}))
+            assert f"death.death_date >= '{expected_date_str}'" in death_sql
+
     def test_build_after_adding_concept_constraint(self) -> None:
         """Test build after adding a concept constraint."""
         mock_db_manager = Mock()
@@ -440,13 +502,13 @@ class TestOMOPRuleQueryBuilder():
 
         builder.add_concept_constraint(99999)
         builder.add_numeric_range(1.0, 100.0)
-        
+
         result = builder.build()
-        
+
         # Count UNION occurrences (should be 3 for 4 queries)
         query_str = str(result)
         union_count = query_str.count("UNION")
-        
+
         # 4 queries connected by 3 UNIONs
         assert union_count == 4
 
@@ -498,10 +560,7 @@ class TestOMOPRuleQueryBuilder():
 
         builder.add_haversine_radius_constraint(51.5074, -0.1278, 5000.0)
 
-        query_str = str(builder.build().compile(
-            dialect=postgresql.dialect(),
-            compile_kwargs={"literal_binds": True},
-        ))
+        query_str = str(builder.build())
         assert "latitude" in query_str
         assert "longitude" in query_str
         assert "asin" in query_str.lower() or "sin" in query_str.lower()

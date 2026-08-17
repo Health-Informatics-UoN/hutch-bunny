@@ -181,6 +181,7 @@ class AvailabilitySolver():
             self.db_client,
             include_specimen=settings.OMOP_SPECIMEN_ENABLED,
             include_location=settings.OMOP_LOCATION_ENABLED,
+            include_death=settings.OMOP_DEATH_ENABLED,
             varcat=rule.varcat,
         )
 
