@@ -19,13 +19,13 @@ maintainers = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-  "numpy>=2.5.1",
+  "numpy>=2.5.2",
   "psycopg[binary]>=3.3.4",
   "python-dotenv>=1.2.2",
   "requests>=2.34.2", # daemon-only
-  "sqlalchemy>=2.0.51",
+  "sqlalchemy>=2.0.52",
   "trino>=0.338.0", # for SQL Server
-  "pydantic-settings>=2.14.2",
+  "pydantic-settings>=2.15.0",
   "tenacity>=9.1.4", # for retry
   "azure-identity>=1.25.3",
   "pyodbc>=5.2.0",
@@ -53,13 +53,13 @@ source = "vcs"
 
 [dependency-groups]
 dev = [
-    "ruff>=0.16.1",
+    "ruff>=0.16.3",
     "pytest>=9.1.1",
     "mypy>=2.3.0",
     "types-requests>=2.33.0.20260712",
     "coverage>=7.15.4",
     "pytest-cov>=7.1.0",
-    "pre-commit>=4.6.1",
+    "pre-commit>=4.6.2",
     "types-python-dateutil>=2.9.0.20260807",
 ]
 
