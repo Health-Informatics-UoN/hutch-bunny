@@ -13,3 +13,4 @@ class Varcat(StrEnum):
     PROCEDURE = "Procedure"
     SPECIMEN = "Specimen"
     LOCATION = "Location"
+    DEATH = "Death"

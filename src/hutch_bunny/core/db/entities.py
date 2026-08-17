@@ -247,6 +247,17 @@ class DrugExposure(Base):
     dose_unit_source_value = Column(String(50), nullable=True)
 
 
+class Death(Base):
+    __tablename__ = "death"
+    person_id = Column(Integer, ForeignKey("person.person_id"), primary_key=True)
+    death_date = Column(Date, nullable=False)
+    death_datetime = Column(DateTime, nullable=True)
+    death_type_concept_id = Column(Integer, ForeignKey("concept.concept_id"), nullable=True)
+    cause_concept_id = Column(Integer, ForeignKey("concept.concept_id"), nullable=True)
+    cause_source_value = Column(String(50), nullable=True)
+    cause_source_concept_id = Column(Integer, ForeignKey("concept.concept_id"), nullable=True)
+
+
 class Specimen(Base):
     __tablename__ = "specimen"
     specimen_id = Column(Integer, primary_key=True)
