@@ -52,6 +52,10 @@ class Settings(BaseSettings):
         description="Enable support for querying OMOP location table records",
         default=False,
     )
+    OMOP_DEATH_ENABLED: bool = Field(
+        description="Enable support for querying OMOP death table records",
+        default=False,
+    )
 
     LOGGER_NAME: str = "hutch"
     LOGGER_LEVEL: str = Field(

@@ -18,6 +18,7 @@ from sqlalchemy import (
 from hutch_bunny.core.db import BaseDBClient
 from hutch_bunny.core.db.entities import (
     ConditionOccurrence,
+    Death,
     Location,
     Measurement,
     Observation,
@@ -111,10 +112,14 @@ class OMOPRuleQueryBuilder:
     guarding against vocabulary drift between the querying party and the local
     CDM. Specimen is unioned in too whenever `include_specimen` is enabled.
 
-    Location is the one exception: it has no equivalent per-person clinical
-    event table to union with the others, so a `varcat` of `Location` bypasses
-    that union entirely and targets the `location` table alone via a join
-    through `person.location_id`.
+    Location and Death are exceptions to that union. Location has no
+    equivalent per-person clinical event table to union with the others, so
+    a `varcat` of `Location` bypasses that union entirely and targets the
+    `location` table alone via a join through `person.location_id`. Death is
+    excluded for a different reason: a concept recorded as `cause_concept_id`
+    describes what a person died of, which is not the same clinical fact as
+    that concept appearing in their clinical history, so a `varcat` of
+    `Death` also bypasses the union and targets the `death` table alone.
     """
 
     def __init__(
@@ -123,11 +128,13 @@ class OMOPRuleQueryBuilder:
         varcat: Varcat | None = None,
         include_specimen: bool = False,
         include_location: bool = False,
+        include_death: bool = False,
     ):
         self.db_client = db_client
         self.include_specimen = include_specimen
         self.include_location = include_location
         self.is_location_rule = varcat == Varcat.LOCATION
+        self.is_death_rule = varcat == Varcat.DEATH
 
         self.condition_query: Select[Tuple[int]] = select(ConditionOccurrence.person_id)
         self.drug_query: Select[Tuple[int]] = select(DrugExposure.person_id)
@@ -143,6 +150,9 @@ class OMOPRuleQueryBuilder:
             )
             if self.is_location_rule and include_location
             else None
+        )
+        self.death_query: Select[Tuple[int]] | None = (
+            select(Death.person_id) if self.is_death_rule and include_death else None
         )
 
     def add_concept_constraint(self, concept_id: int) -> "OMOPRuleQueryBuilder":
@@ -176,6 +186,10 @@ class OMOPRuleQueryBuilder:
         if self.specimen_query is not None:
             self.specimen_query = self.specimen_query.where(
                 Specimen.specimen_concept_id == concept_id
+            )
+        if self.death_query is not None:
+            self.death_query = self.death_query.where(
+                Death.cause_concept_id == concept_id
             )
         return self
 
@@ -258,6 +272,14 @@ class OMOPRuleQueryBuilder:
                 self.specimen_query,
                 Specimen.person_id,
                 Specimen.specimen_date,
+                comparator,
+                age_value,
+            )
+        if self.death_query is not None:
+            self.death_query = self._apply_age_constraint_to_table(
+                self.death_query,
+                Death.person_id,
+                Death.death_date,
                 comparator,
                 age_value,
             )
@@ -379,6 +401,10 @@ class OMOPRuleQueryBuilder:
                 self.specimen_query = self.specimen_query.where(
                     Specimen.specimen_date >= relative_date
                 )
+            if self.death_query is not None:
+                self.death_query = self.death_query.where(
+                    Death.death_date >= relative_date
+                )
         else:
             self.measurement_query = self.measurement_query.where(
                 Measurement.measurement_date <= relative_date
@@ -398,6 +424,10 @@ class OMOPRuleQueryBuilder:
             if self.specimen_query is not None:
                 self.specimen_query = self.specimen_query.where(
                     Specimen.specimen_date <= relative_date
+                )
+            if self.death_query is not None:
+                self.death_query = self.death_query.where(
+                    Death.death_date <= relative_date
                 )
         return self
 
@@ -523,6 +553,11 @@ class OMOPRuleQueryBuilder:
         (or a stub that contributes no matches, if `OMOP_LOCATION_ENABLED` is
         off) rather than unioning with the clinical tables above.
 
+        Similarly, a `Death` rule returns just the death query (or a stub, if
+        `OMOP_DEATH_ENABLED` is off). Cause-of-death is a distinct clinical
+        fact from having a concept recorded in the person's clinical history,
+        so it is deliberately not unioned with the other tables.
+
         Returns:
             CompoundSelect query that unions results from all tables.
 
@@ -534,6 +569,12 @@ class OMOPRuleQueryBuilder:
             if self.location_query is not None:
                 return union(self.location_query)
             # OMOP_LOCATION_ENABLED is off - contribute no matches.
+            return union(select(Person.person_id).where(text("1=0")))
+
+        if self.is_death_rule:
+            if self.death_query is not None:
+                return union(self.death_query)
+            # OMOP_DEATH_ENABLED is off - contribute no matches.
             return union(select(Person.person_id).where(text("1=0")))
 
         queries: list[Select[Tuple[int]]] = [

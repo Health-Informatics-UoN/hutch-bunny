@@ -10,11 +10,13 @@ from hutch_bunny.core.db import BaseDBClient
 from hutch_bunny.core.db.entities import (
     Concept,
     ConditionOccurrence,
+    Death,
     Measurement,
     Observation,
     Person,
     DrugExposure,
-    ProcedureOccurrence, Specimen,
+    ProcedureOccurrence,
+    Specimen,
 )
 from tenacity import (
     retry,
@@ -32,11 +34,13 @@ from hutch_bunny.core.settings import Settings
 # Type alias for tables that have person_id
 PersonTable = Union[
     ConditionOccurrence,
+    Death,
     Measurement,
     Observation,
     Person,
     DrugExposure,
     ProcedureOccurrence,
+    Specimen,
 ]
 
 settings = Settings()
@@ -104,6 +108,7 @@ class CodeDistributionQuerySolver:
         "Observation": Observation,
         "Procedure": ProcedureOccurrence,
         "Specimen": Specimen,
+        "Death": Death,
     }
     domain_concept_id_map = {
         "Condition": ConditionOccurrence.condition_concept_id,
@@ -115,6 +120,7 @@ class CodeDistributionQuerySolver:
         "Observation": Observation.observation_concept_id,
         "Procedure": ProcedureOccurrence.procedure_concept_id,
         "Specimen": Specimen.specimen_concept_id,
+        "Death": Death.cause_concept_id,
     }
 
     # this one is unique for this resolver
@@ -182,6 +188,9 @@ class CodeDistributionQuerySolver:
             for domain_id in self.allowed_domains_map:
 
                 if not settings.OMOP_SPECIMEN_ENABLED and domain_id == "Specimen":
+                    continue
+
+                if not settings.OMOP_DEATH_ENABLED and domain_id == "Death":
                     continue
 
                 logger.debug(domain_id)

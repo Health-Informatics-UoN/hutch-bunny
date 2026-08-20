@@ -388,6 +388,120 @@ class TestOMOPRuleQueryBuilder():
 
         assert "specimen.person_id" in query_str
 
+    def test_build_does_not_include_death_when_feature_disabled(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Death")
+
+        query_str = str(builder.build())
+
+        assert "death.person_id" not in query_str
+
+    def test_build_includes_death_when_feature_enabled(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(
+            mock_db_manager, include_death=True, varcat="Death"
+        )
+
+        query_str = str(builder.build())
+
+        assert "death.person_id" in query_str
+
+    def test_death_varcat_bypasses_union_with_clinical_tables(self) -> None:
+        """A Death rule should only ever query the death table, mirroring Location's bypass."""
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(
+            mock_db_manager, include_death=True, varcat="Death"
+        )
+
+        query_str = str(builder.build())
+
+        assert "death.person_id" in query_str
+        assert "measurement.person_id" not in query_str
+        assert "observation.person_id" not in query_str
+        assert "condition_occurrence.person_id" not in query_str
+        assert "drug_exposure.person_id" not in query_str
+        assert "procedure_occurrence.person_id" not in query_str
+
+    def test_non_death_varcat_does_not_query_death_table_even_when_enabled(
+        self,
+    ) -> None:
+        """A Condition rule must not silently also check the death table's cause_concept_id."""
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(
+            mock_db_manager, include_death=True, varcat="Condition"
+        )
+
+        builder.add_concept_constraint(12345)
+
+        assert builder.death_query is None
+        query_str = str(builder.build())
+        assert "death.person_id" not in query_str
+
+    def test_add_concept_constraint_applies_to_death_when_enabled(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(
+            mock_db_manager, include_death=True, varcat="Death"
+        )
+
+        builder.add_concept_constraint(12345)
+
+        death_sql = str(
+            builder.death_query.compile(compile_kwargs={"literal_binds": True})
+        )
+        assert "death.cause_concept_id = 12345" in death_sql
+
+    def test_add_concept_constraint_does_not_apply_to_death_when_disabled(self) -> None:
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager, varcat="Death")
+
+        builder.add_concept_constraint(12345)
+
+        assert builder.death_query is None
+
+    @patch(
+        "hutch_bunny.core.solvers.rule_query_builders.SQLDialectHandler.get_year_difference"
+    )
+    def test_add_age_constraint_applies_to_death_when_enabled(
+        self, mock_get_year_diff: Mock
+    ) -> None:
+        from sqlalchemy.sql.elements import literal_column
+
+        mock_get_year_diff.return_value = literal_column("25")
+
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(
+            mock_db_manager, include_death=True, varcat="Death"
+        )
+
+        builder.add_age_constraint("20", "")
+
+        death_sql = str(
+            builder.death_query.compile(compile_kwargs={"literal_binds": True})
+        )
+        assert "25 >= 20" in death_sql
+
+    def test_add_temporal_constraint_applies_to_death_when_enabled(self) -> None:
+        fixed_now = datetime(2025, 8, 7, 12, 0, 0)
+        relative_date = fixed_now + relativedelta(months=-1)
+        expected_date_str = relative_date.strftime("%Y-%m-%d %H:%M:%S")
+
+        with patch(
+            "hutch_bunny.core.solvers.rule_query_builders.datetime"
+        ) as mock_datetime:
+            mock_datetime.now.return_value = fixed_now
+
+            mock_db_manager = Mock()
+            builder = OMOPRuleQueryBuilder(
+                mock_db_manager, include_death=True, varcat="Death"
+            )
+
+            builder.add_temporal_constraint("", "1")
+
+            death_sql = str(
+                builder.death_query.compile(compile_kwargs={"literal_binds": True})
+            )
+            assert f"death.death_date >= '{expected_date_str}'" in death_sql
+
     def test_build_after_adding_concept_constraint(self) -> None:
         """Test build after adding a concept constraint."""
         mock_db_manager = Mock()
