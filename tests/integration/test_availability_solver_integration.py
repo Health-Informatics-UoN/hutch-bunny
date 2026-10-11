@@ -259,13 +259,8 @@ class TestBuildRuleQuery:
         query = availability_solver._build_group_query(group, concepts)
         sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
 
-        if db_client.engine.dialect.name == "postgresql":
-            assert "date_part" in sql_str.lower() or "extract" in sql_str.lower()
-            assert "year_of_birth" in sql_str
-        elif db_client.engine.dialect.name == "mssql":
-            assert "DATEPART" in sql_str
-            assert "year_of_birth" in sql_str
-        
+        # Current age is now calculated without date function
+        assert "year_of_birth" in sql_str
         assert ">= 20" in sql_str or ">=20" in sql_str
         assert "<= 50" in sql_str or "<=50" in sql_str
 
