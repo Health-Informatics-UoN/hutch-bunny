@@ -221,32 +221,39 @@ def test_cache_service_with_polling(mock_execute: Mock, mock_get_db_client: Mock
 @patch('hutch_bunny.core.execute_query.query_solvers.solve_distribution')
 def test_task_handler_uses_cache(mock_solve: Mock, mock_settings: Mock) -> None:
     mock_result = RquestResult(
-        uuid="task-uuid",
+        uuid="task-uuid-1",
         status="ok",
         collection_id="test_collection",
         count=150
     )
     mock_solve.return_value = mock_result
-        
+
     mock_db_manager = Mock()
     mock_api_client = Mock()
-    
-    distribution_task = {
+
+    first_task = {
         "code": "DEMOGRAPHICS",
         "analysis": "DISTRIBUTION",
-        "uuid": "task-uuid",
+        "uuid": "task-uuid-1",
         "collection": "test_collection",
         "owner": "user1"
     }
+    # Same query, new task ID to confirm that doesn't impact cache hit
+    second_task = {**first_task, "uuid": "task-uuid-2"}
 
-    handle_task(distribution_task, mock_db_manager, mock_settings, mock_api_client)
+    handle_task(first_task, mock_db_manager, mock_settings, mock_api_client)
     assert mock_solve.call_count == 1
     assert mock_api_client.send_results.call_count == 1
 
-    # Second identical task - should use cache
-    handle_task(distribution_task, mock_db_manager, mock_settings, mock_api_client)
+    # Second task asks the same question - should use cache
+    handle_task(second_task, mock_db_manager, mock_settings, mock_api_client)
     assert mock_solve.call_count == 1  # Still 1, used cache
     assert mock_api_client.send_results.call_count == 2
+
+    # Cached result must be sent back under the second task's ID
+    sent_result = mock_api_client.send_results.call_args_list[1].args[0]
+    assert sent_result.uuid == "task-uuid-2"
+    assert sent_result.count == 150
 
 
 @patch('hutch_bunny.core.execute_query.DistributionCacheService.get')

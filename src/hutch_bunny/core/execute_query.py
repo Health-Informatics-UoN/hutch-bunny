@@ -48,15 +48,16 @@ def execute_query(
             settings = Settings()
         
         cache_service = DistributionCacheService(settings)
-        
-        if settings.CACHE_ENABLED:
-            cached_result = cache_service.get(query_dict, results_modifier)
-            if cached_result: 
-                logger.info("Returning cached distribution result")
-                return cached_result
 
         try:
             distribution_query = DistributionQuery.model_validate(query_dict)
+
+            if settings.CACHE_ENABLED:
+                cached_result = cache_service.get(query_dict, results_modifier)
+                if cached_result:
+                    logger.info("Returning cached distribution result")
+                    # Cached results may come from another task, so return under this task's uuid
+                    return cached_result.model_copy(update={"uuid": distribution_query.uuid})
 
             # Check for ICD-MAIN queries before calling the solver
             # So we dont return results upstream
