@@ -776,6 +776,69 @@ class TestPersonQueryConstraintBuilder:
             compiled_sql = str(result[0].compile(compile_kwargs={"literal_binds": True}))
             assert compiled_sql == expected_sql
 
+    def test_build_age_constraint_bounds(self, builder: PersonConstraintBuilder) -> None:
+        """Test each set bound of an AGE time becomes its own constraint."""
+        test_cases = [
+            ("50", "", [">= 50"]),
+            ("", "50", ["<= 50"]),
+            ("18", "65", [">= 18", "<= 65"]),
+        ]
+
+        for greater_than_value, less_than_value, expected_sql_parts in test_cases:
+            rule = Mock()
+            rule.time_category = "AGE"
+            rule.greater_than_value = greater_than_value
+            rule.less_than_value = less_than_value
+
+            result = builder._build_age_constraint(rule)
+            assert len(result) == len(expected_sql_parts)
+            for constraint, expected in zip(result, expected_sql_parts):
+                compiled_sql = str(constraint.compile(compile_kwargs={"literal_binds": True}))
+                assert "person.year_of_birth" in compiled_sql
+                assert expected in compiled_sql
+
+    def test_build_age_constraint_ignores_time_category(self, builder: PersonConstraintBuilder) -> None:
+        """Test a TIME constraint on a Person rule is not treated as an age."""
+        test_cases = [
+            ("", "6"),
+            ("6", ""),
+        ]
+
+        for greater_than_value, less_than_value in test_cases:
+            rule = Mock()
+            rule.time_category = "TIME"
+            rule.greater_than_value = greater_than_value
+            rule.less_than_value = less_than_value
+
+            result = builder._build_age_constraint(rule)
+            assert result == []
+
+    def test_build_age_constraint_empty_bounds(self, builder: PersonConstraintBuilder) -> None:
+        """Test an AGE time with empty bounds (e.g. "|:AGE:Y") returns no constraint instead of crashing."""
+        rule = Mock()
+        rule.time_category = "AGE"
+        rule.greater_than_value = ""
+        rule.less_than_value = ""
+
+        assert builder._build_age_constraint(rule) == []
+
+    def test_build_gender_constraint_with_age_range(self, builder: PersonConstraintBuilder) -> None:
+        """Test gender combined with both age bounds keeps both bounds."""
+        rule = Mock()
+        rule.value = "8507"
+        rule.operator = "="
+        rule.time_category = "AGE"
+        rule.greater_than_value = "18"
+        rule.less_than_value = "65"
+
+        result = builder._build_gender_constraint(rule, builder._build_age_constraint(rule))
+
+        assert len(result) == 1
+        compiled_sql = str(result[0].compile(compile_kwargs={"literal_binds": True}))
+        assert "person.gender_concept_id = 8507" in compiled_sql
+        assert ">= 18" in compiled_sql
+        assert "<= 65" in compiled_sql
+
     @pytest.mark.parametrize(
         "rule_setup, expected_sql_parts",
             [

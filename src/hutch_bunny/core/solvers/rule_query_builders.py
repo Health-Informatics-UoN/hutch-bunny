@@ -32,6 +32,7 @@ import operator as op
 
 from hutch_bunny.core.rquest_models.rule import Rule
 from hutch_bunny.core.omop import Varcat
+from hutch_bunny.core.logger import logger
 
 
 class SQLDialectHandler:
@@ -665,32 +666,37 @@ class PersonConstraintBuilder:
         return [and_(age >= rule.min_value, age <= rule.max_value)]
 
     def _build_age_constraint(self, rule: Rule) -> list[ColumnElement[bool]]:
-        """Build a dynamic age constraint with comparator."""
+        """
+        Build age constraints from whichever bounds of the rule's time are set.
 
-        # If neither value is provided, return an empty list (no constraint)
-        if rule.greater_than_value is None and rule.less_than_value is None:
+        Only AGE time constraints apply to Person rules; any other time category
+        (e.g. TIME) is ignored, as the Person table has no event date.
+
+        Returns:
+            A list of zero, one or two constraints (lower and/or upper bound).
+        """
+
+        # If neither value is provided (None or ""), return an empty list (no constraint)
+        if not rule.greater_than_value and not rule.less_than_value:
             return []
 
-        comparator: Callable[[int, int], bool] | None = None
-
-        age_value: int = 0
-
-        # Determine comparator and age_value based on which side is set
-        if rule.greater_than_value is not None and rule.greater_than_value != "":
-            comparator = op.ge  # age >= greater_than_value
-            age_value = int(rule.greater_than_value)
-        elif rule.less_than_value is not None and rule.less_than_value != "":
-            comparator = op.le  # age <=less_than_value
-            age_value = int(rule.less_than_value)
+        if rule.time_category != "AGE":
+            logger.warning(
+                f"Ignoring {rule.time_category} time constraint on Person rule: {rule.time}"
+            )
+            return []
 
         # Compute age
         current_year = datetime.now().year
         age = current_year - Person.year_of_birth
 
-        # Build numeric constraint using the comparator
-        numeric_constraint = comparator(age, age_value)
+        constraints: list[ColumnElement[bool]] = []
+        if rule.greater_than_value:
+            constraints.append(age >= int(rule.greater_than_value))
+        if rule.less_than_value:
+            constraints.append(age <= int(rule.less_than_value))
 
-        return [numeric_constraint]
+        return constraints
 
     def _build_gender_constraint(
         self, rule: Rule, age_constraints: list[ColumnElement[bool]]
