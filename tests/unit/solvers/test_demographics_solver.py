@@ -2,7 +2,11 @@ import pytest
 from unittest.mock import Mock
 from sqlalchemy import Select
 
-from hutch_bunny.core.results_modifiers import ResultModifier
+from hutch_bunny.core.results_modifiers import (
+    DEFAULT_LOW_NUMBER_THRESHOLD,
+    DEFAULT_ROUNDING_TARGET,
+    ResultModifier,
+)
 from hutch_bunny.core.solvers.demographics_solver import (
     DemographicsDistributionQuerySolver,
     DemographicsRow,
@@ -41,8 +45,8 @@ def test_get_modifier_values_default(
     low_number, rounding = solver._get_modifier_values(modifiers)
 
     # Assert
-    assert low_number == solver.DEFAULT_LOW_NUMBER
-    assert rounding == solver.DEFAULT_ROUNDING
+    assert low_number == DEFAULT_LOW_NUMBER_THRESHOLD
+    assert rounding == DEFAULT_ROUNDING_TARGET
 
 
 def test_get_modifier_values_custom(
@@ -77,8 +81,8 @@ def test_get_modifier_values_none_values(
     low_number, rounding = solver._get_modifier_values(modifiers)
 
     # Assert
-    assert low_number == solver.DEFAULT_LOW_NUMBER
-    assert rounding == solver.DEFAULT_ROUNDING
+    assert low_number == DEFAULT_LOW_NUMBER_THRESHOLD
+    assert rounding == DEFAULT_ROUNDING_TARGET
 
 
 def test_build_gender_query_with_rounding(

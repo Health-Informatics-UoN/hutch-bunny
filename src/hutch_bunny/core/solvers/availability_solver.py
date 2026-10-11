@@ -1,5 +1,5 @@
 from logging import DEBUG
-from typing import TypedDict, Union, Literal
+from typing import TypedDict, Union
 from sqlalchemy import (
     CompoundSelect,
     func,
@@ -31,7 +31,7 @@ from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.rquest_models.rule import Rule
 from hutch_bunny.core.omop import Varcat
-from hutch_bunny.core.results_modifiers import ResultModifier
+from hutch_bunny.core.results_modifiers import ResultModifier, get_modifier_value
 from hutch_bunny.core.solvers.rule_query_builders import OMOPRuleQueryBuilder, PersonConstraintBuilder
 from hutch_bunny.core.db.utils import log_query
 from hutch_bunny.core.settings import Settings
@@ -39,8 +39,6 @@ from hutch_bunny.core.settings import Settings
 
 settings = Settings()
 
-
-Key = Literal["threshold", "nearest"]
 
 
 class RuleTableQuery(TypedDict):
@@ -70,8 +68,8 @@ class AvailabilitySolver():
         4. Executing the final query and applying filters
         """
         concepts = self._find_concepts(self.query.cohort.groups)
-        low_number = self._extract_modifier(results_modifiers, "Low Number Suppression", "threshold", 10)
-        rounding = self._extract_modifier(results_modifiers, "Rounding", "nearest", 10)
+        low_number = get_modifier_value(results_modifiers, "Low Number Suppression", "threshold")
+        rounding = get_modifier_value(results_modifiers, "Rounding", "nearest")
 
         with self.db_client.engine.connect() as con:
             group_queries = []
@@ -123,19 +121,6 @@ class AvailabilitySolver():
                 str(concept_id): domain_id for concept_id, domain_id in result
             }
         return concept_dict
-
-    def _extract_modifier(
-        self,
-        results_modifiers: list[ResultModifier],
-        result_id: str,
-        key: Key,
-        default_value: int = 10,
-    ) -> int:
-        for item in results_modifiers:
-            if item["id"] == result_id:
-                value = item.get(key)  # type: int | None
-                return value if value is not None else default_value
-        return default_value
 
     def _build_group_query(
         self,

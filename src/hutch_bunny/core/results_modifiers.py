@@ -1,5 +1,5 @@
 import json
-from typing import NotRequired, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 
 class ResultModifier(TypedDict):
@@ -8,6 +8,42 @@ class ResultModifier(TypedDict):
     id: str
     threshold: NotRequired[int | None]
     nearest: NotRequired[int | None]
+
+
+ModifierKey = Literal["threshold", "nearest"]
+
+# Used when a modifier value is not supplied
+DEFAULT_LOW_NUMBER_THRESHOLD = 10
+DEFAULT_ROUNDING_TARGET = 10
+
+DEFAULT_MODIFIER_VALUES: dict[ModifierKey, int] = {
+    "threshold": DEFAULT_LOW_NUMBER_THRESHOLD,
+    "nearest": DEFAULT_ROUNDING_TARGET,
+}
+
+
+def get_modifier_value(
+    modifiers: list[ResultModifier],
+    modifier_id: str,
+    key: ModifierKey,
+) -> int:
+    """Get a value from the first modifier with the given id.
+
+    Args:
+        modifiers (list[ResultModifier]): The results modifiers.
+        modifier_id (str): The modifier id, e.g. "Rounding".
+        key (ModifierKey): The value to read, e.g. "nearest".
+
+    Returns:
+        int: The modifier value, or the default for that key if the modifier,
+        key or value is missing. A value of 0 is kept.
+    """
+    default = DEFAULT_MODIFIER_VALUES[key]
+    for item in modifiers:
+        if item["id"] == modifier_id:
+            value = item.get(key)
+            return value if value is not None else default
+    return default
 
 
 def results_modifiers(
