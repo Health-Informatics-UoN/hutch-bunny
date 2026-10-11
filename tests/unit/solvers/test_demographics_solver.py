@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import Mock
 from sqlalchemy import Select
 
-from hutch_bunny.core.solvers.availability_solver import ResultModifier
+from hutch_bunny.core.results_modifiers import ResultModifier
 from hutch_bunny.core.solvers.demographics_solver import (
     DemographicsDistributionQuerySolver,
     DemographicsRow,

@@ -1,10 +1,19 @@
 import json
+from typing import NotRequired, TypedDict
+
+
+class ResultModifier(TypedDict):
+    """A results modifier, e.g. low number suppression or rounding."""
+
+    id: str
+    threshold: NotRequired[int | None]
+    nearest: NotRequired[int | None]
 
 
 def results_modifiers(
     low_number_suppression_threshold: int,
     rounding_target: int,
-) -> list[dict[str, str | int]]:
+) -> list[ResultModifier]:
     return [
         {
             "id": "Low Number Suppression",
@@ -17,7 +26,7 @@ def results_modifiers(
     ]
 
 
-def get_results_modifiers_from_str(params: str) -> list[dict]:
+def get_results_modifiers_from_str(params: str) -> list[ResultModifier]:
     """Deserialise a JSON list containing results modifiers
 
     Args:
@@ -31,7 +40,7 @@ def get_results_modifiers_from_str(params: str) -> list[dict]:
         list: The list of parameter dicts of results modifiers
     """
 
-    deserialised_params: list[dict] = json.loads(params)
+    deserialised_params: list[ResultModifier] = json.loads(params)
     if not isinstance(deserialised_params, list):
         raise ValueError(
             f"{get_results_modifiers_from_str.__name__} requires a JSON list"

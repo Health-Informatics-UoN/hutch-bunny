@@ -19,7 +19,7 @@ from tenacity import (
     after_log,
 )
 from hutch_bunny.core.rquest_models.distribution import DistributionQuery
-from hutch_bunny.core.solvers.availability_solver import ResultModifier
+from hutch_bunny.core.results_modifiers import ResultModifier
 
 
 class DemographicsRow(BaseModel):
@@ -98,24 +98,24 @@ class DemographicsDistributionQuerySolver:
         """
         low_number = next(
             (
-                item["threshold"]
-                if item["threshold"] is not None
-                else self.DEFAULT_LOW_NUMBER
+                item.get("threshold")
                 for item in results_modifier
                 if item["id"] == "Low Number Suppression"
             ),
-            self.DEFAULT_LOW_NUMBER,
+            None,
         )
         rounding = next(
             (
-                item["nearest"]
-                if item["nearest"] is not None
-                else self.DEFAULT_ROUNDING
+                item.get("nearest")
                 for item in results_modifier
                 if item["id"] == "Rounding"
             ),
-            self.DEFAULT_ROUNDING,
+            None,
         )
+        if low_number is None:
+            low_number = self.DEFAULT_LOW_NUMBER
+        if rounding is None:
+            rounding = self.DEFAULT_ROUNDING
         return low_number, rounding
 
     def _build_gender_query(

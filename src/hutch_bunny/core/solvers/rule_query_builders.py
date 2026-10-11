@@ -1,7 +1,7 @@
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from typing import Any, Callable
-from sqlalchemy.sql.expression import ClauseElement
+from sqlalchemy.orm import QueryableAttribute
 from sqlalchemy import (
     CompoundSelect,
     Engine,
@@ -39,7 +39,9 @@ class SQLDialectHandler:
 
     @staticmethod
     def get_year_difference(
-        engine: Engine, start_date: ClauseElement, year_of_birth: ClauseElement
+        engine: Engine,
+        start_date: ColumnElement[Any] | QueryableAttribute[Any],
+        year_of_birth: ColumnElement[Any] | QueryableAttribute[Any],
     ) -> ColumnElement[int]:
         """
         Calculate year difference between a date and year of birth using dialect-specific SQL.
@@ -69,8 +71,8 @@ class SQLDialectHandler:
         engine: Engine,
         center_lat: float,
         center_lon: float,
-        lat_col: ColumnElement[Any],
-        lon_col: ColumnElement[Any],
+        lat_col: ColumnElement[Any] | QueryableAttribute[Any],
+        lon_col: ColumnElement[Any] | QueryableAttribute[Any],
     ) -> ColumnElement[Any]:
         """
         Return a SQLAlchemy expression for the haversine distance in metres between
@@ -288,8 +290,8 @@ class OMOPRuleQueryBuilder:
     def _apply_age_constraint_to_table(
         self,
         table_query: Select[Tuple[int]],
-        table_person_id: ClauseElement,
-        table_date_column: ClauseElement,
+        table_person_id: ColumnElement[Any] | QueryableAttribute[Any],
+        table_date_column: ColumnElement[Any] | QueryableAttribute[Any],
         operator_func: Callable[[Any, Any], BinaryExpression[bool]],
         age_value: int,
     ) -> Select[Tuple[int]]:

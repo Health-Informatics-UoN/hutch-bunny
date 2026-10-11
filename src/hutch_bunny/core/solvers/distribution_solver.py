@@ -27,7 +27,7 @@ from tenacity import (
 )
 from hutch_bunny.core.rquest_models.distribution import DistributionQuery
 from sqlalchemy import select
-from hutch_bunny.core.solvers.availability_solver import ResultModifier
+from hutch_bunny.core.results_modifiers import ResultModifier
 from hutch_bunny.core.db.utils import log_query
 from hutch_bunny.core.settings import Settings
 
@@ -162,22 +162,26 @@ class CodeDistributionQuerySolver:
             results_modifier: List
             A list of modifiers to be applied to the results of the query before returning them to Relay
         """
-        low_number: int = next(
+        low_number = next(
             (
-                item["threshold"] if item["threshold"] is not None else 10
+                item.get("threshold")
                 for item in results_modifier
                 if item["id"] == "Low Number Suppression"
             ),
-            10,
+            None,
         )
-        rounding: int = next(
+        rounding = next(
             (
-                item["nearest"] if item["nearest"] is not None else 10
+                item.get("nearest")
                 for item in results_modifier
                 if item["id"] == "Rounding"
             ),
-            10,
+            None,
         )
+        if low_number is None:
+            low_number = 10
+        if rounding is None:
+            rounding = 10
 
         counts: list[int] = []
         concepts: list[int] = []

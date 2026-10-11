@@ -31,6 +31,7 @@ from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.rquest_models.rule import Rule
 from hutch_bunny.core.omop import Varcat
+from hutch_bunny.core.results_modifiers import ResultModifier
 from hutch_bunny.core.solvers.rule_query_builders import OMOPRuleQueryBuilder, PersonConstraintBuilder
 from hutch_bunny.core.db.utils import log_query
 from hutch_bunny.core.settings import Settings
@@ -38,11 +39,6 @@ from hutch_bunny.core.settings import Settings
 
 settings = Settings()
 
-
-class ResultModifier(TypedDict):
-    id: str
-    threshold: int | None
-    nearest: int | None
 
 Key = Literal["threshold", "nearest"]
 
