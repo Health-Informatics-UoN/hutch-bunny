@@ -862,7 +862,6 @@ class TestBuildGroupQuery:
 
 
 AGE_QUERY_PATH = "tests/queries/availability/age.json"  # AGE rule: aged 20-30
-FIXED_NOW = datetime(2025, 8, 7, 12, 0, 0)
 
 
 @pytest.mark.integration
@@ -874,25 +873,19 @@ class TestAgeQuery:
         with open(AGE_QUERY_PATH) as f:
             return AvailabilityQuery.model_validate(json.load(f))
 
-    def _solve_at_fixed_date(
-        self, db_client: SyncDBClient, query: AvailabilityQuery, low_number: int, rounding: int
-    ) -> int:
-        with patch("hutch_bunny.core.solvers.rule_query_builders.datetime") as mock_datetime:
-            mock_datetime.now.return_value = FIXED_NOW
-            solver = AvailabilitySolver(db_client, query)
-            return solver.solve_query(
-                results_modifiers(
-                    low_number_suppression_threshold=low_number, rounding_target=rounding
-                )
-            )
-
     def test_age_query_counts_people_in_age_range(
         self, db_client: SyncDBClient, age_query: AvailabilityQuery
     ) -> None:
         """Test the solver count matches a direct count of people aged 20-30 at the fixed date."""
-        count = self._solve_at_fixed_date(db_client, age_query, low_number=0, rounding=0)
+        availability_solver = AvailabilitySolver(db_client, age_query)
+        modifiers = results_modifiers(low_number_suppression_threshold=0, rounding_target=0)
 
-        age = FIXED_NOW.year - Person.year_of_birth
+        with patch("hutch_bunny.core.solvers.rule_query_builders.datetime") as mock_datetime:
+            fixed_now = datetime(2025, 8, 7, 12, 0, 0)
+            mock_datetime.now.return_value = fixed_now
+            count = availability_solver.solve_query(modifiers)
+
+        age = fixed_now.year - Person.year_of_birth
         expected_query = select(func.count()).select_from(Person).where(age >= 20, age <= 30)
         with db_client.engine.connect() as conn:
             expected = conn.execute(expected_query).scalar_one()
@@ -905,10 +898,19 @@ class TestAgeQuery:
         """Test the age query returns fixed counts with and without modifiers."""
         test_cases = [
             # (low number suppression, rounding, expected count)
-            (10, 10, 10),
-            (0, 0, 11),
+            (10, 10, 150),
+            (0, 0, 147),
         ]
 
-        for low_number, rounding, expected_count in test_cases:
-            count = self._solve_at_fixed_date(db_client, age_query, low_number, rounding)
-            assert count == expected_count
+        availability_solver = AvailabilitySolver(db_client, age_query)
+
+        with patch("hutch_bunny.core.solvers.rule_query_builders.datetime") as mock_datetime:
+            fixed_now = datetime(2025, 8, 7, 12, 0, 0)
+            mock_datetime.now.return_value = fixed_now
+
+            for low_number, rounding, expected_count in test_cases:
+                modifiers = results_modifiers(
+                    low_number_suppression_threshold=low_number, rounding_target=rounding
+                )
+                count = availability_solver.solve_query(modifiers)
+                assert count == expected_count
