@@ -678,14 +678,17 @@ class TestPersonQueryConstraintBuilder:
         rule.min_value = 18.0
         rule.max_value = 65.0
 
-        with patch("hutch_bunny.core.solvers.rule_query_builders.SQLDialectHandler.get_year_difference") as mock_diff:
-            mock_diff.return_value = literal_column("25")
+        with patch("hutch_bunny.core.solvers.rule_query_builders.datetime") as mock_datetime:
+            mock_datetime.now.return_value = datetime(2025, 8, 7, 12, 0, 0)
             constraints = builder._build_age_constraints(rule)
 
         # Expect 1 constraint with AND inside
         assert len(constraints) == 1
 
         compiled_sql = str(constraints[0].compile(compile_kwargs={"literal_binds": True}))
+
+        # Age is calculated from the current year, not the DB
+        assert "2025 - person.year_of_birth" in compiled_sql
 
         # Check both conditions are in the combined constraint
         assert f">= {rule.min_value}" in compiled_sql
