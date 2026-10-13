@@ -200,9 +200,8 @@ class OMOPRuleQueryBuilder:
         """
         Apply age-at-event constraints to condition, drug, measurement, and observation queries.
 
-        Each boundary that is provided (left and/or right) is applied as its own comparator, filtering records
-        where the person's age at the event date satisfies the constraint. When both are provided, both apply
-        to the same event, so the event must have occurred within the age range.
+        Depending on which boundary is provided (left, right or both), this method applies a greater-than and/or
+        less-than comparator to filter records where the person's age at the event date satisfies the constraint.
 
         If the `|` is on the left of the value it was less than or equal the number.
         If the `|` is on the right of the value it was greater than or equal the number.
@@ -210,7 +209,7 @@ class OMOPRuleQueryBuilder:
         For example:
         - 10|:AGE:Y (greater than or equal to 10 years) - greater_than_value will be 10 and less_than_value None
         - |10:AGE:Y (less than or equal to 10 years) - greater_than_value will be None and less_than_value 10
-        - 10|20:AGE:Y (between 10 and 20 years inclusive) - greater_than_value will be 10 and less_than_value 20
+        - 10|20:AGE:Y (between 10 and 20 years) - greater_than_value will be 10 and less_than_value 20
 
         Args:
             greater_than_value (str | None): Lower age bound as a string, or None if not specified.
@@ -219,58 +218,58 @@ class OMOPRuleQueryBuilder:
         Returns:
             OMOPRuleQueryBuilder: The current instance with updated queries reflecting the age constraints.
         """
-        bounds: list[tuple[Callable[[Any, Any], BinaryExpression[bool]], int]] = []
-        if greater_than_value:
-            bounds.append((op.ge, int(greater_than_value)))
-        if less_than_value:
-            bounds.append((op.le, int(less_than_value)))
-
-        if not bounds:
+        if not greater_than_value and not less_than_value:
             return self
+
+        age_bounds: list[tuple[Callable[[Any, Any], BinaryExpression[bool]], int]] = []
+        if greater_than_value:
+            age_bounds.append((op.ge, int(greater_than_value)))
+        if less_than_value:
+            age_bounds.append((op.le, int(less_than_value)))
 
         self.condition_query = self._apply_age_constraint_to_table(
             self.condition_query,
             ConditionOccurrence.person_id,
             ConditionOccurrence.condition_start_date,
-            bounds,
+            age_bounds,
         )
         self.drug_query = self._apply_age_constraint_to_table(
             self.drug_query,
             DrugExposure.person_id,
             DrugExposure.drug_exposure_start_date,
-            bounds,
+            age_bounds,
         )
         self.measurement_query = self._apply_age_constraint_to_table(
             self.measurement_query,
             Measurement.person_id,
             Measurement.measurement_date,
-            bounds,
+            age_bounds,
         )
         self.observation_query = self._apply_age_constraint_to_table(
             self.observation_query,
             Observation.person_id,
             Observation.observation_date,
-            bounds,
+            age_bounds,
         )
         self.procedure_query = self._apply_age_constraint_to_table(
             self.procedure_query,
             ProcedureOccurrence.person_id,
             ProcedureOccurrence.procedure_date,
-            bounds,
+            age_bounds,
         )
         if self.specimen_query is not None:
             self.specimen_query = self._apply_age_constraint_to_table(
                 self.specimen_query,
                 Specimen.person_id,
                 Specimen.specimen_date,
-                bounds,
+                age_bounds,
             )
         if self.death_query is not None:
             self.death_query = self._apply_age_constraint_to_table(
                 self.death_query,
                 Death.person_id,
                 Death.death_date,
-                bounds,
+                age_bounds,
             )
         return self
 
@@ -279,7 +278,7 @@ class OMOPRuleQueryBuilder:
         table_query: Select[Tuple[int]],
         table_person_id: ClauseElement,
         table_date_column: ClauseElement,
-        bounds: list[tuple[Callable[[Any, Any], BinaryExpression[bool]], int]],
+        age_bounds: list[tuple[Callable[[Any, Any], BinaryExpression[bool]], int]],
     ) -> Select[Tuple[int]]:
         """
         Helper method to apply age constraints to a table query.
@@ -288,16 +287,16 @@ class OMOPRuleQueryBuilder:
             table_query: The table query to apply the age constraint to.
             table_person_id: The person_id column in the table.
             table_date_column: The date column in the table.
-            bounds: The (operator function, age value) pairs to apply, all against the same event.
+            age_bounds: The operator function and age value pairs to use in the constraint.
 
         Returns:
-            The table query with the age constraints applied.
+            The table query with the age constraint applied.
         """
         age_difference = SQLDialectHandler.get_year_difference(
             self.db_client.engine, table_date_column, Person.year_of_birth
         )
 
-        constraints = [operator_func(age_difference, age_value) for operator_func, age_value in bounds]
+        constraints = [operator_func(age_difference, age_value) for operator_func, age_value in age_bounds]
 
         # Use JOIN instead of EXISTS for better performance
         return table_query.join(Person, Person.person_id == table_person_id).where(
@@ -325,8 +324,7 @@ class OMOPRuleQueryBuilder:
         dates based on which time values are supplied:
         - If `greater_than_time` is given, events before (<=) that relative date are included.
         - If `less_than_time` is given, events after (>=) that relative date are included.
-        - If both are given, events between the two relative dates are included,
-          e.g. 6|12:TIME:M is an event between 6 and 12 months ago.
+        - If both are given, events between the two relative dates are included.
 
         Args:
             greater_than_time (str): Left-side time bound in months as a numeric string,
@@ -351,47 +349,63 @@ class OMOPRuleQueryBuilder:
 
         today_date = datetime.now()
 
-        def date_constraints(date_column: Any) -> list[ColumnElement[bool]]:
-            constraints: list[ColumnElement[bool]] = []
-            # the inverted logic is applied here, therefore if the greater_than_time was supplied, it meant the user
-            # specified a search that was more than X months ago, i.e. >6 months. The relative date will be
-            # calculated as today's date minus six months, therefore, the search is for any event that occurred
-            # before the relative date.
-            if greater_than_time:
-                constraints.append(
-                    date_column <= today_date + relativedelta(months=-int(greater_than_time))
-                )
-            # if the less_than_time was supplied, the user specified a search that was less than X months ago,
-            # i.e. <=6 months, so the search is for any event that occurred after the relative date.
-            if less_than_time:
-                constraints.append(
-                    date_column >= today_date + relativedelta(months=-int(less_than_time))
-                )
-            return constraints
+        # the inverted logic is applied here, therefore if the less_than_time was supplied, it meant the user
+        # specified a search that was less than X months ago, i.e. <=6 months. The relative date will have been calculated
+        # as today's date minus six months, therefore, the search is for any event that occurred after the relative date.
+        if less_than_time:
+            time_to_use = int(less_than_time) * -1
+            relative_date = today_date + relativedelta(months=time_to_use)
 
-        self.measurement_query = self.measurement_query.where(
-            *date_constraints(Measurement.measurement_date)
-        )
-        self.observation_query = self.observation_query.where(
-            *date_constraints(Observation.observation_date)
-        )
-        self.condition_query = self.condition_query.where(
-            *date_constraints(ConditionOccurrence.condition_start_date)
-        )
-        self.drug_query = self.drug_query.where(
-            *date_constraints(DrugExposure.drug_exposure_start_date)
-        )
-        self.procedure_query = self.procedure_query.where(
-            *date_constraints(ProcedureOccurrence.procedure_date)
-        )
-        if self.specimen_query is not None:
-            self.specimen_query = self.specimen_query.where(
-                *date_constraints(Specimen.specimen_date)
+            self.measurement_query = self.measurement_query.where(
+                Measurement.measurement_date >= relative_date
             )
-        if self.death_query is not None:
-            self.death_query = self.death_query.where(
-                *date_constraints(Death.death_date)
+            self.observation_query = self.observation_query.where(
+                Observation.observation_date >= relative_date
             )
+            self.condition_query = self.condition_query.where(
+                ConditionOccurrence.condition_start_date >= relative_date
+            )
+            self.drug_query = self.drug_query.where(
+                DrugExposure.drug_exposure_start_date >= relative_date
+            )
+            self.procedure_query = self.procedure_query.where(
+                ProcedureOccurrence.procedure_date >= relative_date
+            )
+            if self.specimen_query is not None:
+                self.specimen_query = self.specimen_query.where(
+                    Specimen.specimen_date >= relative_date
+                )
+            if self.death_query is not None:
+                self.death_query = self.death_query.where(
+                    Death.death_date >= relative_date
+                )
+        if greater_than_time:
+            time_to_use = int(greater_than_time) * -1
+            relative_date = today_date + relativedelta(months=time_to_use)
+
+            self.measurement_query = self.measurement_query.where(
+                Measurement.measurement_date <= relative_date
+            )
+            self.observation_query = self.observation_query.where(
+                Observation.observation_date <= relative_date
+            )
+            self.condition_query = self.condition_query.where(
+                ConditionOccurrence.condition_start_date <= relative_date
+            )
+            self.drug_query = self.drug_query.where(
+                DrugExposure.drug_exposure_start_date <= relative_date
+            )
+            self.procedure_query = self.procedure_query.where(
+                ProcedureOccurrence.procedure_date <= relative_date
+            )
+            if self.specimen_query is not None:
+                self.specimen_query = self.specimen_query.where(
+                    Specimen.specimen_date <= relative_date
+                )
+            if self.death_query is not None:
+                self.death_query = self.death_query.where(
+                    Death.death_date <= relative_date
+                )
         return self
 
     def add_numeric_range(
