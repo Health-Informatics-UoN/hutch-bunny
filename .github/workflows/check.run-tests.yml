@@ -59,7 +59,7 @@ jobs:
             ghcr.io/health-informatics-uon/omop-lite:0.7.0
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           version: "0.12.0"
           enable-cache: true
@@ -82,7 +82,7 @@ jobs:
       - name: Pytest coverage comment
         # Forks do not have the necessary permission to add a comment.
         if: github.event.pull_request.head.repo.fork == false
-        uses: MishaKav/pytest-coverage-comment@432ac90e8d345c93e1d90ee0838b35913abc9c9b
+        uses: MishaKav/pytest-coverage-comment@9ee59af31bd7bcada1cc496f086b407122602dbd
         with:
           pytest-coverage-path: pytest-coverage.txt
           junitxml-path: pytest.xml
@@ -142,7 +142,7 @@ jobs:
             ghcr.io/health-informatics-uon/omop-lite:0.7.0
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           version: "0.12.0"
           enable-cache: true

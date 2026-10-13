@@ -661,9 +661,8 @@ class PersonConstraintBuilder:
         if rule.min_value is None or rule.max_value is None:
             return []
 
-        age = SQLDialectHandler.get_year_difference(
-            self.db_client.engine, func.current_timestamp(), Person.year_of_birth
-        )
+        current_year = datetime.now().year
+        age = current_year - Person.year_of_birth
         return [and_(age >= rule.min_value, age <= rule.max_value)]
 
     def _build_age_constraint(self, rule: Rule) -> list[ColumnElement[bool]]:

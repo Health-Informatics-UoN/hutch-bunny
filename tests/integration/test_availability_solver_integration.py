@@ -1,7 +1,8 @@
+import json
 from unittest.mock import Mock, patch
 from datetime import datetime
 import pytest 
-from sqlalchemy import select, cast, Integer
+from sqlalchemy import select, cast, func, Integer
 
 from hutch_bunny.core.rquest_models.rule import Rule
 from hutch_bunny.core.rquest_models.group import Group
@@ -9,6 +10,7 @@ from hutch_bunny.core.db.entities import Person
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.db.sync import SyncDBClient
 from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
+from hutch_bunny.core.results_modifiers import results_modifiers
 
 
 @pytest.mark.integration
@@ -259,13 +261,8 @@ class TestBuildRuleQuery:
         query = availability_solver._build_group_query(group, concepts)
         sql_str = str(query.compile(compile_kwargs={"literal_binds": True}))
 
-        if db_client.engine.dialect.name == "postgresql":
-            assert "date_part" in sql_str.lower() or "extract" in sql_str.lower()
-            assert "year_of_birth" in sql_str
-        elif db_client.engine.dialect.name == "mssql":
-            assert "DATEPART" in sql_str
-            assert "year_of_birth" in sql_str
-        
+        # Current age is now calculated without date function
+        assert "year_of_birth" in sql_str
         assert ">= 20" in sql_str or ">=20" in sql_str
         assert "<= 50" in sql_str or "<=50" in sql_str
 
@@ -862,3 +859,58 @@ class TestBuildGroupQuery:
             
             assert len(person_ids) == 0
     
+
+
+AGE_QUERY_PATH = "tests/queries/availability/age.json"  # AGE rule: aged 20-30
+
+
+@pytest.mark.integration
+class TestAgeQuery:
+    """Run the person AGE query through the solver with a fixed current date (#223)."""
+
+    @pytest.fixture
+    def age_query(self) -> AvailabilityQuery:
+        with open(AGE_QUERY_PATH) as f:
+            return AvailabilityQuery.model_validate(json.load(f))
+
+    def test_age_query_counts_people_in_age_range(
+        self, db_client: SyncDBClient, age_query: AvailabilityQuery
+    ) -> None:
+        """Test the solver count matches a direct count of people aged 20-30 at the fixed date."""
+        availability_solver = AvailabilitySolver(db_client, age_query)
+        modifiers = results_modifiers(low_number_suppression_threshold=0, rounding_target=0)
+
+        with patch("hutch_bunny.core.solvers.rule_query_builders.datetime") as mock_datetime:
+            fixed_now = datetime(2025, 8, 7, 12, 0, 0)
+            mock_datetime.now.return_value = fixed_now
+            count = availability_solver.solve_query(modifiers)
+
+        age = fixed_now.year - Person.year_of_birth
+        expected_query = select(func.count()).select_from(Person).where(age >= 20, age <= 30)
+        with db_client.engine.connect() as conn:
+            expected = conn.execute(expected_query).scalar_one()
+
+        assert count == expected
+
+    def test_age_query_counts(
+        self, db_client: SyncDBClient, age_query: AvailabilityQuery
+    ) -> None:
+        """Test the age query returns fixed counts with and without modifiers."""
+        test_cases = [
+            # (low number suppression, rounding, expected count)
+            (10, 10, 150),
+            (0, 0, 147),
+        ]
+
+        availability_solver = AvailabilitySolver(db_client, age_query)
+
+        with patch("hutch_bunny.core.solvers.rule_query_builders.datetime") as mock_datetime:
+            fixed_now = datetime(2025, 8, 7, 12, 0, 0)
+            mock_datetime.now.return_value = fixed_now
+
+            for low_number, rounding, expected_count in test_cases:
+                modifiers = results_modifiers(
+                    low_number_suppression_threshold=low_number, rounding_target=rounding
+                )
+                count = availability_solver.solve_query(modifiers)
+                assert count == expected_count
