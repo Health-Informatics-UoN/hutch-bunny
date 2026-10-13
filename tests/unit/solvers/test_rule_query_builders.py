@@ -173,7 +173,42 @@ class TestOMOPRuleQueryBuilder():
 
         assert "25 >= 20" in sql_str
 
-    def test_add_temporal_constraint_only_left_constraint_present(self) -> None: 
+    @patch("hutch_bunny.core.solvers.rule_query_builders.SQLDialectHandler.get_year_difference")
+    def test_add_age_constraint_bounds(self, mock_get_year_diff: Mock) -> None:
+        """Test each set bound of an age at event becomes its own constraint on the same event."""
+        mock_get_year_diff.return_value = literal_column("25")
+
+        test_cases = [
+            ("50", "", ["25 >= 50"]),
+            ("", "60", ["25 <= 60"]),
+            ("50", "60", ["25 >= 50", "25 <= 60"]),
+        ]
+
+        for greater_than_value, less_than_value, expected_sql_parts in test_cases:
+            mock_db_manager = Mock()
+            builder = OMOPRuleQueryBuilder(mock_db_manager)
+
+            builder.add_age_constraint(greater_than_value, less_than_value)
+
+            compiled = builder.condition_query.compile(compile_kwargs={"literal_binds": True})
+            sql_str = str(compiled)
+
+            # Both bounds apply through a single join to person, so they test the same event
+            assert sql_str.count("JOIN person") == 1
+            for expected in expected_sql_parts:
+                assert expected in sql_str
+
+    def test_add_age_constraint_no_bounds(self) -> None:
+        """Test an age at event with no bounds leaves the query unchanged."""
+        mock_db_manager = Mock()
+        builder = OMOPRuleQueryBuilder(mock_db_manager)
+        condition_query = builder.condition_query
+
+        builder.add_age_constraint("", "")
+
+        assert builder.condition_query is condition_query
+
+    def test_add_temporal_constraint_only_left_constraint_present(self) -> None:
         greater_than_value = "1"
         less_than_value = ""
 
@@ -237,15 +272,31 @@ class TestOMOPRuleQueryBuilder():
         with pytest.raises(ValueError): 
             builder.add_temporal_constraint(greater_than_value, less_than_value)
     
-    def test_add_temporal_constraint_both_inputs(self) -> None: 
+    def test_add_temporal_constraint_both_inputs(self) -> None:
         greater_than_value = "1"
         less_than_value = "2"
 
-        mock_db_manager = Mock()
-        builder = OMOPRuleQueryBuilder(mock_db_manager)
+        fixed_now = datetime(2025, 8, 7, 12, 0, 0)
 
-        with pytest.raises(ValueError): 
+        # Between 1 and 2 months ago: on or before now - 1 month, and on or after now - 2 months
+        before_date_str = (fixed_now + relativedelta(months=-1)).strftime("%Y-%m-%d %H:%M:%S")
+        after_date_str = (fixed_now + relativedelta(months=-2)).strftime("%Y-%m-%d %H:%M:%S")
+
+        with patch("hutch_bunny.core.solvers.rule_query_builders.datetime") as mock_datetime:
+            mock_datetime.now.return_value = fixed_now
+
+            mock_db_manager = Mock()
+            builder = OMOPRuleQueryBuilder(mock_db_manager)
+
             builder.add_temporal_constraint(greater_than_value, less_than_value)
+
+            compiled = builder.condition_query.compile(
+                compile_kwargs={"literal_binds": True}
+            )
+            sql_str = str(compiled)
+
+            assert f"condition_occurrence.condition_start_date <= '{before_date_str}'" in sql_str
+            assert f"condition_occurrence.condition_start_date >= '{after_date_str}'" in sql_str
 
     def test_add_numeric_range_with_no_input(self) -> None: 
         mock_db_manager = Mock()
