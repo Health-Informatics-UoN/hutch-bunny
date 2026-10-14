@@ -5,7 +5,10 @@ from pathlib import Path
 from typing import Optional
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.settings import Settings
-from hutch_bunny.core.rquest_models.result import RquestResult 
+from hutch_bunny.core.rquest_models.result import RquestResult
+
+# Query fields that determine a distribution result
+CACHE_KEY_FIELDS = ("code", "analysis", "collection")
 
 
 class DistributionCacheService: 
@@ -24,12 +27,13 @@ class DistributionCacheService:
         """Create cache directory if it doesn't exist."""
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def _generate_cache_key(self, query_dict: dict, modifiers: list) -> str: 
+    def _generate_cache_key(self, query_dict: dict, modifiers: list) -> str:
         """Generate a unique cache key for the query."""
-        # Create a deterministic hash from a query and modifiers 
+        # Create a deterministic hash from the fields that determine the result and modifiers.
+        # uuid and owner identify the task, not the question, so are excluded.
         cache_data = {
-            "query": query_dict, 
-            "modifiers": modifiers 
+            "query": {field: query_dict.get(field) for field in CACHE_KEY_FIELDS},
+            "modifiers": modifiers
         }
         cache_str = json.dumps(cache_data, sort_keys=True)
         return hashlib.sha256(cache_str.encode()).hexdigest()
