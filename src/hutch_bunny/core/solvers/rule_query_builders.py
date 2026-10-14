@@ -280,8 +280,7 @@ class OMOPRuleQueryBuilder:
         table_query: Select[Tuple[int]],
         table_person_id: ColumnElement[Any] | QueryableAttribute[Any],
         table_date_column: ColumnElement[Any] | QueryableAttribute[Any],
-        operator_func: Callable[[Any, Any], BinaryExpression[bool]],
-        age_value: int,
+        age_bounds: list[tuple[Callable[[Any, Any], BinaryExpression[bool]], int]],
     ) -> Select[Tuple[int]]:
         """
         Helper method to apply age constraints to a table query.
