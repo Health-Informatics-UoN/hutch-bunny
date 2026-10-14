@@ -146,7 +146,7 @@ class Settings(BaseSettings):
         return self.model_dump(exclude={"DATASOURCE_DB_PASSWORD"})
 
     @staticmethod
-    def _validate_duckdb_field(v, info: ValidationInfo, field_name: str) -> str | int | None:
+    def _validate_duckdb_field(v: str | int | None, info: ValidationInfo, field_name: str) -> str | int | None:
         driver = info.data.get("DATASOURCE_DB_DRIVERNAME", None)
         if driver == "duckdb":
             return v
@@ -155,7 +155,7 @@ class Settings(BaseSettings):
         return v
 
     @staticmethod
-    def _validate_optional_field(v, info: ValidationInfo, field_name: str,
+    def _validate_optional_field(v: str | int | None, info: ValidationInfo, field_name: str,
                                  optional_drivers: set[str]) -> str | int | None:
         """Validate fields that are optional for certain drivers (like DuckDB and Snowflake)"""
         driver = info.data.get("DATASOURCE_DB_DRIVERNAME", None)

@@ -520,7 +520,7 @@ class OMOPRuleQueryBuilder:
 
         return self
 
-    def build(self) -> CompoundSelect:
+    def build(self) -> CompoundSelect[Tuple[int]]:
         """
         Combine all table queries into a single UNION query.
 

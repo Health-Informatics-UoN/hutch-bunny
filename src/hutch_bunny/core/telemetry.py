@@ -84,7 +84,7 @@ def _setup_logging_integration(resource: Resource, settings: Settings) -> None:
     logger.addHandler(otel_handler)
 
 
-def trace_operation(operation_name: str, span_kind: trace.SpanKind = trace.SpanKind.INTERNAL) -> Callable:
+def trace_operation(operation_name: str, span_kind: trace.SpanKind = trace.SpanKind.INTERNAL) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator to trace function execution with minimal code invasion."""
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
         tracer = trace.get_tracer(f"hutch-bunny.{func.__module__}")

@@ -42,7 +42,7 @@ settings = Settings()
 
 
 class RuleTableQuery(TypedDict):
-    union_query: CompoundSelect
+    union_query: CompoundSelect[Tuple[int]]
     inclusion: bool
 
 
@@ -126,7 +126,7 @@ class AvailabilitySolver():
         self,
         group: Group,
         concepts: dict[str, str]
-    ) -> Union[Select[Tuple[int]], CompoundSelect]:
+    ) -> Union[Select[Tuple[int]], CompoundSelect[Tuple[int]]]:
         """
         Build query for a single group - a nested SQL expression.
 
@@ -156,7 +156,7 @@ class AvailabilitySolver():
 
         return self._construct_group_query(group, person_constraints, rule_table_queries)
 
-    def _build_rule_query(self, rule: Rule) -> CompoundSelect:
+    def _build_rule_query(self, rule: Rule) -> CompoundSelect[Tuple[int]]:
         """Build query for a single non-Person rule."""
         builder = OMOPRuleQueryBuilder(
             self.db_client,
@@ -204,7 +204,7 @@ class AvailabilitySolver():
         current_group: Group,
         person_constraints_for_group: list[ColumnElement[bool]],
         rule_table_queries: list[RuleTableQuery]
-    ) -> Union[Select[Tuple[int]], CompoundSelect]:
+    ) -> Union[Select[Tuple[int]], CompoundSelect[Tuple[int]]]:
         """
         Construct the query for a single group by processing inclusion/exclusion rules.
 
@@ -217,8 +217,8 @@ class AvailabilitySolver():
             The constructed group query
         """
         # Build the group query using UNION approach
-        inclusion_queries: list[Union[Select[Tuple[int]], CompoundSelect]] = []
-        exclusion_queries: list[Union[Select[Tuple[int]], CompoundSelect]] = []
+        inclusion_queries: list[Union[Select[Tuple[int]], CompoundSelect[Tuple[int]]]] = []
+        exclusion_queries: list[Union[Select[Tuple[int]], CompoundSelect[Tuple[int]]]] = []
 
         # Add person constraints as a separate query
         if person_constraints_for_group:
@@ -253,7 +253,7 @@ class AvailabilitySolver():
         if inclusion_queries:
             if current_group.rules_operator == "AND":
                 # For AND logic, use INTERSECT which is more efficient than joins
-                group_query: Union[Select[Tuple[int]], CompoundSelect] = inclusion_queries[0]
+                group_query: Union[Select[Tuple[int]], CompoundSelect[Tuple[int]]] = inclusion_queries[0]
                 for query in inclusion_queries[1:]:
                     group_query = intersect(group_query, query)
             else:
@@ -286,7 +286,7 @@ class AvailabilitySolver():
 
     def _construct_final_query(
         self,
-        all_groups_queries: list[Union[Select[Tuple[int]], CompoundSelect]],
+        all_groups_queries: list[Union[Select[Tuple[int]], CompoundSelect[Tuple[int]]]],
         rounding: int,
         low_number: int
     ) -> Select[Tuple[int]]:
