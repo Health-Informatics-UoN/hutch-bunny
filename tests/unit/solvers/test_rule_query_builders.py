@@ -553,6 +553,37 @@ class TestOMOPRuleQueryBuilder():
             )
             assert f"death.death_date >= '{expected_date_str}'" in death_sql
 
+    def test_add_temporal_constraint_more_than_and_range_apply_to_death_when_enabled(self) -> None:
+        """Test more than X months ago, and a range, are applied to death when enabled."""
+        fixed_now = datetime(2025, 8, 7, 12, 0, 0)
+        one_month_ago = (fixed_now + relativedelta(months=-1)).strftime("%Y-%m-%d %H:%M:%S")
+        two_months_ago = (fixed_now + relativedelta(months=-2)).strftime("%Y-%m-%d %H:%M:%S")
+
+        test_cases = [
+            # (greater_than_time, less_than_time, expected sql parts)
+            ("1", "", [f"death.death_date <= '{one_month_ago}'"]),
+            ("1", "2", [f"death.death_date <= '{one_month_ago}'", f"death.death_date >= '{two_months_ago}'"]),
+        ]
+
+        with patch(
+            "hutch_bunny.core.solvers.rule_query_builders.datetime"
+        ) as mock_datetime:
+            mock_datetime.now.return_value = fixed_now
+
+            for greater_than_time, less_than_time, expected_sql_parts in test_cases:
+                mock_db_manager = Mock()
+                builder = OMOPRuleQueryBuilder(
+                    mock_db_manager, include_death=True, varcat="Death"
+                )
+
+                builder.add_temporal_constraint(greater_than_time, less_than_time)
+
+                death_sql = str(
+                    builder.death_query.compile(compile_kwargs={"literal_binds": True})
+                )
+                for expected in expected_sql_parts:
+                    assert expected in death_sql
+
     def test_build_after_adding_concept_constraint(self) -> None:
         """Test build after adding a concept constraint."""
         mock_db_manager = Mock()
@@ -890,6 +921,40 @@ class TestPersonQueryConstraintBuilder:
         assert len(result) == 1
         compiled_sql = str(result[0].compile(compile_kwargs={"literal_binds": True}))
         assert "person.gender_concept_id = 8507" in compiled_sql
+        assert ">= 18" in compiled_sql
+        assert "<= 65" in compiled_sql
+
+    def test_build_race_constraint_with_age_range(self, builder: PersonConstraintBuilder) -> None:
+        """Test race combined with both age bounds keeps both bounds."""
+        rule = Mock()
+        rule.value = "8516"
+        rule.operator = "="
+        rule.time_category = "AGE"
+        rule.greater_than_value = "18"
+        rule.less_than_value = "65"
+
+        result = builder._build_race_constraint(rule, builder._build_age_constraint(rule))
+
+        assert len(result) == 1
+        compiled_sql = str(result[0].compile(compile_kwargs={"literal_binds": True}))
+        assert "person.race_concept_id = 8516" in compiled_sql
+        assert ">= 18" in compiled_sql
+        assert "<= 65" in compiled_sql
+
+    def test_build_ethnicity_constraint_with_age_range(self, builder: PersonConstraintBuilder) -> None:
+        """Test ethnicity combined with both age bounds keeps both bounds."""
+        rule = Mock()
+        rule.value = "8516"
+        rule.operator = "="
+        rule.time_category = "AGE"
+        rule.greater_than_value = "18"
+        rule.less_than_value = "65"
+
+        result = builder._build_ethnicity_constraint(rule, builder._build_age_constraint(rule))
+
+        assert len(result) == 1
+        compiled_sql = str(result[0].compile(compile_kwargs={"literal_binds": True}))
+        assert "person.ethnicity_concept_id = 8516" in compiled_sql
         assert ">= 18" in compiled_sql
         assert "<= 65" in compiled_sql
 
