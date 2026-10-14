@@ -32,6 +32,7 @@ import operator as op
 
 from hutch_bunny.core.rquest_models.rule import Rule
 from hutch_bunny.core.omop import Varcat
+from hutch_bunny.core.logger import logger
 
 
 class SQLDialectHandler:
@@ -199,8 +200,8 @@ class OMOPRuleQueryBuilder:
         """
         Apply age-at-event constraints to condition, drug, measurement, and observation queries.
 
-        Depending on which boundary is provided (left or right), this method applies a greater-than or less-than
-        comparator to filter records where the person's age at the event date satisfies the constraint.
+        Depending on which boundary is provided (left, right or both), this method applies a greater-than and/or
+        less-than comparator to filter records where the person's age at the event date satisfies the constraint.
 
         If the `|` is on the left of the value it was less than or equal the number.
         If the `|` is on the right of the value it was greater than or equal the number.
@@ -208,6 +209,7 @@ class OMOPRuleQueryBuilder:
         For example:
         - 10|:AGE:Y (greater than or equal to 10 years) - greater_than_value will be 10 and less_than_value None
         - |10:AGE:Y (less than or equal to 10 years) - greater_than_value will be None and less_than_value 10
+        - 10|20:AGE:Y (between 10 and 20 years) - greater_than_value will be 10 and less_than_value 20
 
         Args:
             greater_than_value (str | None): Lower age bound as a string, or None if not specified.
@@ -219,69 +221,55 @@ class OMOPRuleQueryBuilder:
         if not greater_than_value and not less_than_value:
             return self
 
+        age_bounds: list[tuple[Callable[[Any, Any], BinaryExpression[bool]], int]] = []
+        if greater_than_value:
+            age_bounds.append((op.ge, int(greater_than_value)))
         if less_than_value:
-            comparator = op.le
-            age_value = int(less_than_value)
-        elif greater_than_value:
-            comparator = op.ge
-            age_value = int(greater_than_value)
-        else:
-            # Both values present - this would be a range
-            # Currently we instead apply lower and upper constraints independently
-            raise ValueError(
-                f"Age constraint with both boundaries not implemented: {greater_than_value}|{less_than_value}"
-            )
+            age_bounds.append((op.le, int(less_than_value)))
 
         self.condition_query = self._apply_age_constraint_to_table(
             self.condition_query,
             ConditionOccurrence.person_id,
             ConditionOccurrence.condition_start_date,
-            comparator,
-            age_value,
+            age_bounds,
         )
         self.drug_query = self._apply_age_constraint_to_table(
             self.drug_query,
             DrugExposure.person_id,
             DrugExposure.drug_exposure_start_date,
-            comparator,
-            age_value,
+            age_bounds,
         )
         self.measurement_query = self._apply_age_constraint_to_table(
             self.measurement_query,
             Measurement.person_id,
             Measurement.measurement_date,
-            comparator,
-            age_value,
+            age_bounds,
         )
         self.observation_query = self._apply_age_constraint_to_table(
             self.observation_query,
             Observation.person_id,
             Observation.observation_date,
-            comparator,
-            age_value,
+            age_bounds,
         )
         self.procedure_query = self._apply_age_constraint_to_table(
             self.procedure_query,
             ProcedureOccurrence.person_id,
             ProcedureOccurrence.procedure_date,
-            comparator,
-            age_value,
+            age_bounds,
         )
         if self.specimen_query is not None:
             self.specimen_query = self._apply_age_constraint_to_table(
                 self.specimen_query,
                 Specimen.person_id,
                 Specimen.specimen_date,
-                comparator,
-                age_value,
+                age_bounds,
             )
         if self.death_query is not None:
             self.death_query = self._apply_age_constraint_to_table(
                 self.death_query,
                 Death.person_id,
                 Death.death_date,
-                comparator,
-                age_value,
+                age_bounds,
             )
         return self
 
@@ -290,8 +278,7 @@ class OMOPRuleQueryBuilder:
         table_query: Select[Tuple[int]],
         table_person_id: ClauseElement,
         table_date_column: ClauseElement,
-        operator_func: Callable[[Any, Any], BinaryExpression[bool]],
-        age_value: int,
+        age_bounds: list[tuple[Callable[[Any, Any], BinaryExpression[bool]], int]],
     ) -> Select[Tuple[int]]:
         """
         Helper method to apply age constraints to a table query.
@@ -300,8 +287,7 @@ class OMOPRuleQueryBuilder:
             table_query: The table query to apply the age constraint to.
             table_person_id: The person_id column in the table.
             table_date_column: The date column in the table.
-            operator_func: The operator function to use in the constraint.
-            age_value: The age value to use in the constraint.
+            age_bounds: The operator function and age value pairs to use in the constraint.
 
         Returns:
             The table query with the age constraint applied.
@@ -310,11 +296,11 @@ class OMOPRuleQueryBuilder:
             self.db_client.engine, table_date_column, Person.year_of_birth
         )
 
-        constraint = operator_func(age_difference, age_value)
+        constraints = [operator_func(age_difference, age_value) for operator_func, age_value in age_bounds]
 
         # Use JOIN instead of EXISTS for better performance
         return table_query.join(Person, Person.person_id == table_person_id).where(
-            constraint
+            *constraints
         )
 
     def add_temporal_constraint(
@@ -324,8 +310,8 @@ class OMOPRuleQueryBuilder:
         Adds a temporal constraint to OMOP queries relative to the current date,
         using pre-parsed time values representing months.
 
-        Exactly one of `greater_than_time` or `less_than_time` should be provided as
-        a numeric string (e.g., "6"), representing months. The other should be an
+        At least one of `greater_than_time` or `less_than_time` should be provided as
+        a numeric string (e.g., "6"), representing months. An unused value should be an
         empty string.
 
         In the scenario where the user has specified an event should occur greater than 6 months ago, then the
@@ -334,10 +320,11 @@ class OMOPRuleQueryBuilder:
         When greater than value is supplied, the search is inverted, as this means the date we are searching must be
         earlier in time, and therefore less than the current date - six months.
 
-        The method filters events to either before or after the computed relative
-        date based on which time value is supplied:
+        The method filters events to before and/or after the computed relative
+        dates based on which time values are supplied:
         - If `greater_than_time` is given, events before (<=) that relative date are included.
-        - If `greater_than_time` is empty, events after (>=) the `less_than_time` relative date are included.
+        - If `less_than_time` is given, events after (>=) that relative date are included.
+        - If both are given, events between the two relative dates are included.
 
         Args:
             greater_than_time (str): Left-side time bound in months as a numeric string,
@@ -356,32 +343,19 @@ class OMOPRuleQueryBuilder:
 
         if not greater_than_time and not less_than_time:
             raise ValueError(
-                "Temporal constraint requires exactly one time value. "
+                "Temporal constraint requires at least one time value. "
                 "Both greater_than_time and less_than_time are empty."
             )
 
-        if greater_than_time and less_than_time:
-            raise ValueError(
-                "Temporal constraint requires exactly one time value. "
-                f"Both values were provided: greater='{greater_than_time}', less='{less_than_time}'. "
-                "One must be an empty string."
-            )
-
-        if greater_than_time == "":
-            time_value_supplied = less_than_time
-        else:
-            time_value_supplied = greater_than_time
-
-        time_to_use = int(time_value_supplied) * -1
-
         today_date = datetime.now()
 
-        relative_date = today_date + relativedelta(months=time_to_use)
-
-        # the inverted logic is applied here, therefore if the greater_than_time was empty, it meant the user
+        # the inverted logic is applied here, therefore if the less_than_time was supplied, it meant the user
         # specified a search that was less than X months ago, i.e. <=6 months. The relative date will have been calculated
         # as today's date minus six months, therefore, the search is for any event that occurred after the relative date.
-        if greater_than_time == "":
+        if less_than_time:
+            time_to_use = int(less_than_time) * -1
+            relative_date = today_date + relativedelta(months=time_to_use)
+
             self.measurement_query = self.measurement_query.where(
                 Measurement.measurement_date >= relative_date
             )
@@ -405,7 +379,10 @@ class OMOPRuleQueryBuilder:
                 self.death_query = self.death_query.where(
                     Death.death_date >= relative_date
                 )
-        else:
+        if greater_than_time:
+            time_to_use = int(greater_than_time) * -1
+            relative_date = today_date + relativedelta(months=time_to_use)
+
             self.measurement_query = self.measurement_query.where(
                 Measurement.measurement_date <= relative_date
             )
@@ -664,32 +641,37 @@ class PersonConstraintBuilder:
         return [and_(age >= rule.min_value, age <= rule.max_value)]
 
     def _build_age_constraint(self, rule: Rule) -> list[ColumnElement[bool]]:
-        """Build a dynamic age constraint with comparator."""
+        """
+        Build age constraints from whichever bounds of the rule's time are set.
 
-        # If neither value is provided, return an empty list (no constraint)
-        if rule.greater_than_value is None and rule.less_than_value is None:
+        Only AGE time constraints apply to Person rules; any other time category
+        (e.g. TIME) is ignored, as the Person table has no event date.
+
+        Returns:
+            A list of zero, one or two constraints (lower and/or upper bound).
+        """
+
+        # If neither value is provided (None or ""), return an empty list (no constraint)
+        if not rule.greater_than_value and not rule.less_than_value:
             return []
 
-        comparator: Callable[[int, int], bool] | None = None
-
-        age_value: int = 0
-
-        # Determine comparator and age_value based on which side is set
-        if rule.greater_than_value is not None and rule.greater_than_value != "":
-            comparator = op.ge  # age >= greater_than_value
-            age_value = int(rule.greater_than_value)
-        elif rule.less_than_value is not None and rule.less_than_value != "":
-            comparator = op.le  # age <=less_than_value
-            age_value = int(rule.less_than_value)
+        if rule.time_category != "AGE":
+            logger.warning(
+                f"Ignoring {rule.time_category} time constraint on Person rule: {rule.time}"
+            )
+            return []
 
         # Compute age
         current_year = datetime.now().year
         age = current_year - Person.year_of_birth
 
-        # Build numeric constraint using the comparator
-        numeric_constraint = comparator(age, age_value)
+        constraints: list[ColumnElement[bool]] = []
+        if rule.greater_than_value:
+            constraints.append(age >= int(rule.greater_than_value))
+        if rule.less_than_value:
+            constraints.append(age <= int(rule.less_than_value))
 
-        return [numeric_constraint]
+        return constraints
 
     def _build_gender_constraint(
         self, rule: Rule, age_constraints: list[ColumnElement[bool]]

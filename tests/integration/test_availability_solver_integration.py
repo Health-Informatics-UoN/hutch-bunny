@@ -914,3 +914,66 @@ class TestAgeQuery:
                 )
                 count = availability_solver.solve_query(modifiers)
                 assert count == expected_count
+
+
+@pytest.mark.integration
+class TestDateRanges:
+    """Run date based ranges (age at event and relative time) through the rule query builder."""
+
+    def test_age_at_event_range(self, db_client: SyncDBClient) -> None:
+        """Test an age at event range applies both bounds to the same event."""
+        test_cases = [
+            # (time, expected people with Hyperlipidemia)
+            ("50|:AGE:Y", 64),  # aged 50 or over at diagnosis
+            ("|60:AGE:Y", 84),  # aged 60 or under at diagnosis
+            ("50|60:AGE:Y", 38),  # aged 50 to 60 at diagnosis
+        ]
+
+        availability_solver = AvailabilitySolver(db_client, Mock(spec=AvailabilityQuery))
+
+        for time, expected_count in test_cases:
+            rule = Rule(
+                varname="OMOP",
+                varcat="Condition",
+                type_="TEXT",
+                operator="=",
+                value="432867",  # Hyperlipidemia
+                time=time,
+            )
+            query = availability_solver._build_rule_query(rule)
+
+            with db_client.engine.connect() as conn:
+                person_ids = {row[0] for row in conn.execute(query)}
+
+            assert len(person_ids) == expected_count, time
+
+    def test_relative_time_range(self, db_client: SyncDBClient) -> None:
+        """Test a relative time range applies both bounds, with a fixed current date."""
+        test_cases = [
+            # (time, expected people with Hyperlipidemia)
+            ("120|:TIME:M", 99),  # more than 10 years ago
+            ("|360:TIME:M", 78),  # within the last 30 years
+            ("120|360:TIME:M", 67),  # between 10 and 30 years ago
+        ]
+
+        availability_solver = AvailabilitySolver(db_client, Mock(spec=AvailabilityQuery))
+
+        with patch("hutch_bunny.core.solvers.rule_query_builders.datetime") as mock_datetime:
+            fixed_now = datetime(2025, 8, 7, 12, 0, 0)
+            mock_datetime.now.return_value = fixed_now
+
+            for time, expected_count in test_cases:
+                rule = Rule(
+                    varname="OMOP",
+                    varcat="Condition",
+                    type_="TEXT",
+                    operator="=",
+                    value="432867",  # Hyperlipidemia
+                    time=time,
+                )
+                query = availability_solver._build_rule_query(rule)
+
+                with db_client.engine.connect() as conn:
+                    person_ids = {row[0] for row in conn.execute(query)}
+
+                assert len(person_ids) == expected_count, time
