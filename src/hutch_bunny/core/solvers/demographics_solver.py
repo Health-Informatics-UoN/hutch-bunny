@@ -19,7 +19,7 @@ from tenacity import (
     after_log,
 )
 from hutch_bunny.core.rquest_models.distribution import DistributionQuery
-from hutch_bunny.core.solvers.availability_solver import ResultModifier
+from hutch_bunny.core.results_modifiers import ResultModifier, get_modifier_value
 
 
 class DemographicsRow(BaseModel):
@@ -58,8 +58,6 @@ class DemographicsDistributionQuerySolver:
 
     # Constants
     GENDER_CONCEPT_IDS = [8507, 8532]  # MALE, FEMALE
-    DEFAULT_LOW_NUMBER = 10
-    DEFAULT_ROUNDING = 10
 
     output_cols = [
         "BIOBANK",
@@ -96,25 +94,11 @@ class DemographicsDistributionQuerySolver:
         Returns:
             Tuple[int, int]: The low number and rounding values.
         """
-        low_number = next(
-            (
-                item["threshold"]
-                if item["threshold"] is not None
-                else self.DEFAULT_LOW_NUMBER
-                for item in results_modifier
-                if item["id"] == "Low Number Suppression"
-            ),
-            self.DEFAULT_LOW_NUMBER,
+        low_number = get_modifier_value(
+            results_modifier, "Low Number Suppression", "threshold"
         )
-        rounding = next(
-            (
-                item["nearest"]
-                if item["nearest"] is not None
-                else self.DEFAULT_ROUNDING
-                for item in results_modifier
-                if item["id"] == "Rounding"
-            ),
-            self.DEFAULT_ROUNDING,
+        rounding = get_modifier_value(
+            results_modifier, "Rounding", "nearest"
         )
         return low_number, rounding
 

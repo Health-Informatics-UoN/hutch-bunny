@@ -19,7 +19,6 @@ maintainers = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-  "numpy>=2.5.2",
   "psycopg[binary]>=3.3.4",
   "python-dotenv>=1.2.2",
   "requests>=2.34.2", # daemon-only
@@ -38,6 +37,8 @@ dependencies = [
   "opentelemetry-exporter-otlp>=1.20.0",
   "cryptography>=50.0.0",
   "snowflake-sqlalchemy>=1.11.0",
+  "python-dateutil>=2.9.0.post0",
+  "pydantic>=2.12.5",
 ]
 
 [project.scripts]

@@ -12,12 +12,13 @@ from hutch_bunny.core.rquest_models.result import RquestResult
 from hutch_bunny.core.telemetry import trace_operation
 from hutch_bunny.core.settings import Settings 
 from hutch_bunny.core.services.cache_service import DistributionCacheService
+from hutch_bunny.core.results_modifiers import ResultModifier
 
 
 @trace_operation("execute_query", span_kind=trace.SpanKind.INTERNAL)
 def execute_query(
     query_dict: dict[str, object],
-    results_modifier: list[dict[str, str | int]],
+    results_modifier: list[ResultModifier],
     db_client: BaseDBClient,
     settings: Settings | None = None, 
     encode_result: bool = True 
