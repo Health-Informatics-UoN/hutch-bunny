@@ -16,7 +16,7 @@ class CacheRefreshService:
         self.settings = settings
         self.running = False 
         self.thread: Optional[threading.Thread] = None 
-        self.last_refresh = None 
+        self.last_refresh: Optional[datetime] = None 
 
     def start(self) -> None: 
         """Start the cache refresh background thread."""
@@ -77,7 +77,7 @@ class CacheRefreshService:
         """Refresh all common distribution queries."""
         db_client = get_db_client()
 
-        queries = [
+        queries: list[dict[str, object]] = [
             {
                 "code": "DEMOGRAPHICS",
                 "analysis": "DISTRIBUTION", 
