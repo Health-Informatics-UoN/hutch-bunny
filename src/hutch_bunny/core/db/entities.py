@@ -287,7 +287,9 @@ class Specimen(Base):
 
 class CohortDefinition(Base):
     __tablename__ = "cohort_definition"
-    cohort_definition_id = Column(Integer, primary_key=True)
+    # The CDM gives this column no identity/sequence; Bunny supplies the ID, so stop
+    # SQLAlchemy treating it as one (on SQL Server it would SET IDENTITY_INSERT ON)
+    cohort_definition_id = Column(Integer, primary_key=True, autoincrement=False)
     cohort_definition_name = Column(String(255), nullable=False)
     cohort_definition_description = Column(Text, nullable=True)
     definition_type_concept_id = Column(
