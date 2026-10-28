@@ -56,7 +56,7 @@ jobs:
             -e DIALECT=postgresql \
             -e SYNTHETIC=true \
             -e SYNTHETIC_NUMBER=1001 \
-            ghcr.io/health-informatics-uon/omop-lite:0.7.0
+            ghcr.io/health-informatics-uon/omop-lite:0.8.0
 
       - name: Setup uv
         uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
@@ -139,7 +139,7 @@ jobs:
             -e SCHEMA_NAME=omop \
             -e SYNTHETIC=true \
             -e SYNTHETIC_NUMBER=1001 \
-            ghcr.io/health-informatics-uon/omop-lite:0.7.0
+            ghcr.io/health-informatics-uon/omop-lite:0.8.0
 
       - name: Setup uv
         uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
@@ -157,6 +157,62 @@ jobs:
         run: uv sync --frozen --dev
 
       - name: Run tests
+        run: |
+          set -e
+          uv run pytest tests
+
+  run-tests-duckdb:
+    name: Run Tests (DuckDB)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DATASOURCE_DB_DRIVERNAME: duckdb
+      DATASOURCE_DUCKDB_PATH_TO_DB: ${{ github.workspace }}/data/omop.duckdb
+      DATASOURCE_DB_SCHEMA: public
+      TASK_API_TYPE: a
+      COLLECTION_ID: test_collection
+      TASK_API_BASE_URL: http://localhost:8000
+      TASK_API_USERNAME: test_user
+      TASK_API_PASSWORD: test_password
+      TASK_API_ENFORCE_HTTPS: false
+      OMOP_SPECIMEN_ENABLED: TRUE
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Load synthetic OMOP data
+        run: |
+          mkdir -p data
+          # omop-lite runs as a non-root user, so it needs write access to the mounted dir
+          chmod 777 data
+          docker run \
+            -v ${{ github.workspace }}/data:/data \
+            -e DIALECT=duckdb \
+            -e DB_NAME=/data/omop.duckdb \
+            -e SYNTHETIC=true \
+            -e SYNTHETIC_NUMBER=1001 \
+            ghcr.io/health-informatics-uon/omop-lite:0.8.0
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.12.0"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Setup Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version-file: ".python-version"
+
+      - name: uv sync
+        run: uv sync --frozen --dev
+
+      - name: Run tests
+        # runner context isn't available in job-level env
+        env:
+          DATASOURCE_DUCKDB_TEMP_DIRECTORY: ${{ runner.temp }}
         run: |
           set -e
           uv run pytest tests

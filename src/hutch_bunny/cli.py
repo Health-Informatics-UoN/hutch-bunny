@@ -3,6 +3,7 @@ import json
 from typing import Sequence
 
 from hutch_bunny.core.results_modifiers import (
+    ResultModifier,
     get_results_modifiers_from_str,
 )
 from hutch_bunny.core.execute_query import execute_query
@@ -54,7 +55,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         with open(args.body) as body:
             query_dict = json.load(body)
 
-    results_modifier: list[dict] = get_results_modifiers_from_str(
+    results_modifier: list[ResultModifier] = get_results_modifiers_from_str(
         args.results_modifiers
     )
 

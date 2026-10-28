@@ -6,7 +6,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 from hutch_bunny.core.rquest_models.result import RquestResult
 from hutch_bunny.core.settings import DaemonSettings
-from typing import Optional
+from typing import Any, Optional
 
 
 class SupportedMethod(Enum):
@@ -27,7 +27,7 @@ class TaskApiClient:
         self.password = settings.TASK_API_PASSWORD
 
     def _request(
-        self, method: SupportedMethod, url: str, data: Optional[dict] = None, **kwargs
+        self, method: SupportedMethod, url: str, data: Optional[dict[str, Any]] = None, **kwargs: Any
     ) -> Response:
         """
         Sends an HTTP request using the specified method to the given URL with optional data and additional parameters.
@@ -54,7 +54,7 @@ class TaskApiClient:
         return response
 
     def post(
-        self, endpoint: Optional[str] = None, data: dict = dict(), **kwargs
+        self, endpoint: Optional[str] = None, data: dict[str, Any] = dict(), **kwargs: Any
     ) -> Response:
         """
         Sends a POST request to the specified endpoint with data and additional parameters.
@@ -75,7 +75,7 @@ class TaskApiClient:
             headers={"Content-Type": "application/json"},
         )
 
-    def get(self, endpoint: Optional[str] = None, **kwargs) -> Response:
+    def get(self, endpoint: Optional[str] = None, **kwargs: Any) -> Response:
         """
         Sends a GET request to the specified endpoint with optional additional parameters.
 

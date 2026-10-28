@@ -160,7 +160,7 @@ class SyncDBClient(BaseDBClient):
                 )
             )
 
-    def execute_and_fetch(self, stmnt: Executable) -> Sequence[Row[Any]]:  # type: ignore
+    def execute_and_fetch(self, stmnt: Executable) -> Sequence[Row[Any]]:
         with self.engine.begin() as conn:
             result = conn.execute(statement=stmnt)
             rows = result.all()

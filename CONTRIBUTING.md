@@ -54,7 +54,24 @@ uv run pytest -s tests/                  # everything
 
 `integration` and `end_to_end` tests connect using the same `.env` / environment variables as the app itself (see `Settings` in `core/settings.py`). `docker compose -f dev.compose.yml up db omop-lite` will give you a local Postgres instance seeded with synthetic OMOP data to point them at; see [`check.run-tests.yml`](.github/workflows/check.run-tests.yml) for exactly how CI provisions one via [`omop-lite`](https://github.com/Health-Informatics-UoN/omop-lite).
 
-CI runs the full suite against a matrix of Postgres (14–18) and SQL Server (2019, 2022). If you're changing anything in `core/db/` or `core/solvers/`, keep both dialects in mind — a change that works on Postgres can still fail on SQL Server (and vice versa).
+To run the tests against DuckDB instead, have `omop-lite` write a synthetic DuckDB file and point Bunny at it:
+
+```bash
+mkdir -p data
+docker run --rm -v ./data:/data \
+  -e DIALECT=duckdb -e DB_NAME=/data/omop.duckdb \
+  -e SYNTHETIC=true -e SYNTHETIC_NUMBER=1001 \
+  ghcr.io/health-informatics-uon/omop-lite:0.8.0
+
+DATASOURCE_DB_DRIVERNAME=duckdb \
+DATASOURCE_DUCKDB_PATH_TO_DB=./data/omop.duckdb \
+DATASOURCE_DB_SCHEMA=public \
+uv run pytest -s tests/
+```
+
+Bunny opens the DuckDB file read-only; host, port, database, username and password settings are not needed.
+
+CI runs the full suite against a matrix of Postgres (14–18), SQL Server (2019, 2022) and DuckDB. If you're changing anything in `core/db/` or `core/solvers/`, keep all three dialects in mind — a change that works on Postgres can still fail on SQL Server or DuckDB (and vice versa).
 
 New features and bug fixes should come with tests at the appropriate level: `unit` for logic (e.g. a new `Rule` operator or result modifier), `integration` if it touches real SQL (e.g. a new distribution type or DB backend).
 

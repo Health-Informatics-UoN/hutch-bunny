@@ -1,6 +1,6 @@
 from datetime import date
 from logging import DEBUG
-from typing import TypedDict, Union, Literal
+from typing import TypedDict, Union
 from sqlalchemy import (
     CompoundSelect,
     Connection,
@@ -38,6 +38,7 @@ from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.rquest_models.rule import Rule
 from hutch_bunny.core.omop import Varcat
+from hutch_bunny.core.results_modifiers import ResultModifier, get_modifier_value
 from hutch_bunny.core.solvers.rule_query_builders import OMOPRuleQueryBuilder, PersonConstraintBuilder
 from hutch_bunny.core.db.utils import log_query
 from hutch_bunny.core.settings import Settings
@@ -51,16 +52,9 @@ COHORT_DEFINITION_TYPE_CONCEPT_ID = 0
 COHORT_SUBJECT_CONCEPT_ID = 1147314 #this is to indicate the cohort is based on the person id
 
 
-class ResultModifier(TypedDict):
-    id: str
-    threshold: int | None
-    nearest: int | None
-
-Key = Literal["threshold", "nearest"]
-
 
 class RuleTableQuery(TypedDict):
-    union_query: CompoundSelect
+    union_query: CompoundSelect[Tuple[int]]
     inclusion: bool
 
 
@@ -86,8 +80,8 @@ class AvailabilitySolver():
         4. Executing the final query and applying filters
         """
         concepts = self._find_concepts(self.query.cohort.groups)
-        low_number = self._extract_modifier(results_modifiers, "Low Number Suppression", "threshold", 10)
-        rounding = self._extract_modifier(results_modifiers, "Rounding", "nearest", 10)
+        low_number = get_modifier_value(results_modifiers, "Low Number Suppression", "threshold")
+        rounding = get_modifier_value(results_modifiers, "Rounding", "nearest")
 
         with self.db_client.engine.connect() as con:
             group_queries = []
@@ -151,24 +145,11 @@ class AvailabilitySolver():
             }
         return concept_dict
 
-    def _extract_modifier(
-        self,
-        results_modifiers: list[ResultModifier],
-        result_id: str,
-        key: Key,
-        default_value: int = 10,
-    ) -> int:
-        for item in results_modifiers:
-            if item["id"] == result_id:
-                value = item.get(key)  # type: int | None
-                return value if value is not None else default_value
-        return default_value
-
     def _build_group_query(
         self,
         group: Group,
         concepts: dict[str, str]
-    ) -> Union[Select[Tuple[int]], CompoundSelect]:
+    ) -> Union[Select[Tuple[int]], CompoundSelect[Tuple[int]]]:
         """
         Build query for a single group - a nested SQL expression.
 
@@ -198,7 +179,7 @@ class AvailabilitySolver():
 
         return self._construct_group_query(group, person_constraints, rule_table_queries)
 
-    def _build_rule_query(self, rule: Rule) -> CompoundSelect:
+    def _build_rule_query(self, rule: Rule) -> CompoundSelect[Tuple[int]]:
         """Build query for a single non-Person rule."""
         builder = OMOPRuleQueryBuilder(
             self.db_client,
@@ -246,7 +227,7 @@ class AvailabilitySolver():
         current_group: Group,
         person_constraints_for_group: list[ColumnElement[bool]],
         rule_table_queries: list[RuleTableQuery]
-    ) -> Union[Select[Tuple[int]], CompoundSelect]:
+    ) -> Union[Select[Tuple[int]], CompoundSelect[Tuple[int]]]:
         """
         Construct the query for a single group by processing inclusion/exclusion rules.
 
@@ -259,8 +240,8 @@ class AvailabilitySolver():
             The constructed group query
         """
         # Build the group query using UNION approach
-        inclusion_queries: list[Union[Select[Tuple[int]], CompoundSelect]] = []
-        exclusion_queries: list[Union[Select[Tuple[int]], CompoundSelect]] = []
+        inclusion_queries: list[Union[Select[Tuple[int]], CompoundSelect[Tuple[int]]]] = []
+        exclusion_queries: list[Union[Select[Tuple[int]], CompoundSelect[Tuple[int]]]] = []
 
         # Add person constraints as a separate query
         if person_constraints_for_group:
@@ -295,7 +276,7 @@ class AvailabilitySolver():
         if inclusion_queries:
             if current_group.rules_operator == "AND":
                 # For AND logic, use INTERSECT which is more efficient than joins
-                group_query: Union[Select[Tuple[int]], CompoundSelect] = inclusion_queries[0]
+                group_query: Union[Select[Tuple[int]], CompoundSelect[Tuple[int]]] = inclusion_queries[0]
                 for query in inclusion_queries[1:]:
                     group_query = intersect(group_query, query)
             else:
