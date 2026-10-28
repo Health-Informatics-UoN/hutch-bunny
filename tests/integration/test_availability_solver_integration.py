@@ -1,15 +1,19 @@
 import json
+from collections.abc import Iterator
 from unittest.mock import Mock, patch
-from datetime import datetime
+from datetime import date, datetime
 import pytest 
-from sqlalchemy import select, cast, func, Integer
+from sqlalchemy import select, cast, delete, func, Integer
 
 from hutch_bunny.core.rquest_models.rule import Rule
 from hutch_bunny.core.rquest_models.group import Group
-from hutch_bunny.core.db.entities import Person 
+from hutch_bunny.core.db.entities import Cohort, CohortDefinition, Person 
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.db.sync import SyncDBClient
-from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
+from hutch_bunny.core.solvers.availability_solver import (
+    COHORT_DEFINITION_DESCRIPTION,
+    AvailabilitySolver,
+)
 from hutch_bunny.core.results_modifiers import results_modifiers
 
 
@@ -861,6 +865,7 @@ class TestBuildGroupQuery:
     
 
 
+AVAILABILITY_QUERY_PATH = "tests/queries/availability/availability.json"  # gender 8507
 AGE_QUERY_PATH = "tests/queries/availability/age.json"  # AGE rule: aged 20-30
 
 
@@ -977,3 +982,109 @@ class TestDateRanges:
                     person_ids = {row[0] for row in conn.execute(query)}
 
                 assert len(person_ids) == expected_count, time
+
+
+@pytest.mark.integration
+class TestLogResults:
+    """Writing the counted person IDs to the OMOP cohort tables when LOG_RESULTS_ENABLED is set."""
+
+    @pytest.fixture
+    def availability_query(self) -> AvailabilityQuery:
+        with open(AVAILABILITY_QUERY_PATH) as f:
+            return AvailabilityQuery.model_validate(json.load(f))
+
+    @pytest.fixture
+    def cleanup_cohort(self, db_client: SyncDBClient, availability_query: AvailabilityQuery) -> Iterator[None]:
+        yield
+        definition_ids = select(CohortDefinition.cohort_definition_id).where(
+            CohortDefinition.cohort_definition_name == availability_query.uuid
+        )
+        with db_client.engine.begin() as conn:
+            conn.execute(delete(Cohort).where(Cohort.cohort_definition_id.in_(definition_ids)))
+            conn.execute(
+                delete(CohortDefinition).where(
+                    CohortDefinition.cohort_definition_name == availability_query.uuid
+                )
+            )
+
+    @pytest.mark.usefixtures("cleanup_cohort")
+    def test_log_results_writes_cohort(
+        self, db_client: SyncDBClient, availability_query: AvailabilityQuery
+    ) -> None:
+        """Test the counted person IDs are written to cohort, linked to a new cohort_definition."""
+        availability_solver = AvailabilitySolver(db_client, availability_query)
+        modifiers = results_modifiers(low_number_suppression_threshold=0, rounding_target=0)
+
+        with patch("hutch_bunny.core.solvers.availability_solver.settings.LOG_RESULTS_ENABLED", True):
+            count = availability_solver.solve_query(modifiers)
+
+        with db_client.engine.connect() as conn:
+            definition = conn.execute(
+                select(CohortDefinition).where(
+                    CohortDefinition.cohort_definition_name == availability_query.uuid
+                )
+            ).one()
+            cohort_rows = conn.execute(
+                select(Cohort).where(Cohort.cohort_definition_id == definition.cohort_definition_id)
+            ).all()
+            expected_person_ids = set(
+                conn.execute(select(Person.person_id).where(Person.gender_concept_id == 8507)).scalars()
+            )
+
+        assert count == len(expected_person_ids)
+        assert {row.subject_id for row in cohort_rows} == expected_person_ids
+        assert all(
+            row.cohort_start_date == row.cohort_end_date == date.today() for row in cohort_rows
+        )
+        assert definition.cohort_definition_description.startswith(COHORT_DEFINITION_DESCRIPTION)
+        assert definition.definition_type_concept_id == 0
+        assert definition.cohort_definition_syntax is None
+        assert definition.subject_concept_id == 1147314
+        assert definition.cohort_initiation_date == date.today()
+
+    @pytest.mark.usefixtures("cleanup_cohort")
+    def test_log_results_disabled_writes_nothing(
+        self, db_client: SyncDBClient, availability_query: AvailabilityQuery
+    ) -> None:
+        """Test nothing is written to the cohort tables when LOG_RESULTS_ENABLED is off."""
+        availability_solver = AvailabilitySolver(db_client, availability_query)
+        modifiers = results_modifiers(low_number_suppression_threshold=0, rounding_target=0)
+
+        with patch("hutch_bunny.core.solvers.availability_solver.settings.LOG_RESULTS_ENABLED", False):
+            availability_solver.solve_query(modifiers)
+
+        with db_client.engine.connect() as conn:
+            written = conn.execute(
+                select(func.count()).select_from(CohortDefinition).where(
+                    CohortDefinition.cohort_definition_name == availability_query.uuid
+                )
+            ).scalar_one()
+
+        assert written == 0
+
+    @pytest.mark.usefixtures("cleanup_cohort")
+    def test_log_results_skipped_when_db_client_unsupported(
+        self, db_client: SyncDBClient, availability_query: AvailabilityQuery
+    ) -> None:
+        """Test nothing is written when the DB client does not support cohort logging (e.g. Snowflake)."""
+        availability_solver = AvailabilitySolver(db_client, availability_query)
+        modifiers = results_modifiers(low_number_suppression_threshold=0, rounding_target=0)
+
+        with (
+            patch("hutch_bunny.core.solvers.availability_solver.settings.LOG_RESULTS_ENABLED", True),
+            patch.object(db_client, "supports_cohort_logging", False),
+        ):
+            count = availability_solver.solve_query(modifiers)
+
+        with db_client.engine.connect() as conn:
+            written = conn.execute(
+                select(func.count()).select_from(CohortDefinition).where(
+                    CohortDefinition.cohort_definition_name == availability_query.uuid
+                )
+            ).scalar_one()
+            expected = conn.execute(
+                select(func.count()).select_from(Person).where(Person.gender_concept_id == 8507)
+            ).scalar_one()
+
+        assert written == 0
+        assert count == expected

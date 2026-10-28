@@ -74,6 +74,8 @@ class SyncDBClient(BaseDBClient):
             "observation",
             "drug_exposure",
         }
+        if settings.LOG_RESULTS_ENABLED:
+            required_tables |= {"cohort", "cohort_definition"}
 
         # Get both tables and views and combine
         existing_tables = set(self.inspector.get_table_names(schema=self.schema))

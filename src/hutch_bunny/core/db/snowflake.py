@@ -12,6 +12,8 @@ from .base import BaseDBClient
 
 
 class SnowflakeDBClient(BaseDBClient):
+    supports_cohort_logging = False
+
     def __init__(
         self,
         username: str,

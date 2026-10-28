@@ -162,6 +162,10 @@ def get_db_client() -> BaseDBClient:
         elif settings.DATASOURCE_DB_DRIVERNAME == "duckdb":
             return _create_duckdb_client()
         elif settings.DATASOURCE_USE_SNOWFLAKE:
+            if settings.LOG_RESULTS_ENABLED:
+                logger.warning(
+                    "LOG_RESULTS_ENABLED is not supported for Snowflake and will be ignored"
+                )
             return _create_snowflake_client()
         else:
             return _create_sync_client()

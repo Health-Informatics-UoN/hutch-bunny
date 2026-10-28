@@ -150,6 +150,75 @@ def test_check_tables_exist_with_views(
 
 
 @pytest.mark.unit
+def test_check_tables_exist_cohort_tables_required_when_log_results_enabled(
+    mock_inspector: MagicMock,
+) -> None:
+    """Test that cohort tables are required when LOG_RESULTS_ENABLED is set."""
+    # Arrange
+    mock_inspector.get_table_names.return_value = [
+        "concept",
+        "person",
+        "measurement",
+        "condition_occurrence",
+        "observation",
+        "drug_exposure",
+    ]
+    mock_inspector.get_view_names.return_value = []
+
+    # Act
+    with (
+        patch("hutch_bunny.core.db.sync.inspect", return_value=mock_inspector),
+        patch("hutch_bunny.core.db.sync.settings.LOG_RESULTS_ENABLED", True),
+        pytest.raises(RuntimeError) as exc_info,
+    ):
+        SyncDBClient(
+            username="test_user",
+            password="test_password",
+            host="test_host",
+            port=5432,
+            database="test_db",
+            drivername="postgresql+psycopg",
+        )
+
+    # Assert
+    assert "cohort" in str(exc_info.value)
+    assert "cohort_definition" in str(exc_info.value)
+
+
+@pytest.mark.unit
+def test_check_tables_exist_cohort_tables_present_when_log_results_enabled(
+    mock_inspector: MagicMock,
+) -> None:
+    """Test that no error is raised when LOG_RESULTS_ENABLED is set and cohort tables exist."""
+    # Arrange
+    mock_inspector.get_table_names.return_value = [
+        "concept",
+        "person",
+        "measurement",
+        "condition_occurrence",
+        "observation",
+        "drug_exposure",
+        "cohort",
+        "cohort_definition",
+    ]
+    mock_inspector.get_view_names.return_value = []
+
+    # Act / Assert - constructing the client must not raise
+    with (
+        patch("hutch_bunny.core.db.sync.inspect", return_value=mock_inspector),
+        patch("hutch_bunny.core.db.sync.settings.LOG_RESULTS_ENABLED", True),
+    ):
+        SyncDBClient(
+            username="test_user",
+            password="test_password",
+            host="test_host",
+            port=5432,
+            database="test_db",
+            drivername="postgresql+psycopg",
+        )
+
+
+@pytest.mark.unit
 def test_check_indexes_exist_missing_indexes(
     mock_inspector: MagicMock, mock_engine: MagicMock
 ) -> None:
