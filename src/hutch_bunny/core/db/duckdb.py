@@ -37,3 +37,4 @@ class DuckDBClient(SyncDBClient):
         self._inspector = inspect(self._engine)
 
         self._check_tables_exist()
+        self._log_cohort_stats()
