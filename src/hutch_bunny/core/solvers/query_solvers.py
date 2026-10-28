@@ -2,6 +2,7 @@ from opentelemetry import trace
 
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.solvers.availability_solver import AvailabilitySolver
+from hutch_bunny.core.results_modifiers import ResultModifier
 from hutch_bunny.core.db import BaseDBClient
 from hutch_bunny.core.rquest_models.availability import AvailabilityQuery
 from hutch_bunny.core.rquest_models.file import File
@@ -26,14 +27,14 @@ metadata_service = MetadataService()
 
 @trace_operation("solve_availability", span_kind=trace.SpanKind.INTERNAL)
 def solve_availability(
-    results_modifier: list[dict[str, str | int]],
+    results_modifier: list[ResultModifier],
     db_client: BaseDBClient,
     query: AvailabilityQuery,
 ) -> RquestResult:
     """Solve an availability query.
 
     Args:
-        results_modifier (list[dict[str, str | int]]): The results modifier.
+        results_modifier (list[ResultModifier]): The results modifier.
         db_client (BaseDBClient): The database client.
         query (AvailabilityQuery): The query to solve.
 
@@ -80,7 +81,7 @@ def _get_distribution_solver(
 
 @trace_operation("solve_distribution", span_kind=trace.SpanKind.INTERNAL)
 def solve_distribution(
-    results_modifier: list[dict[str, str | int]],
+    results_modifier: list[ResultModifier],
     db_client: BaseDBClient,
     query: DistributionQuery,
     encode_result: bool = True 
@@ -88,7 +89,7 @@ def solve_distribution(
     """Solve a distribution query.
 
     Args:
-        results_modifier (list[dict[str, str | int]]): The results modifier.
+        results_modifier (list[ResultModifier]): The results modifier.
         db_client (BaseDBClient): The database client.
         query (DistributionQuery): The query to solve.
 

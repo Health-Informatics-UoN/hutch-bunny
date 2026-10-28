@@ -1,5 +1,5 @@
 import base64 
-from copy import deepcopy
+from typing import Any, Mapping, Sequence
 
 
 def low_number_suppression(value: int | float, threshold: int = 10) -> int | float:
@@ -43,10 +43,10 @@ def rounding(value: int | float, nearest: int = 10) -> int | float:
     return nearest * round(value / nearest)
 
 
-def apply_filters(value: int | float, filters: list) -> int:
+def apply_filters(value: int | float, filters: Sequence[Mapping[str, Any]]) -> int:
     """Iterate over a list of filters and apply them to the supplied value.
 
-    Makes a deep copy of the filters list to avoid mutating the original list.
+    Copies each filter to avoid mutating the original list.
 
     Args:
         value (int | float): The value to be filtered.
@@ -58,9 +58,9 @@ def apply_filters(value: int | float, filters: list) -> int:
 
     actions = {"Low Number Suppression": low_number_suppression, "Rounding": rounding}
     result = value
-    filters_copy = deepcopy(filters)
+    filters_copy = [dict(f) for f in filters]
     for f in filters_copy:
-        if action := actions.get(f.pop("id", None)):
+        if action := actions.get(f.pop("id", "")):
             result = action(result, **f)
             if result == 0:
                 break  # don't apply any more filters
