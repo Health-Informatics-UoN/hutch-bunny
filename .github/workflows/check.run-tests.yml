@@ -169,7 +169,6 @@ jobs:
     env:
       DATASOURCE_DB_DRIVERNAME: duckdb
       DATASOURCE_DUCKDB_PATH_TO_DB: ${{ github.workspace }}/data/omop.duckdb
-      DATASOURCE_DUCKDB_TEMP_DIRECTORY: ${{ runner.temp }}
       DATASOURCE_DB_SCHEMA: public
       TASK_API_TYPE: a
       COLLECTION_ID: test_collection
@@ -209,6 +208,9 @@ jobs:
         run: uv sync --frozen --dev
 
       - name: Run tests
+        # runner context isn't available in job-level env
+        env:
+          DATASOURCE_DUCKDB_TEMP_DIRECTORY: ${{ runner.temp }}
         run: |
           set -e
           uv run pytest tests
