@@ -184,6 +184,8 @@ jobs:
       - name: Load synthetic OMOP data
         run: |
           mkdir -p data
+          # omop-lite runs as a non-root user, so it needs write access to the mounted dir
+          chmod 777 data
           docker run \
             -v ${{ github.workspace }}/data:/data \
             -e DIALECT=duckdb \
