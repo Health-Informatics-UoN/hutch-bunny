@@ -128,8 +128,8 @@ def test_log_cohort_stats_logs_counts_when_log_results_enabled(db_client: BaseDB
     Verifies that the cohort logging stats are logged at info level, matching the
     counts in the cohort tables, when LOG_RESULTS_ENABLED is set.
     """
-    if isinstance(db_client, SnowflakeDBClient):
-        pytest.skip("Cohort logging is not supported for Snowflake")
+    if not db_client.supports_cohort_logging:
+        pytest.skip("Cohort logging is not supported by this DB client (e.g. Snowflake, read-only DuckDB)")
 
     with db_client.engine.connect() as conn:
         definitions = conn.execute(select(func.count()).select_from(CohortDefinition)).scalar_one()

@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from hutch_bunny.core.db import SyncDBClient
+from hutch_bunny.core.db import DuckDBClient, SyncDBClient
 
 
 @pytest.fixture
@@ -248,3 +248,68 @@ def test_check_indexes_exist_missing_indexes(
                 # Assert the message contains information about missing indexes
                 warning_msg = mock_logger.warning.call_args[0][0]
                 assert "Missing indexes in the database" in warning_msg
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("read_only", [True, False])
+def test_duckdb_client_read_only_controls_cohort_logging(
+    mock_inspector: MagicMock, read_only: bool
+) -> None:
+    """Test DuckDB opens writable, and supports cohort logging, only when not read-only."""
+    # Arrange
+    mock_inspector.get_table_names.return_value = [
+        "concept",
+        "person",
+        "measurement",
+        "condition_occurrence",
+        "observation",
+        "drug_exposure",
+    ]
+    mock_inspector.get_view_names.return_value = []
+
+    # Act
+    with (
+        patch("hutch_bunny.core.db.duckdb.create_engine") as mock_create_engine,
+        patch("hutch_bunny.core.db.duckdb.inspect", return_value=mock_inspector),
+    ):
+        db_client = DuckDBClient(
+            path_to_db="/data/omop.duckdb",
+            duckdb_memory_limit="1000mb",
+            duckdb_temp_directory="/tmp",
+            read_only=read_only,
+        )
+
+    # Assert
+    connect_args = mock_create_engine.call_args.kwargs["connect_args"]
+    assert connect_args["read_only"] is read_only
+    assert db_client.supports_cohort_logging is not read_only
+
+
+@pytest.mark.unit
+def test_duckdb_client_read_only_by_default(mock_inspector: MagicMock) -> None:
+    """Test DuckDB is opened read-only unless asked otherwise."""
+    # Arrange
+    mock_inspector.get_table_names.return_value = [
+        "concept",
+        "person",
+        "measurement",
+        "condition_occurrence",
+        "observation",
+        "drug_exposure",
+    ]
+    mock_inspector.get_view_names.return_value = []
+
+    # Act
+    with (
+        patch("hutch_bunny.core.db.duckdb.create_engine") as mock_create_engine,
+        patch("hutch_bunny.core.db.duckdb.inspect", return_value=mock_inspector),
+    ):
+        db_client = DuckDBClient(
+            path_to_db="/data/omop.duckdb",
+            duckdb_memory_limit="1000mb",
+            duckdb_temp_directory="/tmp",
+        )
+
+    # Assert
+    assert mock_create_engine.call_args.kwargs["connect_args"]["read_only"] is True
+    assert db_client.supports_cohort_logging is False

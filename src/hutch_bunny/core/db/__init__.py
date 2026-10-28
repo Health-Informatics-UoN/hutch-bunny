@@ -82,6 +82,7 @@ def _create_duckdb_client() -> DuckDBClient:
         duckdb_memory_limit=settings.DATASOURCE_DUCKDB_MEMORY_LIMIT,
         schema=settings.DATASOURCE_DB_SCHEMA,
         duckdb_temp_directory=settings.DATASOURCE_DUCKDB_TEMP_DIRECTORY,
+        read_only=not settings.LOG_RESULTS_ENABLED,
     )
 
 def _create_sync_client() -> SyncDBClient:

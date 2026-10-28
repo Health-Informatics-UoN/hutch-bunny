@@ -996,6 +996,9 @@ class TestLogResults:
     @pytest.fixture
     def cleanup_cohort(self, db_client: SyncDBClient, availability_query: AvailabilityQuery) -> Iterator[None]:
         yield
+        # Nothing can have been written, and a read-only DuckDB file rejects the delete
+        if not db_client.supports_cohort_logging:
+            return
         definition_ids = select(CohortDefinition.cohort_definition_id).where(
             CohortDefinition.cohort_definition_name == availability_query.uuid
         )
@@ -1012,6 +1015,9 @@ class TestLogResults:
         self, db_client: SyncDBClient, availability_query: AvailabilityQuery
     ) -> None:
         """Test the counted person IDs are written to cohort, linked to a new cohort_definition."""
+        if not db_client.supports_cohort_logging:
+            pytest.skip("Cohort logging is not supported by this DB client (e.g. Snowflake, read-only DuckDB)")
+
         availability_solver = AvailabilitySolver(db_client, availability_query)
         modifiers = results_modifiers(low_number_suppression_threshold=0, rounding_target=0)
 
