@@ -46,7 +46,7 @@ from hutch_bunny.core.settings import Settings
 
 settings = Settings()
 
-# Values written to cohort_definition when LOG_RESULTS_ENABLED is set
+# Values written to cohort_definition when PERSIST_RESULTS_ENABLED is set
 COHORT_DEFINITION_DESCRIPTION = "auto generated from cohort discovery search"
 COHORT_DEFINITION_TYPE_CONCEPT_ID = 0
 COHORT_SUBJECT_CONCEPT_ID = 1147314 #this is to indicate the cohort is based on the person id
@@ -91,12 +91,12 @@ class AvailabilitySolver():
                 group_queries.append(group_query)
 
             person_ids_query = self._construct_person_ids_query(group_queries)
-            log_results = settings.LOG_RESULTS_ENABLED and self.db_client.supports_cohort_logging
+            persist_results = settings.PERSIST_RESULTS_ENABLED and self.db_client.supports_persist_results
 
             try:
-                if log_results:
+                if persist_results:
                     # Store the matching person IDs, then count what was stored so the
-                    # returned count always matches the logged cohort.
+                    # returned count always matches the persisted cohort.
                     cohort_definition_id = self._write_cohort(con, person_ids_query)
                     count_source: Union[Select[Tuple[int]], CompoundSelect[Tuple[int]]] = select(
                         Cohort.subject_id
@@ -108,7 +108,7 @@ class AvailabilitySolver():
                 output = con.execute(final_query).fetchone()
                 count = int(output[0]) if output is not None else 0
 
-                if log_results:
+                if persist_results:
                     con.commit()
             except Exception as e:
                 logger.error(str(e))
@@ -419,5 +419,5 @@ class AvailabilitySolver():
         log_query(insert_cohort, self.db_client.engine)
         con.execute(insert_cohort)
 
-        logger.info(f"Logged cohort as cohort_definition_id {cohort_definition_id}")
+        logger.info(f"Persisted cohort as cohort_definition_id {cohort_definition_id}")
         return int(cohort_definition_id)

@@ -76,7 +76,7 @@ class SyncDBClient(BaseDBClient):
             "observation",
             "drug_exposure",
         }
-        if settings.LOG_RESULTS_ENABLED:
+        if settings.PERSIST_RESULTS_ENABLED:
             required_tables |= {"cohort", "cohort_definition"}
 
         # Get both tables and views and combine
@@ -91,8 +91,8 @@ class SyncDBClient(BaseDBClient):
 
     def _log_cohort_stats(self) -> None:
         """
-        Log the number of cohort definitions and persons logged to the OMOP cohort
-        tables. Only runs when LOG_RESULTS_ENABLED is set; a failure is logged as a
+        Log the number of cohort definitions and persons persisted to the OMOP cohort
+        tables. Only runs when PERSIST_RESULTS_ENABLED is set; a failure is logged as a
         warning and does not stop start up.
 
         Args:
@@ -101,7 +101,7 @@ class SyncDBClient(BaseDBClient):
         Returns:
             None
         """
-        if not (settings.LOG_RESULTS_ENABLED and self.supports_cohort_logging):
+        if not (settings.PERSIST_RESULTS_ENABLED and self.supports_persist_results):
             return
 
         stats_query = select(
@@ -114,11 +114,11 @@ class SyncDBClient(BaseDBClient):
             with self.engine.connect() as con:
                 definitions, entries, persons = con.execute(stats_query).one()
         except Exception as e:
-            logger.warning(f"Unable to read cohort logging stats: {e}")
+            logger.warning(f"Unable to read persisted results stats: {e}")
             return
 
         logger.info(
-            f"Cohort logging: {definitions} cohort definitions, "
+            f"Persisted results: {definitions} cohort definitions, "
             f"{entries} person entries, {persons} distinct persons"
         )
 

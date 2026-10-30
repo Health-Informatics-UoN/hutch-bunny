@@ -23,8 +23,8 @@ class DuckDBClient(SyncDBClient):
         """
 
         self.schema = schema if schema is not None and len(schema) > 0 else None
-        # Cohort logging writes to the database, so needs a writable connection
-        self.supports_cohort_logging = not read_only
+        # Persisting results writes to the database, so needs a writable connection
+        self.supports_persist_results = not read_only
 
         self._engine = create_engine("duckdb:///" + path_to_db, connect_args={
             'read_only': read_only,

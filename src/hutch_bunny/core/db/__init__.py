@@ -82,7 +82,7 @@ def _create_duckdb_client() -> DuckDBClient:
         duckdb_memory_limit=settings.DATASOURCE_DUCKDB_MEMORY_LIMIT,
         schema=settings.DATASOURCE_DB_SCHEMA,
         duckdb_temp_directory=settings.DATASOURCE_DUCKDB_TEMP_DIRECTORY,
-        read_only=not settings.LOG_RESULTS_ENABLED,
+        read_only=not settings.PERSIST_RESULTS_ENABLED,
     )
 
 def _create_sync_client() -> SyncDBClient:
@@ -163,9 +163,9 @@ def get_db_client() -> BaseDBClient:
         elif settings.DATASOURCE_DB_DRIVERNAME == "duckdb":
             return _create_duckdb_client()
         elif settings.DATASOURCE_USE_SNOWFLAKE:
-            if settings.LOG_RESULTS_ENABLED:
+            if settings.PERSIST_RESULTS_ENABLED:
                 logger.warning(
-                    "LOG_RESULTS_ENABLED is not supported for Snowflake and will be ignored"
+                    "PERSIST_RESULTS_ENABLED is not supported for Snowflake and will be ignored"
                 )
             return _create_snowflake_client()
         else:

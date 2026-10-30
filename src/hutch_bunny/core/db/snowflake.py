@@ -12,7 +12,7 @@ from .base import BaseDBClient
 
 
 class SnowflakeDBClient(BaseDBClient):
-    supports_cohort_logging = False
+    supports_persist_results = False
 
     def __init__(
         self,

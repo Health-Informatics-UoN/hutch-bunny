@@ -180,7 +180,7 @@ def test_death_support_disabled_by_default() -> None:
 
 
 @pytest.mark.unit
-def test_log_results_disabled_by_default() -> None:
+def test_persist_results_disabled_by_default() -> None:
     with patch.dict("os.environ", {}, clear=True):
         settings = Settings(
             DATASOURCE_DB_PASSWORD="db_secret",
@@ -190,5 +190,5 @@ def test_log_results_disabled_by_default() -> None:
             DATASOURCE_DB_DATABASE="test_db",
         )
 
-        assert settings.LOG_RESULTS_ENABLED is False
+        assert settings.PERSIST_RESULTS_ENABLED is False
 

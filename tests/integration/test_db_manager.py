@@ -123,20 +123,20 @@ def test_check_indexes_exist_with_missing_indexes(db_client: BaseDBClient) -> No
 
 
 @pytest.mark.integration
-def test_log_cohort_stats_logs_counts_when_log_results_enabled(db_client: BaseDBClient) -> None:
+def test_log_cohort_stats_logs_counts_when_persist_results_enabled(db_client: BaseDBClient) -> None:
     """
-    Verifies that the cohort logging stats are logged at info level, matching the
-    counts in the cohort tables, when LOG_RESULTS_ENABLED is set.
+    Verifies that the persisted results stats are logged at info level, matching the
+    counts in the cohort tables, when PERSIST_RESULTS_ENABLED is set.
     """
-    if not db_client.supports_cohort_logging:
-        pytest.skip("Cohort logging is not supported by this DB client (e.g. Snowflake, read-only DuckDB)")
+    if not db_client.supports_persist_results:
+        pytest.skip("Persisting results is not supported by this DB client (e.g. Snowflake, read-only DuckDB)")
 
     with db_client.engine.connect() as conn:
         definitions = conn.execute(select(func.count()).select_from(CohortDefinition)).scalar_one()
         entries = conn.execute(select(func.count()).select_from(Cohort)).scalar_one()
         persons = conn.execute(select(func.count(Cohort.subject_id.distinct()))).scalar_one()
 
-    with patch("hutch_bunny.core.db.sync.settings.LOG_RESULTS_ENABLED", True):
+    with patch("hutch_bunny.core.db.sync.settings.PERSIST_RESULTS_ENABLED", True):
         with patch("hutch_bunny.core.db.sync.logger") as mock_logger:
             db_client._log_cohort_stats()
 
@@ -148,14 +148,14 @@ def test_log_cohort_stats_logs_counts_when_log_results_enabled(db_client: BaseDB
 
 
 @pytest.mark.integration
-def test_log_cohort_stats_skipped_when_log_results_disabled(db_client: BaseDBClient) -> None:
+def test_log_cohort_stats_skipped_when_persist_results_disabled(db_client: BaseDBClient) -> None:
     """
-    Verifies that nothing is logged when LOG_RESULTS_ENABLED is off.
+    Verifies that nothing is logged when PERSIST_RESULTS_ENABLED is off.
     """
     if isinstance(db_client, SnowflakeDBClient):
-        pytest.skip("Cohort logging is not supported for Snowflake")
+        pytest.skip("Persisting results is not supported for Snowflake")
 
-    with patch("hutch_bunny.core.db.sync.settings.LOG_RESULTS_ENABLED", False):
+    with patch("hutch_bunny.core.db.sync.settings.PERSIST_RESULTS_ENABLED", False):
         with patch("hutch_bunny.core.db.sync.logger") as mock_logger:
             db_client._log_cohort_stats()
 

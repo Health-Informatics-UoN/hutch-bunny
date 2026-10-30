@@ -985,8 +985,8 @@ class TestDateRanges:
 
 
 @pytest.mark.integration
-class TestLogResults:
-    """Writing the counted person IDs to the OMOP cohort tables when LOG_RESULTS_ENABLED is set."""
+class TestPersistResults:
+    """Writing the counted person IDs to the OMOP cohort tables when PERSIST_RESULTS_ENABLED is set."""
 
     @pytest.fixture
     def availability_query(self) -> AvailabilityQuery:
@@ -997,7 +997,7 @@ class TestLogResults:
     def cleanup_cohort(self, db_client: SyncDBClient, availability_query: AvailabilityQuery) -> Iterator[None]:
         yield
         # Nothing can have been written, and a read-only DuckDB file rejects the delete
-        if not db_client.supports_cohort_logging:
+        if not db_client.supports_persist_results:
             return
         definition_ids = select(CohortDefinition.cohort_definition_id).where(
             CohortDefinition.cohort_definition_name == availability_query.uuid
@@ -1011,17 +1011,17 @@ class TestLogResults:
             )
 
     @pytest.mark.usefixtures("cleanup_cohort")
-    def test_log_results_writes_cohort(
+    def test_persist_results_writes_cohort(
         self, db_client: SyncDBClient, availability_query: AvailabilityQuery
     ) -> None:
         """Test the counted person IDs are written to cohort, linked to a new cohort_definition."""
-        if not db_client.supports_cohort_logging:
-            pytest.skip("Cohort logging is not supported by this DB client (e.g. Snowflake, read-only DuckDB)")
+        if not db_client.supports_persist_results:
+            pytest.skip("Persisting results is not supported by this DB client (e.g. Snowflake, read-only DuckDB)")
 
         availability_solver = AvailabilitySolver(db_client, availability_query)
         modifiers = results_modifiers(low_number_suppression_threshold=0, rounding_target=0)
 
-        with patch("hutch_bunny.core.solvers.availability_solver.settings.LOG_RESULTS_ENABLED", True):
+        with patch("hutch_bunny.core.solvers.availability_solver.settings.PERSIST_RESULTS_ENABLED", True):
             count = availability_solver.solve_query(modifiers)
 
         with db_client.engine.connect() as conn:
@@ -1049,14 +1049,14 @@ class TestLogResults:
         assert definition.cohort_initiation_date == date.today()
 
     @pytest.mark.usefixtures("cleanup_cohort")
-    def test_log_results_disabled_writes_nothing(
+    def test_persist_results_disabled_writes_nothing(
         self, db_client: SyncDBClient, availability_query: AvailabilityQuery
     ) -> None:
-        """Test nothing is written to the cohort tables when LOG_RESULTS_ENABLED is off."""
+        """Test nothing is written to the cohort tables when PERSIST_RESULTS_ENABLED is off."""
         availability_solver = AvailabilitySolver(db_client, availability_query)
         modifiers = results_modifiers(low_number_suppression_threshold=0, rounding_target=0)
 
-        with patch("hutch_bunny.core.solvers.availability_solver.settings.LOG_RESULTS_ENABLED", False):
+        with patch("hutch_bunny.core.solvers.availability_solver.settings.PERSIST_RESULTS_ENABLED", False):
             availability_solver.solve_query(modifiers)
 
         with db_client.engine.connect() as conn:
@@ -1069,16 +1069,16 @@ class TestLogResults:
         assert written == 0
 
     @pytest.mark.usefixtures("cleanup_cohort")
-    def test_log_results_skipped_when_db_client_unsupported(
+    def test_persist_results_skipped_when_db_client_unsupported(
         self, db_client: SyncDBClient, availability_query: AvailabilityQuery
     ) -> None:
-        """Test nothing is written when the DB client does not support cohort logging (e.g. Snowflake)."""
+        """Test nothing is written when the DB client does not support persisting results (e.g. Snowflake)."""
         availability_solver = AvailabilitySolver(db_client, availability_query)
         modifiers = results_modifiers(low_number_suppression_threshold=0, rounding_target=0)
 
         with (
-            patch("hutch_bunny.core.solvers.availability_solver.settings.LOG_RESULTS_ENABLED", True),
-            patch.object(db_client, "supports_cohort_logging", False),
+            patch("hutch_bunny.core.solvers.availability_solver.settings.PERSIST_RESULTS_ENABLED", True),
+            patch.object(db_client, "supports_persist_results", False),
         ):
             count = availability_solver.solve_query(modifiers)
 

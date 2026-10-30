@@ -56,8 +56,8 @@ class Settings(BaseSettings):
         description="Enable support for querying OMOP death table records",
         default=False,
     )
-    LOG_RESULTS_ENABLED: bool = Field(
-        description="Enable logging of query results to the OMOP cohort and cohort_definition tables",
+    PERSIST_RESULTS_ENABLED: bool = Field(
+        description="Enable persisting query results to the OMOP cohort and cohort_definition tables",
         default=False,
     )
 

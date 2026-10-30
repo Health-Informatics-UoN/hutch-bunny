@@ -150,10 +150,10 @@ def test_check_tables_exist_with_views(
 
 
 @pytest.mark.unit
-def test_check_tables_exist_cohort_tables_required_when_log_results_enabled(
+def test_check_tables_exist_cohort_tables_required_when_persist_results_enabled(
     mock_inspector: MagicMock,
 ) -> None:
-    """Test that cohort tables are required when LOG_RESULTS_ENABLED is set."""
+    """Test that cohort tables are required when PERSIST_RESULTS_ENABLED is set."""
     # Arrange
     mock_inspector.get_table_names.return_value = [
         "concept",
@@ -168,7 +168,7 @@ def test_check_tables_exist_cohort_tables_required_when_log_results_enabled(
     # Act
     with (
         patch("hutch_bunny.core.db.sync.inspect", return_value=mock_inspector),
-        patch("hutch_bunny.core.db.sync.settings.LOG_RESULTS_ENABLED", True),
+        patch("hutch_bunny.core.db.sync.settings.PERSIST_RESULTS_ENABLED", True),
         pytest.raises(RuntimeError) as exc_info,
     ):
         SyncDBClient(
@@ -186,10 +186,10 @@ def test_check_tables_exist_cohort_tables_required_when_log_results_enabled(
 
 
 @pytest.mark.unit
-def test_check_tables_exist_cohort_tables_present_when_log_results_enabled(
+def test_check_tables_exist_cohort_tables_present_when_persist_results_enabled(
     mock_inspector: MagicMock,
 ) -> None:
-    """Test that no error is raised when LOG_RESULTS_ENABLED is set and cohort tables exist."""
+    """Test that no error is raised when PERSIST_RESULTS_ENABLED is set and cohort tables exist."""
     # Arrange
     mock_inspector.get_table_names.return_value = [
         "concept",
@@ -206,7 +206,7 @@ def test_check_tables_exist_cohort_tables_present_when_log_results_enabled(
     # Act / Assert - constructing the client must not raise
     with (
         patch("hutch_bunny.core.db.sync.inspect", return_value=mock_inspector),
-        patch("hutch_bunny.core.db.sync.settings.LOG_RESULTS_ENABLED", True),
+        patch("hutch_bunny.core.db.sync.settings.PERSIST_RESULTS_ENABLED", True),
     ):
         SyncDBClient(
             username="test_user",
@@ -252,10 +252,10 @@ def test_check_indexes_exist_missing_indexes(
 
 @pytest.mark.unit
 @pytest.mark.parametrize("read_only", [True, False])
-def test_duckdb_client_read_only_controls_cohort_logging(
+def test_duckdb_client_read_only_controls_persist_results(
     mock_inspector: MagicMock, read_only: bool
 ) -> None:
-    """Test DuckDB opens writable, and supports cohort logging, only when not read-only."""
+    """Test DuckDB opens writable, and supports persisting results, only when not read-only."""
     # Arrange
     mock_inspector.get_table_names.return_value = [
         "concept",
@@ -282,7 +282,7 @@ def test_duckdb_client_read_only_controls_cohort_logging(
     # Assert
     connect_args = mock_create_engine.call_args.kwargs["connect_args"]
     assert connect_args["read_only"] is read_only
-    assert db_client.supports_cohort_logging is not read_only
+    assert db_client.supports_persist_results is not read_only
 
 
 @pytest.mark.unit
@@ -312,4 +312,4 @@ def test_duckdb_client_read_only_by_default(mock_inspector: MagicMock) -> None:
 
     # Assert
     assert mock_create_engine.call_args.kwargs["connect_args"]["read_only"] is True
-    assert db_client.supports_cohort_logging is False
+    assert db_client.supports_persist_results is False
