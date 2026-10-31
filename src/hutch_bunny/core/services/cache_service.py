@@ -7,7 +7,6 @@ from hutch_bunny.core.logger import logger
 from hutch_bunny.core.settings import Settings
 from hutch_bunny.core.rquest_models.result import RquestResult 
 from hutch_bunny.core.results_modifiers import ResultModifier
-from hutch_bunny.core.rquest_models.result import RquestResult
 
 # Query fields that determine a distribution result
 CACHE_KEY_FIELDS = ("code", "analysis", "collection")
@@ -29,7 +28,7 @@ class DistributionCacheService:
         """Create cache directory if it doesn't exist."""
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def _generate_cache_key(self, query_dict: dict, modifiers: list, encoded: bool = True) -> str:
+    def _generate_cache_key(self, query_dict: dict[str, object], modifiers: list[ResultModifier], encoded: bool = True) -> str:
         """Generate a unique cache key for the query."""
         # Create a deterministic hash from the fields that determine the result and modifiers.
         # uuid and owner identify the task, not the question, so are excluded.
@@ -59,7 +58,7 @@ class DistributionCacheService:
         expiry_time = file_time + timedelta(hours=self.ttl_hours)
         return datetime.now() < expiry_time
     
-    def get(self, query_dict: dict[str, object], modifiers: list, encoded: bool = True) -> Optional[RquestResult]: 
+    def get(self, query_dict: dict[str, object], modifiers: list[ResultModifier], encoded: bool = True) -> Optional[RquestResult]: 
         """Retrieve cached result if available and valid."""
         if not self.enabled: 
             return None 
@@ -79,7 +78,7 @@ class DistributionCacheService:
         
         return None 
     
-    def set(self, query_dict: dict[str, object], modifiers: list, result: RquestResult, encoded: bool = True) -> None: 
+    def set(self, query_dict: dict[str, object], modifiers: list[ResultModifier], result: RquestResult, encoded: bool = True) -> None: 
         """Store result in cache."""
         if not self.enabled:
             return
