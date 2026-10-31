@@ -1,7 +1,10 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
+from sqlalchemy import func, select
+
 from hutch_bunny.core.db import  BaseDBClient, SnowflakeDBClient
+from hutch_bunny.core.db.entities import Cohort, CohortDefinition
 
 
 @pytest.mark.integration
@@ -117,3 +120,44 @@ def test_check_indexes_exist_with_missing_indexes(db_client: BaseDBClient) -> No
             # Verify the warning message contains information about missing indexes
             warning_msg = mock_logger.warning.call_args[0][0]
             assert "Missing indexes in the database" in warning_msg
+
+
+@pytest.mark.integration
+def test_log_cohort_stats_logs_counts_when_persist_results_enabled(db_client: BaseDBClient) -> None:
+    """
+    Verifies that the persisted results stats are logged at info level, matching the
+    counts in the cohort tables, when PERSIST_RESULTS_ENABLED is set.
+    """
+    if not db_client.supports_persist_results:
+        pytest.skip("Persisting results is not supported by this DB client (e.g. Snowflake, read-only DuckDB)")
+
+    with db_client.engine.connect() as conn:
+        definitions = conn.execute(select(func.count()).select_from(CohortDefinition)).scalar_one()
+        entries = conn.execute(select(func.count()).select_from(Cohort)).scalar_one()
+        persons = conn.execute(select(func.count(Cohort.subject_id.distinct()))).scalar_one()
+
+    with patch("hutch_bunny.core.db.sync.settings.PERSIST_RESULTS_ENABLED", True):
+        with patch("hutch_bunny.core.db.sync.logger") as mock_logger:
+            db_client._log_cohort_stats()
+
+            mock_logger.info.assert_called_once()
+            info_msg = mock_logger.info.call_args[0][0]
+            assert f"{definitions} cohort definitions" in info_msg
+            assert f"{entries} person entries" in info_msg
+            assert f"{persons} distinct persons" in info_msg
+
+
+@pytest.mark.integration
+def test_log_cohort_stats_skipped_when_persist_results_disabled(db_client: BaseDBClient) -> None:
+    """
+    Verifies that nothing is logged when PERSIST_RESULTS_ENABLED is off.
+    """
+    if isinstance(db_client, SnowflakeDBClient):
+        pytest.skip("Persisting results is not supported for Snowflake")
+
+    with patch("hutch_bunny.core.db.sync.settings.PERSIST_RESULTS_ENABLED", False):
+        with patch("hutch_bunny.core.db.sync.logger") as mock_logger:
+            db_client._log_cohort_stats()
+
+            mock_logger.info.assert_not_called()
+            mock_logger.warning.assert_not_called()

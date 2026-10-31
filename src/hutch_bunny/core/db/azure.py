@@ -56,6 +56,7 @@ class AzureManagedIdentityDBClient(SyncDBClient):
         self._inspector = inspect(self._engine)
 
         self._check_tables_exist()
+        self._log_cohort_stats()
         self._check_indexes_exist()
 
     def _setup_azure_managed_identity_auth(self) -> None:

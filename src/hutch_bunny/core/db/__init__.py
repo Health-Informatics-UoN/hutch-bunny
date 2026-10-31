@@ -82,6 +82,7 @@ def _create_duckdb_client() -> DuckDBClient:
         duckdb_memory_limit=settings.DATASOURCE_DUCKDB_MEMORY_LIMIT,
         schema=settings.DATASOURCE_DB_SCHEMA,
         duckdb_temp_directory=settings.DATASOURCE_DUCKDB_TEMP_DIRECTORY,
+        read_only=not settings.PERSIST_RESULTS_ENABLED,
     )
 
 def _create_sync_client() -> SyncDBClient:
@@ -160,8 +161,17 @@ def get_db_client() -> BaseDBClient:
         elif settings.DATASOURCE_USE_AZURE_MANAGED_IDENTITY:
             return _create_azure_client()
         elif settings.DATASOURCE_DB_DRIVERNAME == "duckdb":
+            if settings.PERSIST_RESULTS_ENABLED:
+                logger.warning(
+                    "PERSIST_RESULTS_ENABLED opens the DuckDB file for writing, which locks it: "
+                    "no other process, including another Bunny, can open it while this one runs"
+                )
             return _create_duckdb_client()
         elif settings.DATASOURCE_USE_SNOWFLAKE:
+            if settings.PERSIST_RESULTS_ENABLED:
+                logger.warning(
+                    "PERSIST_RESULTS_ENABLED is not supported for Snowflake and will be ignored"
+                )
             return _create_snowflake_client()
         else:
             return _create_sync_client()

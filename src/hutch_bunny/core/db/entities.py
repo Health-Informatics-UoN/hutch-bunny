@@ -283,3 +283,31 @@ class Specimen(Base):
     unit_source_value = Column(String(50), nullable=True)
     anatomic_site_source_value = Column(String(50), nullable=True)
     disease_status_source_value = Column(String(50), nullable=True)
+
+
+class CohortDefinition(Base):
+    __tablename__ = "cohort_definition"
+    # The CDM gives this column no identity/sequence; Bunny supplies the ID, so stop
+    # SQLAlchemy treating it as one (on SQL Server it would SET IDENTITY_INSERT ON)
+    cohort_definition_id = Column(Integer, primary_key=True, autoincrement=False)
+    cohort_definition_name = Column(String(255), nullable=False)
+    cohort_definition_description = Column(Text, nullable=True)
+    definition_type_concept_id = Column(
+        Integer, ForeignKey("concept.concept_id"), nullable=False
+    )
+    cohort_definition_syntax = Column(Text, nullable=True)
+    subject_concept_id = Column(
+        Integer, ForeignKey("concept.concept_id"), nullable=False
+    )
+    cohort_initiation_date = Column(Date, nullable=True)
+
+
+class Cohort(Base):
+    __tablename__ = "cohort"
+    # The CDM DDL defines no primary key on cohort; the ORM needs one, so use the
+    # natural key. subject_id is not a FK to person as the subject type is set
+    # by cohort_definition.subject_concept_id.
+    cohort_definition_id = Column(Integer, primary_key=True)
+    subject_id = Column(Integer, primary_key=True)
+    cohort_start_date = Column(Date, primary_key=True)
+    cohort_end_date = Column(Date,primary_key=True)
