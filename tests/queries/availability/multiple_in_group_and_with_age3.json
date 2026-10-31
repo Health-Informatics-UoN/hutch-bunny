@@ -1,0 +1,29 @@
+{
+  "task_id" : "job-2026-10-13-12:00:00-RQ-age-range-at-event",
+  "project" : "project_id",
+  "owner" : "user1",
+  "cohort" : {
+    "groups" : [ {
+      "rules" : [ {
+        "varname" : "OMOP",
+        "varcat" : "Person",
+        "type" : "TEXT",
+        "oper" : "=",
+        "value" : "8532"
+      }, {
+        "varname" : "OMOP",
+        "varcat" : "Condition",
+        "type" : "TEXT",
+        "oper" : "=",
+        "value" : "432867",
+        "time" : "50|60:AGE:Y"
+      } ],
+      "rules_oper" : "AND"
+    } ],
+    "groups_oper" : "AND"
+  },
+  "collection": "collection_id",
+  "protocol_version" : "v2",
+  "char_salt" : "salt",
+  "uuid" : "unique_id"
+}

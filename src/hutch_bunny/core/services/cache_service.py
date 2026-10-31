@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Optional
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.settings import Settings
+from hutch_bunny.core.rquest_models.result import RquestResult 
+from hutch_bunny.core.results_modifiers import ResultModifier
 from hutch_bunny.core.rquest_models.result import RquestResult
 
 # Query fields that determine a distribution result

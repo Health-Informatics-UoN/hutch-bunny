@@ -168,6 +168,23 @@ test_cases = [
         rounding=0,
         expected_count=25,
     ),
+    # Multiple in group test - assert multiple in group AND filtering with age range.
+    # 8532 Female AND 432867 Hyperlipidemia
+    # Age >= 50 and <= 60 years when it occurred (>= 50 alone is 30, <= 60 alone is 43)
+    # Rounding and threshold is not set, so will default to 10 / Test: 17a
+    AvailabilityTestCase(
+        json_file_path="tests/queries/availability/multiple_in_group_and_with_age3.json",
+        expected_count=20,
+    ),
+    # Multiple in group test - assert multiple in group AND filtering with age range and rounding to 0.
+    # 8532 Female AND 432867 Hyperlipidemia
+    # Age >= 50 and <= 60 years when it occurred
+    # Threshold is not set, so will default to 10 / Test: 17b
+    AvailabilityTestCase(
+        json_file_path="tests/queries/availability/multiple_in_group_and_with_age3.json",
+        rounding=0,
+        expected_count=22,
+    ),
     # Basic measurement test - assert measurement with default rounding.
     # 46236952 Glomerular filtration  Test: 18
     # > 1.0, < 3.0
@@ -214,20 +231,6 @@ test_cases = [
     ),
 ]
 
-# TODO: Add test cases for age - until we have improved code patterns for datetime.
-todo_test_cases = [
-    # Age - assert age filtering with default rounding.
-    AvailabilityTestCase(
-        json_file_path="tests/queries/availability/age.json",
-        rounding=10,
-        low_number_suppression=10,
-        expected_count=10,
-    ),
-    # Age - assert age filtering with override rounding.
-    AvailabilityTestCase(
-        json_file_path="tests/queries/availability/age.json",
-        rounding=0,
-        low_number_suppression=0,
-        expected_count=11,
-    ),
-]
+# Age (AGE rule on the Person table) is covered in
+# tests/integration/test_availability_solver_integration.py::TestAgeQuery,
+# as the current date can't be fixed in a CLI subprocess.

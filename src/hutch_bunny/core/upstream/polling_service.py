@@ -17,7 +17,7 @@ class PollingService:
     def __init__(
         self,
         client: TaskApiClient,
-        task_handler: Callable,
+        task_handler: Callable[[dict[str, object]], None],
         settings: DaemonSettings,
     ) -> None:
         """
