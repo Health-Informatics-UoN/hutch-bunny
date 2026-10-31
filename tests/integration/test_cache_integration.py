@@ -10,6 +10,7 @@ from hutch_bunny.core.execute_query import execute_query
 from hutch_bunny.core.services.cache_service import DistributionCacheService
 from hutch_bunny.core.services.cache_refresh_service import CacheRefreshService 
 from hutch_bunny.core.rquest_models.result import RquestResult
+from hutch_bunny.core.rquest_models.file import File
 from hutch_bunny.core.upstream.polling_service import PollingService
 from hutch_bunny.core.upstream.task_handler import handle_task
  
@@ -116,6 +117,46 @@ def test_second_query_uses_cache(
     assert mock_solve.call_count == 1
     assert result2.count == 100
 
+
+@patch('hutch_bunny.core.execute_query.query_solvers.solve_distribution')
+def test_encoded_and_plain_results_cached_separately(
+    mock_solve: Mock,
+    distribution_query: dict[str, str],
+    mock_settings: Mock
+) -> None:
+    encoded_result = RquestResult(
+        uuid="test-uuid",
+        status="ok",
+        collection_id="test-collection",
+        count=100,
+        files=[
+            File(
+                name="demographics.distribution",
+                data="QklPQkFOSw==",
+                description="Result of demographics.distribution analysis",
+                size=0.1,
+                type_="BCOS",
+                sensitive=True,
+                reference="",
+            )
+        ],
+    )
+    plain_result = encoded_result.model_copy(update={"files": [encoded_result.files[0].model_copy(update={"data": "BIOBANK"})]})
+    mock_solve.side_effect = [encoded_result, plain_result]
+
+    mock_db_client = Mock()
+    modifiers = []
+
+    # Encoded result is cached first, as the daemon and cache refresh do
+    execute_query(distribution_query, modifiers, mock_db_client, mock_settings)
+
+    # A plain (--no-encode) request must not be given the cached encoded result
+    result = execute_query(
+        distribution_query, modifiers, mock_db_client, mock_settings, encode_result=False
+    )
+
+    assert mock_solve.call_count == 2
+    assert result.files[0].data == "BIOBANK"
 
 @patch('hutch_bunny.core.execute_query.query_solvers.solve_distribution')
 def test_different_modifiers_different_cache(

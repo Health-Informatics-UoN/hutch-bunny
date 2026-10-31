@@ -64,6 +64,16 @@ def test_cache_key_includes_collection_and_modifiers(mock_settings: Mock) -> Non
     assert key != service._generate_cache_key(query, other_modifiers)
 
 
+def test_cache_key_includes_encoding(mock_settings: Mock) -> None:
+    service = DistributionCacheService(mock_settings)
+    query = {"code": "DEMOGRAPHICS", "analysis": "DISTRIBUTION", "collection": "collection-1"}
+
+    encoded_key = service._generate_cache_key(query, [], encoded=True)
+    plain_key = service._generate_cache_key(query, [], encoded=False)
+
+    assert encoded_key != plain_key
+    assert encoded_key == service._generate_cache_key(query, [])  # encoded by default
+
 def test_cache_get_set(mock_settings: Mock) -> None: 
     service = DistributionCacheService(mock_settings)
     query = {"code": "DEMOGRAPHICS"}

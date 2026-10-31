@@ -53,7 +53,7 @@ def execute_query(
             distribution_query = DistributionQuery.model_validate(query_dict)
 
             if settings.CACHE_ENABLED:
-                cached_result = cache_service.get(query_dict, results_modifier)
+                cached_result = cache_service.get(query_dict, results_modifier, encode_result)
                 if cached_result:
                     logger.info("Returning cached distribution result")
                     # Cached results may come from another task, so return under this task's uuid
@@ -68,7 +68,7 @@ def execute_query(
             result = query_solvers.solve_distribution(
                 results_modifier, db_client=db_client, query=distribution_query, encode_result=encode_result
             )
-            cache_service.set(query_dict, results_modifier, result)
+            cache_service.set(query_dict, results_modifier, result, encode_result)
             return result
         except TypeError as te:  # raised if the distribution query json format is wrong
             logger.error(str(te), exc_info=True)
