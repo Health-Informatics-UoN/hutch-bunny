@@ -71,7 +71,19 @@ uv run pytest -s tests/
 
 Bunny opens the DuckDB file read-only; host, port, database, username and password settings are not needed.
 
-CI runs the full suite against a matrix of Postgres (14–18), SQL Server (2019, 2022) and DuckDB. If you're changing anything in `core/db/` or `core/solvers/`, keep all three dialects in mind — a change that works on Postgres can still fail on SQL Server or DuckDB (and vice versa).
+Snowflake has no test instance, so it is tested against the same DuckDB file. [`fakesnow`](https://github.com/tekumara/fakesnow) emulates Snowflake on DuckDB, and the tests copy the DuckDB test data into it. With `TEST_USE_FAKESNOW=true` the `db_client` fixture becomes a Snowflake client on fakesnow, so the integration tests run against Snowflake SQL, and `tests/integration/test_snowflake_fakesnow.py` checks each sample query gives the same answer on Snowflake as on DuckDB, with and without rounding and low number suppression:
+
+```bash
+DATASOURCE_DB_DRIVERNAME=duckdb \
+DATASOURCE_DUCKDB_PATH_TO_DB=./data/omop.duckdb \
+DATASOURCE_DB_SCHEMA=public \
+TEST_USE_FAKESNOW=true \
+uv run pytest tests/integration
+```
+
+fakesnow translates Snowflake SQL rather than running it, so this catches errors in how Bunny builds Snowflake queries but is not a substitute for testing against a real Snowflake account. Tests fakesnow can't run are marked as expected failures in `FAKESNOW_XFAIL` in `tests/conftest.py`.
+
+CI runs the full suite against a matrix of Postgres (14–18), SQL Server (2019, 2022) and DuckDB, and the fakesnow tests in a separate Snowflake job. If you're changing anything in `core/db/` or `core/solvers/`, keep all three dialects in mind — a change that works on Postgres can still fail on SQL Server or DuckDB (and vice versa).
 
 New features and bug fixes should come with tests at the appropriate level: `unit` for logic (e.g. a new `Rule` operator or result modifier), `integration` if it touches real SQL (e.g. a new distribution type or DB backend).
 

@@ -6,18 +6,12 @@ from hutch_bunny.core.rquest_models.distribution import (
     DistributionQuery,
     DistributionQueryType,
 )
-from hutch_bunny.core.db import SyncDBClient, BaseDBClient
+from hutch_bunny.core.db import SyncDBClient
 from hutch_bunny.core.rquest_models.result import RquestResult
 from hutch_bunny.core.rquest_models.file import File
 from hutch_bunny.core.settings import Settings
-from hutch_bunny.core.db import get_db_client
 
 settings = Settings()
-
-
-@pytest.fixture
-def db_client() -> BaseDBClient:
-    return get_db_client()
 
 
 @pytest.fixture
