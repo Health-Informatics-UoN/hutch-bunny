@@ -161,6 +161,11 @@ def get_db_client() -> BaseDBClient:
         elif settings.DATASOURCE_USE_AZURE_MANAGED_IDENTITY:
             return _create_azure_client()
         elif settings.DATASOURCE_DB_DRIVERNAME == "duckdb":
+            if settings.PERSIST_RESULTS_ENABLED:
+                logger.warning(
+                    "PERSIST_RESULTS_ENABLED opens the DuckDB file for writing, which locks it: "
+                    "no other process, including another Bunny, can open it while this one runs"
+                )
             return _create_duckdb_client()
         elif settings.DATASOURCE_USE_SNOWFLAKE:
             if settings.PERSIST_RESULTS_ENABLED:
