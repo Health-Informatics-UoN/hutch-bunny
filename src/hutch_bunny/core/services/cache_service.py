@@ -8,6 +8,9 @@ from hutch_bunny.core.settings import Settings
 from hutch_bunny.core.rquest_models.result import RquestResult 
 from hutch_bunny.core.results_modifiers import ResultModifier
 
+# Query fields that determine a distribution result
+CACHE_KEY_FIELDS = ("code", "analysis", "collection")
+
 
 class DistributionCacheService: 
     """Service for caching distribution query results."""
@@ -25,12 +28,15 @@ class DistributionCacheService:
         """Create cache directory if it doesn't exist."""
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def _generate_cache_key(self, query_dict: dict[str, object], modifiers: list[ResultModifier]) -> str: 
+    def _generate_cache_key(self, query_dict: dict[str, object], modifiers: list[ResultModifier], encoded: bool = True) -> str:
         """Generate a unique cache key for the query."""
-        # Create a deterministic hash from a query and modifiers 
+        # Create a deterministic hash from the fields that determine the result and modifiers.
+        # uuid and owner identify the task, not the question, so are excluded.
+        # Encoded and plain results are stored separately, so neither is returned for the other.
         cache_data = {
-            "query": query_dict, 
-            "modifiers": modifiers 
+            "query": {field: query_dict.get(field) for field in CACHE_KEY_FIELDS},
+            "modifiers": modifiers,
+            "encoded": encoded,
         }
         cache_str = json.dumps(cache_data, sort_keys=True)
         return hashlib.sha256(cache_str.encode()).hexdigest()
@@ -52,12 +58,12 @@ class DistributionCacheService:
         expiry_time = file_time + timedelta(hours=self.ttl_hours)
         return datetime.now() < expiry_time
     
-    def get(self, query_dict: dict[str, object], modifiers: list[ResultModifier]) -> Optional[RquestResult]: 
+    def get(self, query_dict: dict[str, object], modifiers: list[ResultModifier], encoded: bool = True) -> Optional[RquestResult]: 
         """Retrieve cached result if available and valid."""
         if not self.enabled: 
             return None 
         
-        cache_key = self._generate_cache_key(query_dict, modifiers)
+        cache_key = self._generate_cache_key(query_dict, modifiers, encoded)
         cache_path = self._get_cache_path(cache_key)
 
         if self._is_cache_valid(cache_path):
@@ -72,12 +78,12 @@ class DistributionCacheService:
         
         return None 
     
-    def set(self, query_dict: dict[str, object], modifiers: list[ResultModifier], result: RquestResult) -> None: 
+    def set(self, query_dict: dict[str, object], modifiers: list[ResultModifier], result: RquestResult, encoded: bool = True) -> None: 
         """Store result in cache."""
         if not self.enabled:
             return
         
-        cache_key = self._generate_cache_key(query_dict, modifiers)
+        cache_key = self._generate_cache_key(query_dict, modifiers, encoded)
         cache_path = self._get_cache_path(cache_key)
 
         try: 

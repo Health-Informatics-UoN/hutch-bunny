@@ -10,6 +10,7 @@ from hutch_bunny.core.execute_query import execute_query
 from hutch_bunny.core.services.cache_service import DistributionCacheService
 from hutch_bunny.core.services.cache_refresh_service import CacheRefreshService 
 from hutch_bunny.core.rquest_models.result import RquestResult
+from hutch_bunny.core.rquest_models.file import File
 from hutch_bunny.core.upstream.polling_service import PollingService
 from hutch_bunny.core.upstream.task_handler import handle_task
  
@@ -118,6 +119,46 @@ def test_second_query_uses_cache(
 
 
 @patch('hutch_bunny.core.execute_query.query_solvers.solve_distribution')
+def test_encoded_and_plain_results_cached_separately(
+    mock_solve: Mock,
+    distribution_query: dict[str, str],
+    mock_settings: Mock
+) -> None:
+    encoded_result = RquestResult(
+        uuid="test-uuid",
+        status="ok",
+        collection_id="test-collection",
+        count=100,
+        files=[
+            File(
+                name="demographics.distribution",
+                data="QklPQkFOSw==",
+                description="Result of demographics.distribution analysis",
+                size=0.1,
+                type_="BCOS",
+                sensitive=True,
+                reference="",
+            )
+        ],
+    )
+    plain_result = encoded_result.model_copy(update={"files": [encoded_result.files[0].model_copy(update={"data": "BIOBANK"})]})
+    mock_solve.side_effect = [encoded_result, plain_result]
+
+    mock_db_client = Mock()
+    modifiers = []
+
+    # Encoded result is cached first, as the daemon and cache refresh do
+    execute_query(distribution_query, modifiers, mock_db_client, mock_settings)
+
+    # A plain (--no-encode) request must not be given the cached encoded result
+    result = execute_query(
+        distribution_query, modifiers, mock_db_client, mock_settings, encode_result=False
+    )
+
+    assert mock_solve.call_count == 2
+    assert result.files[0].data == "BIOBANK"
+
+@patch('hutch_bunny.core.execute_query.query_solvers.solve_distribution')
 def test_different_modifiers_different_cache(
     mock_solve: Mock, 
     distribution_query: dict[str, str], 
@@ -221,32 +262,39 @@ def test_cache_service_with_polling(mock_execute: Mock, mock_get_db_client: Mock
 @patch('hutch_bunny.core.execute_query.query_solvers.solve_distribution')
 def test_task_handler_uses_cache(mock_solve: Mock, mock_settings: Mock) -> None:
     mock_result = RquestResult(
-        uuid="task-uuid",
+        uuid="task-uuid-1",
         status="ok",
         collection_id="test_collection",
         count=150
     )
     mock_solve.return_value = mock_result
-        
+
     mock_db_manager = Mock()
     mock_api_client = Mock()
-    
-    distribution_task = {
+
+    first_task = {
         "code": "DEMOGRAPHICS",
         "analysis": "DISTRIBUTION",
-        "uuid": "task-uuid",
+        "uuid": "task-uuid-1",
         "collection": "test_collection",
         "owner": "user1"
     }
+    # Same query, new task ID to confirm that doesn't impact cache hit
+    second_task = {**first_task, "uuid": "task-uuid-2"}
 
-    handle_task(distribution_task, mock_db_manager, mock_settings, mock_api_client)
+    handle_task(first_task, mock_db_manager, mock_settings, mock_api_client)
     assert mock_solve.call_count == 1
     assert mock_api_client.send_results.call_count == 1
 
-    # Second identical task - should use cache
-    handle_task(distribution_task, mock_db_manager, mock_settings, mock_api_client)
+    # Second task asks the same question - should use cache
+    handle_task(second_task, mock_db_manager, mock_settings, mock_api_client)
     assert mock_solve.call_count == 1  # Still 1, used cache
     assert mock_api_client.send_results.call_count == 2
+
+    # Cached result must be sent back under the second task's ID
+    sent_result = mock_api_client.send_results.call_args_list[1].args[0]
+    assert sent_result.uuid == "task-uuid-2"
+    assert sent_result.count == 150
 
 
 @patch('hutch_bunny.core.execute_query.DistributionCacheService.get')

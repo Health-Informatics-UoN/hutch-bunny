@@ -34,6 +34,46 @@ def test_cache_key_generation(mock_settings: Mock) -> None:
     assert len(key1) == len(key2) == 64  # SHA256 hex length
 
 
+def test_cache_key_ignores_task_identity(mock_settings: Mock) -> None:
+    service = DistributionCacheService(mock_settings)
+    query1 = {
+        "code": "DEMOGRAPHICS",
+        "analysis": "DISTRIBUTION",
+        "collection": "test-collection",
+        "uuid": "task-uuid-1",
+        "owner": "user1",
+    }
+    query2 = {**query1, "uuid": "task-uuid-2", "owner": "user2"}
+
+    key1 = service._generate_cache_key(query1, [])
+    key2 = service._generate_cache_key(query2, [])
+
+    assert key1 == key2
+
+
+def test_cache_key_includes_collection_and_modifiers(mock_settings: Mock) -> None:
+    service = DistributionCacheService(mock_settings)
+    query = {"code": "DEMOGRAPHICS", "analysis": "DISTRIBUTION", "collection": "collection-1"}
+    other_collection = {**query, "collection": "collection-2"}
+    modifiers = [{"id": "Rounding", "nearest": 10}]
+    other_modifiers = [{"id": "Rounding", "nearest": 100}]
+
+    key = service._generate_cache_key(query, modifiers)
+
+    assert key != service._generate_cache_key(other_collection, modifiers)
+    assert key != service._generate_cache_key(query, other_modifiers)
+
+
+def test_cache_key_includes_encoding(mock_settings: Mock) -> None:
+    service = DistributionCacheService(mock_settings)
+    query = {"code": "DEMOGRAPHICS", "analysis": "DISTRIBUTION", "collection": "collection-1"}
+
+    encoded_key = service._generate_cache_key(query, [], encoded=True)
+    plain_key = service._generate_cache_key(query, [], encoded=False)
+
+    assert encoded_key != plain_key
+    assert encoded_key == service._generate_cache_key(query, [])  # encoded by default
+
 def test_cache_get_set(mock_settings: Mock) -> None: 
     service = DistributionCacheService(mock_settings)
     query = {"code": "DEMOGRAPHICS"}
