@@ -67,6 +67,66 @@ def test_cache_populates_on_startup(
     service.stop()
 
 
+def test_no_refresh_on_startup_when_disabled(service: CacheRefreshService, mock_settings: Mock) -> None:
+    mock_settings.CACHE_REFRESH_ON_STARTUP = False
+
+    with patch("time.sleep", return_value=None):
+        with patch.object(service, "_refresh_cache") as mock_refresh:
+            service.start()
+            service.stop()
+
+    # The background loop must not refresh straight away either
+    mock_refresh.assert_not_called()
+    assert service.last_refresh is not None
+
+
+@patch('hutch_bunny.core.services.cache_refresh_service.get_db_client')
+@patch('hutch_bunny.core.services.cache_refresh_service.execute_query')
+def test_refresh_cache_recomputes_rather_than_reading_cache(
+    mock_execute: Mock,
+    mock_get_db: Mock,
+    service: CacheRefreshService,
+) -> None:
+    service._refresh_cache()
+
+    assert mock_execute.call_count > 0
+    for call in mock_execute.call_args_list:
+        assert call.kwargs["refresh_cache"] is True
+
+
+@pytest.mark.parametrize("refresh_on_startup", [True, False])
+def test_start_prunes_expired_cache(
+    service: CacheRefreshService, mock_settings: Mock, refresh_on_startup: bool
+) -> None:
+    mock_settings.CACHE_REFRESH_ON_STARTUP = refresh_on_startup
+
+    with patch("time.sleep", return_value=None):
+        with patch.object(service, "_prune_cache") as mock_prune, patch.object(service, "_refresh_cache"):
+            service.start()
+            service.stop()
+
+    mock_prune.assert_called_once()
+
+
+def test_scheduled_refresh_prunes_before_refreshing(service: CacheRefreshService, mock_settings: Mock) -> None:
+    mock_settings.CACHE_TTL_HOURS = 1
+    service.last_refresh = datetime.now() - timedelta(hours=2)
+    service.running = True
+
+    calls = Mock()
+    def stop_loop(seconds: int) -> None:
+        service.running = False
+
+    with patch("time.sleep", side_effect=stop_loop):
+        with (
+            patch.object(service, "_prune_cache", side_effect=lambda: calls.prune()),
+            patch.object(service, "_refresh_cache", side_effect=lambda: calls.refresh()),
+        ):
+            service._refresh_loop()
+
+    assert [c[0] for c in calls.mock_calls] == ["prune", "refresh"]
+
+
 @patch('hutch_bunny.core.services.cache_refresh_service.get_db_client')
 @patch('hutch_bunny.core.services.cache_refresh_service.execute_query')
 def test_startup_continues_on_cache_failure(

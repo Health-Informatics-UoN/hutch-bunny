@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
     CACHE_TTL_HOURS: float = Field(
         description="Cache validity (time-to-live) period in hours (0 = never expires)",
-        default=24.0
+        default=168.0  # 1 week
     )
     CACHE_REFRESH_ON_STARTUP: bool = Field(
         description="Refresh cache when daemon starts",

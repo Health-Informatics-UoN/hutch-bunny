@@ -7,6 +7,7 @@ from hutch_bunny.core.settings import DaemonSettings
 from hutch_bunny.core.db import get_db_client
 from hutch_bunny.core.execute_query import execute_query
 from hutch_bunny.core.results_modifiers import results_modifiers
+from hutch_bunny.core.services.cache_service import DistributionCacheService
 
 
 class CacheRefreshService: 
@@ -27,7 +28,9 @@ class CacheRefreshService:
         if self.settings.CACHE_TTL_HOURS <= 0:
             logger.info("Cache TTL is 0 (no expiration), not starting refresh service")
             return
-        
+
+        self._prune_cache()
+
         if self.settings.CACHE_REFRESH_ON_STARTUP:
             logger.info("Populating cache on startup...")
             try:
@@ -37,6 +40,9 @@ class CacheRefreshService:
             except Exception as e:
                 logger.error(f"Failed to populate cache on startup: {e}")
                 # Continue anyway - don't fail startup due to cache issues
+        else:
+            # Keep the cache as it is; the first refresh is one TTL from now
+            self.last_refresh = datetime.now()
 
         self.running = True
         self.thread = threading.Thread(target=self._refresh_loop, daemon=True)
@@ -62,6 +68,7 @@ class CacheRefreshService:
 
                 if datetime.now() >= next_refresh:
                     logger.info(f"{datetime.now() - self.last_refresh} elapsed since last refresh: Starting scheduled cache refresh")
+                    self._prune_cache()
                     self._refresh_cache()
                     self.last_refresh = datetime.now()
                     logger.info("Cache refresh completed")
@@ -72,6 +79,13 @@ class CacheRefreshService:
             except Exception as e:
                 logger.error(f"Error in cache refresh loop: {e}", exc_info=True)
                 time.sleep(300)  
+
+    def _prune_cache(self) -> None:
+        """Delete expired cache files; a failure is logged and does not stop the service."""
+        try:
+            DistributionCacheService(self.settings).prune_expired()
+        except Exception as e:
+            logger.error(f"Failed to prune expired cache files: {e}")
 
     def _refresh_cache(self) -> None: 
         """Refresh all common distribution queries."""
@@ -109,7 +123,8 @@ class CacheRefreshService:
                         query, 
                         modifiers, 
                         db_client=db_client, 
-                        settings=self.settings
+                        settings=self.settings,
+                        refresh_cache=True,
                     )
                 except Exception as e:
                     logger.error(f"Failed to refresh cache for {query['code']}: {e}")

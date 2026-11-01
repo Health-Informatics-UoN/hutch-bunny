@@ -159,6 +159,33 @@ def test_encoded_and_plain_results_cached_separately(
     assert result.files[0].data == "BIOBANK"
 
 @patch('hutch_bunny.core.execute_query.query_solvers.solve_distribution')
+def test_refresh_replaces_valid_cached_result(
+    mock_solve: Mock,
+    distribution_query: dict[str, str],
+    mock_settings: Mock
+) -> None:
+    mock_solve.side_effect = [
+        RquestResult(uuid="test-uuid", status="ok", collection_id="test-collection", count=100),
+        RquestResult(uuid="test-uuid", status="ok", collection_id="test-collection", count=110),
+    ]
+    mock_db_client = Mock()
+    modifiers = []
+
+    execute_query(distribution_query, modifiers, mock_db_client, mock_settings)
+
+    # The cached result is still valid, but a refresh recomputes it anyway
+    refreshed = execute_query(
+        distribution_query, modifiers, mock_db_client, mock_settings, refresh_cache=True
+    )
+    assert mock_solve.call_count == 2
+    assert refreshed.count == 110
+
+    # Later requests get the refreshed result from the cache
+    result = execute_query(distribution_query, modifiers, mock_db_client, mock_settings)
+    assert mock_solve.call_count == 2
+    assert result.count == 110
+
+@patch('hutch_bunny.core.execute_query.query_solvers.solve_distribution')
 def test_different_modifiers_different_cache(
     mock_solve: Mock, 
     distribution_query: dict[str, str], 

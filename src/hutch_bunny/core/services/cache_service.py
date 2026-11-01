@@ -94,6 +94,30 @@ class DistributionCacheService:
         except Exception as e:
             logger.error(f"Error writing cache: {e}")
 
+    def prune_expired(self) -> int:
+        """
+        Delete cached results older than the TTL. This includes files that are no longer
+        looked up, e.g. CLI results, or results from older cache keys or other settings.
+
+        Returns:
+            int: The number of files deleted.
+        """
+        if not self.enabled or self.ttl_hours == 0:
+            return 0
+
+        removed = 0
+        for cache_file in self.cache_dir.glob("*.json"):
+            try:
+                if not self._is_cache_valid(cache_file):
+                    cache_file.unlink()
+                    removed += 1
+            except Exception as e:
+                logger.error(f"Error deleting cache file {cache_file}: {e}")
+
+        if removed:
+            logger.info(f"Removed {removed} expired cache files")
+        return removed
+
     def clear(self) -> None:
         """Clear all cached results."""
         if not self.enabled:
