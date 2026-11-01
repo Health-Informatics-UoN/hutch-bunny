@@ -29,8 +29,6 @@ class CacheRefreshService:
             logger.info("Cache TTL is 0 (no expiration), not starting refresh service")
             return
 
-        self._prune_cache()
-
         if self.settings.CACHE_REFRESH_ON_STARTUP:
             logger.info("Populating cache on startup...")
             try:
@@ -43,6 +41,9 @@ class CacheRefreshService:
         else:
             # Keep the cache as it is; the first refresh is one TTL from now
             self.last_refresh = datetime.now()
+
+        # After the refresh, so the refreshed files are overwritten rather than deleted
+        self._prune_cache()
 
         self.running = True
         self.thread = threading.Thread(target=self._refresh_loop, daemon=True)
@@ -68,8 +69,8 @@ class CacheRefreshService:
 
                 if datetime.now() >= next_refresh:
                     logger.info(f"{datetime.now() - self.last_refresh} elapsed since last refresh: Starting scheduled cache refresh")
-                    self._prune_cache()
                     self._refresh_cache()
+                    self._prune_cache()
                     self.last_refresh = datetime.now()
                     logger.info("Cache refresh completed")
                 

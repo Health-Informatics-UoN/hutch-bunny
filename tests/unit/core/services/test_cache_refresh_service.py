@@ -94,21 +94,31 @@ def test_refresh_cache_recomputes_rather_than_reading_cache(
         assert call.kwargs["refresh_cache"] is True
 
 
-@pytest.mark.parametrize("refresh_on_startup", [True, False])
-def test_start_prunes_expired_cache(
-    service: CacheRefreshService, mock_settings: Mock, refresh_on_startup: bool
+@pytest.mark.parametrize(
+    "refresh_on_startup, expected_calls",
+    [(True, ["refresh", "prune"]), (False, ["prune"])],
+)
+def test_start_prunes_expired_cache_after_refreshing(
+    service: CacheRefreshService,
+    mock_settings: Mock,
+    refresh_on_startup: bool,
+    expected_calls: list[str],
 ) -> None:
     mock_settings.CACHE_REFRESH_ON_STARTUP = refresh_on_startup
 
+    calls = Mock()
     with patch("time.sleep", return_value=None):
-        with patch.object(service, "_prune_cache") as mock_prune, patch.object(service, "_refresh_cache"):
+        with (
+            patch.object(service, "_prune_cache", side_effect=lambda: calls.prune()),
+            patch.object(service, "_refresh_cache", side_effect=lambda: calls.refresh()),
+        ):
             service.start()
             service.stop()
 
-    mock_prune.assert_called_once()
+    assert [c[0] for c in calls.mock_calls] == expected_calls
 
 
-def test_scheduled_refresh_prunes_before_refreshing(service: CacheRefreshService, mock_settings: Mock) -> None:
+def test_scheduled_refresh_prunes_after_refreshing(service: CacheRefreshService, mock_settings: Mock) -> None:
     mock_settings.CACHE_TTL_HOURS = 1
     service.last_refresh = datetime.now() - timedelta(hours=2)
     service.running = True
@@ -124,7 +134,8 @@ def test_scheduled_refresh_prunes_before_refreshing(service: CacheRefreshService
         ):
             service._refresh_loop()
 
-    assert [c[0] for c in calls.mock_calls] == ["prune", "refresh"]
+    # Refreshing first overwrites the refreshed files, so pruning doesn't delete them
+    assert [c[0] for c in calls.mock_calls] == ["refresh", "prune"]
 
 
 @patch('hutch_bunny.core.services.cache_refresh_service.get_db_client')

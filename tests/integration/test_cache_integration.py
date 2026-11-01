@@ -370,6 +370,47 @@ def test_background_refresh_updates_cache(
             assert mock_solve.call_count >= 2
 
 
+@patch('hutch_bunny.core.services.cache_refresh_service.get_db_client')
+@patch('hutch_bunny.core.execute_query.query_solvers.solve_distribution')
+def test_refresh_overwrites_its_files_and_prunes_the_rest(
+    mock_solve: Mock,
+    mock_get_db_client: Mock,
+    mock_settings: Mock,
+    tmp_path: Path
+) -> None:
+    mock_settings.COLLECTION_ID = "test-collection"
+    mock_settings.CACHE_REFRESH_ON_STARTUP = True
+    mock_settings.CACHE_TTL_HOURS = 1
+    mock_solve.return_value = RquestResult(
+        uuid="cache_refresh", status="ok", collection_id="test-collection", count=100
+    )
+    refresh_service = CacheRefreshService(mock_settings)
+
+    # Files from an earlier refresh, plus a leftover nothing refreshes, all expired
+    refresh_service._refresh_cache()
+    refreshed_files = set(tmp_path.glob("*.json"))
+    leftover = tmp_path / f"{'0' * 64}.json"
+    leftover.write_text("{}")
+    two_hours_ago = (datetime.now() - timedelta(hours=2)).timestamp()
+    for cache_file in tmp_path.glob("*.json"):
+        os.utime(cache_file, (two_hours_ago, two_hours_ago))
+
+    deleted: list[Path] = []
+    real_unlink = Path.unlink
+
+    def record_unlink(path: Path, *args: object, **kwargs: object) -> None:
+        deleted.append(path)
+        real_unlink(path)
+
+    with patch('time.sleep'), patch.object(Path, "unlink", autospec=True, side_effect=record_unlink):
+        refresh_service.start()
+        refresh_service.stop()
+
+    # The refreshed files are overwritten in place, only the leftover is deleted
+    assert len(refreshed_files) == 2
+    assert deleted == [leftover]
+    assert all(cache_file.exists() for cache_file in refreshed_files)
+
 @patch('hutch_bunny.core.services.cache_refresh_service.execute_query')
 @patch('hutch_bunny.core.services.cache_refresh_service.get_db_client')
 def test_system_stable_with_cache_errors(
