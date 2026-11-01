@@ -101,7 +101,9 @@ def fakesnow_db_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return db_path
 
 
-@pytest.fixture(scope="session")
+# Module scope, so fakesnow is only patched in while a module uses it and other tests
+# can patch it themselves (fakesnow can't be patched in twice)
+@pytest.fixture(scope="module")
 def fakesnow_client(fakesnow_db_path: Path) -> Iterator[SnowflakeDBClient]:
     # The dialect parses SELECT CURRENT_VERSION(), which fakesnow answers with DuckDB's version
     with (

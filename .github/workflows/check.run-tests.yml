@@ -275,4 +275,4 @@ jobs:
           TEST_USE_FAKESNOW: true
         run: |
           set -e
-          uv run pytest tests/integration
+          uv run pytest tests/integration tests/unit/test_snowflake_client.py
