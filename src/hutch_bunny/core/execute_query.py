@@ -21,7 +21,8 @@ def execute_query(
     results_modifier: list[ResultModifier],
     db_client: BaseDBClient,
     settings: Settings | None = None, 
-    encode_result: bool = True 
+    encode_result: bool = True,
+    refresh_cache: bool = False,
 ) -> RquestResult:
     """
     Executes either an availability query or a distribution query, and returns results filtered by modifiers. 
@@ -36,6 +37,9 @@ def execute_query(
     query_dict: Dict
         A dictionary carrying the payload for the query. If there is an 'analysis' item in the query, it's a distribution query. Otherwise, it executes an availability query
 
+    refresh_cache: bool
+        Ignore any cached distribution result and recompute it, replacing the cached copy
+
     Returns
         RquestResult
     """
@@ -49,15 +53,16 @@ def execute_query(
             settings = Settings()
         
         cache_service = DistributionCacheService(settings)
-        
-        if settings.CACHE_ENABLED:
-            cached_result = cache_service.get(query_dict, results_modifier)
-            if cached_result: 
-                logger.info("Returning cached distribution result")
-                return cached_result
 
         try:
             distribution_query = DistributionQuery.model_validate(query_dict)
+
+            if settings.CACHE_ENABLED and not refresh_cache:
+                cached_result = cache_service.get(query_dict, results_modifier, encode_result)
+                if cached_result:
+                    logger.info("Returning cached distribution result")
+                    # Cached results may come from another task, so return under this task's uuid
+                    return cached_result.model_copy(update={"uuid": distribution_query.uuid})
 
             # Check for ICD-MAIN queries before calling the solver
             # So we dont return results upstream
@@ -68,7 +73,7 @@ def execute_query(
             result = query_solvers.solve_distribution(
                 results_modifier, db_client=db_client, query=distribution_query, encode_result=encode_result
             )
-            cache_service.set(query_dict, results_modifier, result)
+            cache_service.set(query_dict, results_modifier, result, encode_result)
             return result
         except TypeError as te:  # raised if the distribution query json format is wrong
             logger.error(str(te), exc_info=True)
