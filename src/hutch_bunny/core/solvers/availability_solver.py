@@ -1,9 +1,14 @@
+from datetime import date
 from logging import DEBUG
 from typing import TypedDict, Union
 from sqlalchemy import (
     CompoundSelect,
+    Connection,
+    Date,
+    Integer,
     func,
     ColumnElement,
+    insert,
     select,
     Select,
     intersect,
@@ -13,6 +18,8 @@ from sqlalchemy import (
 )
 from hutch_bunny.core.db import BaseDBClient
 from hutch_bunny.core.db.entities import (
+    Cohort,
+    CohortDefinition,
     Concept,
     Person
 )
@@ -38,6 +45,11 @@ from hutch_bunny.core.settings import Settings
 
 
 settings = Settings()
+
+# Values written to cohort_definition when PERSIST_RESULTS_ENABLED is set
+COHORT_DEFINITION_DESCRIPTION = "auto generated from cohort discovery search"
+COHORT_DEFINITION_TYPE_CONCEPT_ID = 0
+COHORT_SUBJECT_CONCEPT_ID = 1147314 #this is to indicate the cohort is based on the person id
 
 
 
@@ -78,15 +90,26 @@ class AvailabilitySolver():
                 group_query = self._build_group_query(group, concepts)
                 group_queries.append(group_query)
 
-            final_query = self._construct_final_query(
-                group_queries,
-                rounding, 
-                low_number
-            )
+            person_ids_query = self._construct_person_ids_query(group_queries)
+            persist_results = settings.PERSIST_RESULTS_ENABLED and self.db_client.supports_persist_results
 
             try:
+                if persist_results:
+                    # Store the matching person IDs, then count what was stored so the
+                    # returned count always matches the persisted cohort.
+                    cohort_definition_id = self._write_cohort(con, person_ids_query)
+                    count_source: Union[Select[Tuple[int]], CompoundSelect[Tuple[int]]] = select(
+                        Cohort.subject_id
+                    ).where(Cohort.cohort_definition_id == cohort_definition_id)
+                else:
+                    count_source = person_ids_query
+
+                final_query = self._construct_count_query(count_source, rounding, low_number)
                 output = con.execute(final_query).fetchone()
                 count = int(output[0]) if output is not None else 0
+
+                if persist_results:
+                    con.commit()
             except Exception as e:
                 logger.error(str(e))
 
@@ -284,78 +307,117 @@ class AvailabilitySolver():
 
         return group_query
 
-    def _construct_final_query(
+    def _construct_person_ids_query(
         self,
         all_groups_queries: list[Union[Select[Tuple[int]], CompoundSelect[Tuple[int]]]],
+    ) -> Union[Select[Tuple[int]], CompoundSelect[Tuple[int]]]:
+        """
+        Construct the query returning the distinct person IDs matching the cohort, by
+        applying OR/AND logic between groups using CTEs.
+
+        Args:
+            all_groups_queries: List of queries for each group
+
+        Returns:
+            The query that selects the matching person IDs
+        """
+        if not all_groups_queries:
+            return select(Person.person_id).where(literal(False))
+
+        group_queries = [
+            select(query.cte(name=f"final_group_{i}"))
+            for i, query in enumerate(all_groups_queries)
+        ]
+
+        if self.query.cohort.groups_operator == "OR":
+            # For OR logic between groups, use UNION
+            return union(*group_queries)
+        # For AND logic between groups, use INTERSECT
+        return intersect(*group_queries)
+
+    def _construct_count_query(
+        self,
+        person_ids_query: Union[Select[Tuple[int]], CompoundSelect[Tuple[int]]],
         rounding: int,
         low_number: int
     ) -> Select[Tuple[int]]:
         """
-        Construct the final query by applying OR/AND logic between groups using CTEs.
+        Construct the query that counts the person IDs with rounding and low number suppression.
 
         Args:
-            all_groups_queries: List of queries for each group
+            person_ids_query: The query selecting the person IDs to count
             rounding: Rounding factor for the final count
+            low_number: Counts below this threshold return no rows
 
         Returns:
             The final query that counts the results with appropriate rounding
         """
-        if self.query.cohort.groups_operator == "OR":
-            # For OR logic between groups, use UNION with CTEs
-            if all_groups_queries:
-                # Create CTEs for all group queries
-                group_ctes = []
-                for i, query in enumerate(all_groups_queries):
-                    cte_name = f"final_group_{i}"
-                    cte = query.cte(name=cte_name)
-                    group_ctes.append(cte)
+        person_ids = person_ids_query.subquery()
 
-                # Union all group CTEs by selecting from them
-                group_union_queries = [select(cte) for cte in group_ctes]
-                final_union = union(*group_union_queries)
-
-                if rounding > 0:
-                    full_query_all_groups = select(
-                        func.round((func.count() / rounding), 0) * rounding
-                    ).select_from(final_union.subquery())
-                else:
-                    full_query_all_groups = select(func.count()).select_from(final_union.subquery())
-            else:
-                # Fallback to empty query
-                full_query_all_groups = select(func.count()).where(literal(False))
+        if rounding > 0:
+            count_query = select(
+                func.round((func.count() / rounding), 0) * rounding
+            ).select_from(person_ids)
         else:
-            # For AND logic between groups, use INTERSECT with CTEs
-            if all_groups_queries:
-                # Create CTEs for all group queries
-                group_ctes = []
-                for i, query in enumerate(all_groups_queries):
-                    cte_name = f"final_group_{i}"
-                    cte = query.cte(name=cte_name)
-                    group_ctes.append(cte)
-
-                # Use INTERSECT for AND logic between groups
-                group_intersect_queries = [select(cte) for cte in group_ctes]
-                final_intersect = intersect(*group_intersect_queries)
-
-                if rounding > 0:
-                    full_query_all_groups = select(
-                        func.round((func.count() / rounding), 0) * rounding
-                    ).select_from(final_intersect.subquery())
-                else:
-                    full_query_all_groups = select(func.count()).select_from(final_intersect.subquery())
-
-            else:
-                # Fallback to empty query
-                full_query_all_groups = select(func.count()).where(literal(False))
+            count_query = select(func.count()).select_from(person_ids)
 
         if low_number > 0:
-            full_query_all_groups = full_query_all_groups.having(
-                func.count() >= low_number
-            )
+            count_query = count_query.having(func.count() >= low_number)
 
-        log_query(
-            full_query_all_groups, 
-            self.db_client.engine
+        log_query(count_query, self.db_client.engine)
+
+        return count_query
+
+    def _write_cohort(
+        self,
+        con: Connection,
+        person_ids_query: Union[Select[Tuple[int]], CompoundSelect[Tuple[int]]],
+    ) -> int:
+        """
+        Write a cohort_definition row for this query, and a cohort row for each matching
+        person, without the person IDs leaving the database. The caller commits.
+
+        Args:
+            con: The connection holding the transaction
+            person_ids_query: The query selecting the matching person IDs
+
+        Returns:
+            The cohort_definition_id written
+        """
+        today = date.today()
+
+        # cohort_definition_id has no sequence in the CDM, so take the next free ID
+        cohort_definition_id = con.execute(
+            select(func.coalesce(func.max(CohortDefinition.cohort_definition_id), 0) + 1)
+        ).scalar_one()
+
+        con.execute(
+            insert(CohortDefinition).values(
+                cohort_definition_id=cohort_definition_id,
+                cohort_definition_name=self.query.uuid,
+                cohort_definition_description=(
+                    f"{COHORT_DEFINITION_DESCRIPTION}: {self.query.cohort.model_dump_json()}"
+                ),
+                definition_type_concept_id=COHORT_DEFINITION_TYPE_CONCEPT_ID,
+                cohort_definition_syntax=None,
+                subject_concept_id=COHORT_SUBJECT_CONCEPT_ID,
+                cohort_initiation_date=today,
+            )
         )
 
-        return full_query_all_groups
+        person_ids = person_ids_query.subquery()
+        person_id = list(person_ids.c)[0]
+        insert_cohort = insert(Cohort).from_select(
+            ["cohort_definition_id", "subject_id", "cohort_start_date", "cohort_end_date"],
+            select(
+                literal(cohort_definition_id, Integer),
+                person_id,
+                literal(today, Date),
+                literal(today, Date),
+            ),
+        )
+        log_query(insert_cohort, self.db_client.engine)
+        con.execute(insert_cohort)
+
+        logger.info(f"Persisted cohort as cohort_definition_id {cohort_definition_id}")
+        return int(cohort_definition_id)

@@ -1,11 +1,12 @@
 from typing import Any, Sequence, Mapping
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func, select
 from sqlalchemy.inspection import inspect
 from sqlalchemy.engine import URL as SQLAURL, Row, Engine
 from sqlalchemy.sql import Executable
 from hutch_bunny.core.logger import logger
 from hutch_bunny.core.settings import Settings
 from .base import BaseDBClient
+from .entities import Cohort, CohortDefinition
 
 settings = Settings()
 
@@ -43,6 +44,7 @@ class SyncDBClient(BaseDBClient):
         self._inspector = inspect(self._engine)
 
         self._check_tables_exist()
+        self._log_cohort_stats()
         self._check_indexes_exist()
 
     @property
@@ -74,6 +76,8 @@ class SyncDBClient(BaseDBClient):
             "observation",
             "drug_exposure",
         }
+        if settings.PERSIST_RESULTS_ENABLED:
+            required_tables |= {"cohort", "cohort_definition"}
 
         # Get both tables and views and combine
         existing_tables = set(self.inspector.get_table_names(schema=self.schema))
@@ -84,6 +88,39 @@ class SyncDBClient(BaseDBClient):
             raise RuntimeError(
                 f"Missing tables or views in the database: {', '.join(missing_tables)}"
             )
+
+    def _log_cohort_stats(self) -> None:
+        """
+        Log the number of cohort definitions and persons persisted to the OMOP cohort
+        tables. Only runs when PERSIST_RESULTS_ENABLED is set; a failure is logged as a
+        warning and does not stop start up.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
+        if not (settings.PERSIST_RESULTS_ENABLED and self.supports_persist_results):
+            return
+
+        stats_query = select(
+            select(func.count()).select_from(CohortDefinition).scalar_subquery(),
+            func.count(),
+            func.count(Cohort.subject_id.distinct()),
+        ).select_from(Cohort)
+
+        try:
+            with self.engine.connect() as con:
+                definitions, entries, persons = con.execute(stats_query).one()
+        except Exception as e:
+            logger.warning(f"Unable to read persisted results stats: {e}")
+            return
+
+        logger.info(
+            f"Persisted results: {definitions} cohort definitions, "
+            f"{entries} person entries, {persons} distinct persons"
+        )
 
     def _check_indexes_exist(self) -> None:
         """

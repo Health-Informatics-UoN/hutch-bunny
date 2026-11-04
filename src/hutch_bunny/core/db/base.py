@@ -9,6 +9,9 @@ R = TypeVar("R")
 
 
 class BaseDBClient:
+    supports_persist_results: bool = True
+    """Whether query results can be persisted to the OMOP cohort tables (PERSIST_RESULTS_ENABLED)."""
+
     def __init__(
         self,
         username: str,
