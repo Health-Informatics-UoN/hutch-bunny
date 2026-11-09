@@ -179,6 +179,19 @@ def test_death_support_disabled_by_default() -> None:
         assert settings.OMOP_DEATH_ENABLED is False
 
 
+@pytest.mark.unit
+def test_cache_ttl_defaults_to_one_week() -> None:
+    with patch.dict("os.environ", {}, clear=True):
+        settings = Settings(
+            DATASOURCE_DB_PASSWORD="db_secret",
+            DATASOURCE_DB_HOST="localhost",
+            DATASOURCE_DB_PORT=5432,
+            DATASOURCE_DB_SCHEMA="public",
+            DATASOURCE_DB_DATABASE="test_db",
+        )
+
+        assert settings.CACHE_TTL_HOURS == 168.0
+
 
 @pytest.mark.unit
 @pytest.mark.parametrize("account", [None, ""])

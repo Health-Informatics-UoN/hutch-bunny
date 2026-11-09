@@ -1,3 +1,4 @@
+import os
 import pytest 
 import tempfile 
 from pathlib import Path 
@@ -33,6 +34,46 @@ def test_cache_key_generation(mock_settings: Mock) -> None:
     assert key1 != key2
     assert len(key1) == len(key2) == 64  # SHA256 hex length
 
+
+def test_cache_key_ignores_task_identity(mock_settings: Mock) -> None:
+    service = DistributionCacheService(mock_settings)
+    query1 = {
+        "code": "DEMOGRAPHICS",
+        "analysis": "DISTRIBUTION",
+        "collection": "test-collection",
+        "uuid": "task-uuid-1",
+        "owner": "user1",
+    }
+    query2 = {**query1, "uuid": "task-uuid-2", "owner": "user2"}
+
+    key1 = service._generate_cache_key(query1, [])
+    key2 = service._generate_cache_key(query2, [])
+
+    assert key1 == key2
+
+
+def test_cache_key_includes_collection_and_modifiers(mock_settings: Mock) -> None:
+    service = DistributionCacheService(mock_settings)
+    query = {"code": "DEMOGRAPHICS", "analysis": "DISTRIBUTION", "collection": "collection-1"}
+    other_collection = {**query, "collection": "collection-2"}
+    modifiers = [{"id": "Rounding", "nearest": 10}]
+    other_modifiers = [{"id": "Rounding", "nearest": 100}]
+
+    key = service._generate_cache_key(query, modifiers)
+
+    assert key != service._generate_cache_key(other_collection, modifiers)
+    assert key != service._generate_cache_key(query, other_modifiers)
+
+
+def test_cache_key_includes_encoding(mock_settings: Mock) -> None:
+    service = DistributionCacheService(mock_settings)
+    query = {"code": "DEMOGRAPHICS", "analysis": "DISTRIBUTION", "collection": "collection-1"}
+
+    encoded_key = service._generate_cache_key(query, [], encoded=True)
+    plain_key = service._generate_cache_key(query, [], encoded=False)
+
+    assert encoded_key != plain_key
+    assert encoded_key == service._generate_cache_key(query, [])  # encoded by default
 
 def test_cache_get_set(mock_settings: Mock) -> None: 
     service = DistributionCacheService(mock_settings)
@@ -87,3 +128,34 @@ def test_cache_clear(mock_settings: Mock) -> None:
     
     service.clear()
     assert service.get(query, modifiers) is None
+
+
+def test_prune_expired_removes_only_expired_files(mock_settings: Mock) -> None:
+    mock_settings.CACHE_TTL_HOURS = 1
+    service = DistributionCacheService(mock_settings)
+    result = RquestResult(uuid="test", status="ok", collection_id="test", count=100)
+    service.set({"code": "DEMOGRAPHICS"}, [], result)
+    service.set({"code": "GENERIC"}, [], result)
+
+    # Age one file past the TTL, as a leftover CLI result or old key would be
+    expired_path = service._get_cache_path(service._generate_cache_key({"code": "DEMOGRAPHICS"}, []))
+    two_hours_ago = (datetime.now() - timedelta(hours=2)).timestamp()
+    os.utime(expired_path, (two_hours_ago, two_hours_ago))
+
+    assert service.prune_expired() == 1
+    assert not expired_path.exists()
+    assert service.get({"code": "GENERIC"}, []) == result
+
+
+def test_prune_expired_keeps_files_when_ttl_is_zero(mock_settings: Mock) -> None:
+    mock_settings.CACHE_TTL_HOURS = 0
+    service = DistributionCacheService(mock_settings)
+    result = RquestResult(uuid="test", status="ok", collection_id="test", count=100)
+    service.set({"code": "DEMOGRAPHICS"}, [], result)
+
+    cache_path = service._get_cache_path(service._generate_cache_key({"code": "DEMOGRAPHICS"}, []))
+    a_year_ago = (datetime.now() - timedelta(days=365)).timestamp()
+    os.utime(cache_path, (a_year_ago, a_year_ago))
+
+    assert service.prune_expired() == 0
+    assert cache_path.exists()
