@@ -1,0 +1,31 @@
+# Builds the container image for every pull request.
+# For pull requests from branches in this repo, it also publishes the image tagged
+# `pr-<number>`, `sha-<commit>` and `tree-<hash>`, so a pull request can be tested before it is merged.
+# Pull requests from forks and Dependabot only check the image builds.
+# Images built on merge to main are published by the Release workflow.
+
+name: Check and Push Container
+
+on:
+  pull_request:
+
+# A new push to the pull request cancels the build of the previous one
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  publish-pr-container:
+    name: Build Container
+    permissions:
+      contents: read
+      packages: write
+    uses: health-informatics-uon/workflows/.github/workflows/publish-pr-container.yml@1.8.0
+    with:
+      image-name: hutch/bunny
+      image-description: "Bunny container image (pull request build)"
+      registry: ghcr.io
+      context: .
+      dockerfile: Dockerfile
+      platforms: linux/amd64,linux/arm64
+    secrets: inherit
