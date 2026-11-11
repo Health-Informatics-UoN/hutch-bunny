@@ -191,3 +191,33 @@ def test_cache_ttl_defaults_to_one_week() -> None:
         )
 
         assert settings.CACHE_TTL_HOURS == 168.0
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("account", [None, ""])
+def test_snowflake_requires_account(account: str | None) -> None:
+    with patch.dict("os.environ", {}, clear=True):
+        with pytest.raises(ValidationError, match="DATASOURCE_DB_ACCOUNT is required when using Snowflake"):
+            Settings(
+                DATASOURCE_USE_SNOWFLAKE=True,
+                DATASOURCE_DB_DRIVERNAME="snowflake-connector-python",
+                DATASOURCE_DB_USERNAME="sf_user",
+                DATASOURCE_DB_SCHEMA="CDM",
+                DATASOURCE_DB_DATABASE="OMOP",
+                DATASOURCE_DB_ACCOUNT=account,
+            )
+
+
+@pytest.mark.unit
+def test_snowflake_settings_accepted_with_account() -> None:
+    with patch.dict("os.environ", {}, clear=True):
+        settings = Settings(
+            DATASOURCE_USE_SNOWFLAKE=True,
+            DATASOURCE_DB_DRIVERNAME="snowflake-connector-python",
+            DATASOURCE_DB_USERNAME="sf_user",
+            DATASOURCE_DB_SCHEMA="CDM",
+            DATASOURCE_DB_DATABASE="OMOP",
+            DATASOURCE_DB_ACCOUNT="sf_account",
+        )
+
+        assert settings.DATASOURCE_DB_ACCOUNT == "sf_account"
