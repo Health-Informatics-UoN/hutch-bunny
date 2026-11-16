@@ -20,7 +20,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    uses: health-informatics-uon/workflows/.github/workflows/publish-pr-container.yml@1.8.0
+    uses: health-informatics-uon/workflows/.github/workflows/publish-pr-container.yml@1.8.2
     with:
       image-name: hutch/bunny
       image-description: "Bunny container image (pull request build)"
