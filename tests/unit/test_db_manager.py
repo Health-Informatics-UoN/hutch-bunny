@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from hutch_bunny.core.db import SyncDBClient
+from hutch_bunny.core.db import DuckDBClient, SyncDBClient
 
 
 @pytest.fixture
@@ -150,6 +150,75 @@ def test_check_tables_exist_with_views(
 
 
 @pytest.mark.unit
+def test_check_tables_exist_cohort_tables_required_when_persist_results_enabled(
+    mock_inspector: MagicMock,
+) -> None:
+    """Test that cohort tables are required when PERSIST_RESULTS_ENABLED is set."""
+    # Arrange
+    mock_inspector.get_table_names.return_value = [
+        "concept",
+        "person",
+        "measurement",
+        "condition_occurrence",
+        "observation",
+        "drug_exposure",
+    ]
+    mock_inspector.get_view_names.return_value = []
+
+    # Act
+    with (
+        patch("hutch_bunny.core.db.sync.inspect", return_value=mock_inspector),
+        patch("hutch_bunny.core.db.sync.settings.PERSIST_RESULTS_ENABLED", True),
+        pytest.raises(RuntimeError) as exc_info,
+    ):
+        SyncDBClient(
+            username="test_user",
+            password="test_password",
+            host="test_host",
+            port=5432,
+            database="test_db",
+            drivername="postgresql+psycopg",
+        )
+
+    # Assert
+    assert "cohort" in str(exc_info.value)
+    assert "cohort_definition" in str(exc_info.value)
+
+
+@pytest.mark.unit
+def test_check_tables_exist_cohort_tables_present_when_persist_results_enabled(
+    mock_inspector: MagicMock,
+) -> None:
+    """Test that no error is raised when PERSIST_RESULTS_ENABLED is set and cohort tables exist."""
+    # Arrange
+    mock_inspector.get_table_names.return_value = [
+        "concept",
+        "person",
+        "measurement",
+        "condition_occurrence",
+        "observation",
+        "drug_exposure",
+        "cohort",
+        "cohort_definition",
+    ]
+    mock_inspector.get_view_names.return_value = []
+
+    # Act / Assert - constructing the client must not raise
+    with (
+        patch("hutch_bunny.core.db.sync.inspect", return_value=mock_inspector),
+        patch("hutch_bunny.core.db.sync.settings.PERSIST_RESULTS_ENABLED", True),
+    ):
+        SyncDBClient(
+            username="test_user",
+            password="test_password",
+            host="test_host",
+            port=5432,
+            database="test_db",
+            drivername="postgresql+psycopg",
+        )
+
+
+@pytest.mark.unit
 def test_check_indexes_exist_missing_indexes(
     mock_inspector: MagicMock, mock_engine: MagicMock
 ) -> None:
@@ -179,3 +248,68 @@ def test_check_indexes_exist_missing_indexes(
                 # Assert the message contains information about missing indexes
                 warning_msg = mock_logger.warning.call_args[0][0]
                 assert "Missing indexes in the database" in warning_msg
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("read_only", [True, False])
+def test_duckdb_client_read_only_controls_persist_results(
+    mock_inspector: MagicMock, read_only: bool
+) -> None:
+    """Test DuckDB opens writable, and supports persisting results, only when not read-only."""
+    # Arrange
+    mock_inspector.get_table_names.return_value = [
+        "concept",
+        "person",
+        "measurement",
+        "condition_occurrence",
+        "observation",
+        "drug_exposure",
+    ]
+    mock_inspector.get_view_names.return_value = []
+
+    # Act
+    with (
+        patch("hutch_bunny.core.db.duckdb.create_engine") as mock_create_engine,
+        patch("hutch_bunny.core.db.duckdb.inspect", return_value=mock_inspector),
+    ):
+        db_client = DuckDBClient(
+            path_to_db="/data/omop.duckdb",
+            duckdb_memory_limit="1000mb",
+            duckdb_temp_directory="/tmp",
+            read_only=read_only,
+        )
+
+    # Assert
+    connect_args = mock_create_engine.call_args.kwargs["connect_args"]
+    assert connect_args["read_only"] is read_only
+    assert db_client.supports_persist_results is not read_only
+
+
+@pytest.mark.unit
+def test_duckdb_client_read_only_by_default(mock_inspector: MagicMock) -> None:
+    """Test DuckDB is opened read-only unless asked otherwise."""
+    # Arrange
+    mock_inspector.get_table_names.return_value = [
+        "concept",
+        "person",
+        "measurement",
+        "condition_occurrence",
+        "observation",
+        "drug_exposure",
+    ]
+    mock_inspector.get_view_names.return_value = []
+
+    # Act
+    with (
+        patch("hutch_bunny.core.db.duckdb.create_engine") as mock_create_engine,
+        patch("hutch_bunny.core.db.duckdb.inspect", return_value=mock_inspector),
+    ):
+        db_client = DuckDBClient(
+            path_to_db="/data/omop.duckdb",
+            duckdb_memory_limit="1000mb",
+            duckdb_temp_directory="/tmp",
+        )
+
+    # Assert
+    assert mock_create_engine.call_args.kwargs["connect_args"]["read_only"] is True
+    assert db_client.supports_persist_results is False
