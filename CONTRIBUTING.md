@@ -71,7 +71,7 @@ uv run pytest -s tests/
 
 Bunny opens the DuckDB file read-only; host, port, database, username and password settings are not needed.
 
-CI runs the full suite against a matrix of Postgres (14–18), SQL Server (2019, 2022) and DuckDB. If you're changing anything in `core/db/` or `core/solvers/`, keep all three dialects in mind — a change that works on Postgres can still fail on SQL Server or DuckDB (and vice versa).
+CI runs the full suite against a matrix of Postgres (15–19), SQL Server (2022, 2025) and DuckDB. Postgres 14 and SQL Server 2019 are no longer tested. If you're changing anything in `core/db/` or `core/solvers/`, keep all three dialects in mind — a change that works on Postgres can still fail on SQL Server or DuckDB (and vice versa).
 
 New features and bug fixes should come with tests at the appropriate level: `unit` for logic (e.g. a new `Rule` operator or result modifier), `integration` if it touches real SQL (e.g. a new distribution type or DB backend).
 
